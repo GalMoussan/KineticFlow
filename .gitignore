@@ -1,0 +1,9 @@
+node_modules/
+data/
+assets/fonts/*
+!assets/fonts/manifest.json
+assets/samples/*
+!assets/samples/manifest.json
+sidecar/.venv/
+.env
+.DS_Store
