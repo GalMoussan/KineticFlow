@@ -1,0 +1,24 @@
+{
+  "id": "2026-12-01-dilemma-cafe-en",
+  "language": "en",
+  "contentType": "event",
+  "brief": "Monthly debate café + jam, English edition. Warm, playful, invites students to talk.",
+  "sections": [
+    { "role": "title", "text": "Dilemma Café & Jam" },
+    { "role": "tagline", "text": "Today's *hottest*, most *interesting* topics!" },
+    { "role": "body", "text": "Come, sit, talk, sip *coffee*" },
+    { "role": "teaser", "text": "Expect *surprises*" },
+    { "role": "datetime", "date": "2026-12-01", "time": "19:30" },
+    { "role": "location", "place": "Beit HaChan", "city": "Kiryat Shmona" },
+    { "role": "cta", "text": "Come *talk!*" },
+    { "role": "endcard", "logos": ["kiryat-shmona", "ayalim"] }
+  ],
+  "style": "kinetic-quote",
+  "palette": "flamingo-cafe",
+  "fonts": { "display": "rubik" },
+  "music": { "source": "preset", "preset": "lofi-jazz", "bpm": 100, "seed": 1101 },
+  "duration": 26,
+  "formats": ["4:5", "16:9"],
+  "quality": "standard",
+  "outputs": { "noMusic": true, "keepChunks": false }
+}

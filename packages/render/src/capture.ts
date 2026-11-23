@@ -5,8 +5,12 @@
 import { chromium, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright';
 import type { ReelInput, TextBox } from '@reel/core';
 
-/** M0a: Metal WebGL2 on the M1 Pro in chrome-headless-shell. */
-export const GPU_ARGS = ['--use-angle=metal', '--enable-gpu-rasterization', '--ignore-gpu-blocklist'];
+/**
+ * M0a: Metal WebGL2 on the M1 Pro in chrome-headless-shell.
+ * `--disable-partial-raster`: with partial raster Chromium re-rasters only dirty tiles, so anti-aliased edges can keep
+ * the previous frame's pixels (measured up to 8/255 order dependence in M2). Part of the chunk cache key.
+ */
+export const GPU_ARGS = ['--use-angle=metal', '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--disable-partial-raster'];
 
 export function launchBrowser(): Promise<Browser> {
   return chromium.launch({ headless: true, args: GPU_ARGS });

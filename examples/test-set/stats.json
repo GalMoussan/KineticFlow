@@ -1,0 +1,58 @@
+{
+  "id": "ts-stats",
+  "language": "he",
+  "contentType": "stats",
+  "sections": [
+    {
+      "role": "title",
+      "text": "שנה של דילמות"
+    },
+    {
+      "role": "stat",
+      "value": 120,
+      "suffix": "+",
+      "label": "משתתפים בכל ערב"
+    },
+    {
+      "role": "stat",
+      "value": 24,
+      "label": "ערבי דילמה"
+    },
+    {
+      "role": "countdown",
+      "from": "2026-11-23",
+      "to": "2026-12-01",
+      "label": "ימים לערב הבא"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "kinetic-quote",
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "lofi-jazz",
+    "bpm": 100,
+    "seed": 1101
+  },
+  "duration": 26,
+  "formats": [
+    "9:16",
+    "1:1",
+    "4:5",
+    "16:9"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}

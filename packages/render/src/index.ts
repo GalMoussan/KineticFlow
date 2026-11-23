@@ -11,7 +11,8 @@ import {
   type CueSheet,
   type ReelInput,
 } from '@reel/core';
-import { recipe } from '@reel/styles';
+import { RECIPES, recipe } from '@reel/styles';
+import { formatDiagnostics, resolveStyles, TRAIT_META, usedTraits, type StyleResolution } from '@reel/traits';
 import { buildCueSheet } from '@reel/timing';
 import { assemble, type Exported } from './assemble.ts';
 import { renderAudio, type AudioResult } from './audio.ts';
@@ -113,7 +114,10 @@ export interface ChunkRecord extends ChunkPlan {
 export interface Receipt {
   job: string;
   spec: { path: string; sha256: string };
+  /** The job style's dominant recipe. */
   style: string;
+  /** Per-section resolved styles, scene layers and resolver diagnostics (e.g. transition fallbacks). */
+  styles: Pick<StyleResolution, 'sections' | 'scenes' | 'diagnostics'>;
   quality: QualitySettings;
   bpm: number;
   duration: number;
@@ -173,13 +177,12 @@ export async function renderJobWith(
     ...(opts.formats ? { formats: opts.formats } : {}),
   };
 
-  // ── style, tempo, cue sheet ──
-  const styleId = typeof spec.style === 'string' ? spec.style : spec.style.base;
+  // ── styles (traits, blends, compatibility, scene layers), tempo, cue sheet ──
+  const styles = resolveStyles(spec, RECIPES, TRAIT_META);
+  const styleErrors = styles.diagnostics.filter((d) => d.level === 'error');
+  if (styleErrors.length || !styles.job) throw new SpecError(`${absSpec}: style resolution failed:\n${formatDiagnostics(styleErrors)}`);
+  const styleId = styles.job.recipe;
   const rec = recipe(styleId);
-  const badRoles = [...new Set(spec.sections.map((s) => s.role).filter((r) => !rec.constraints.roles.includes(r)))];
-  if (badRoles.length) throw new SpecError(`style "${styleId}" cannot lay out section role(s): ${badRoles.join(', ')}`);
-  const badFormats = spec.formats.filter((f) => !rec.constraints.formats.includes(f));
-  if (badFormats.length) throw new SpecError(`style "${styleId}" does not support format(s): ${badFormats.join(', ')}`);
   const music = spec.music;
   if (music.source === 'track' || music.source === 'ai') {
     throw new SpecError(`music source "${music.source}" arrives in M3; use "preset" or "none" for now`);
@@ -205,7 +208,7 @@ export async function renderJobWith(
 
   // ── bundle + browsers ──
   let t = performance.now();
-  const bundle = await makeBundle({ styleId, spec, specDir, outDir: join(jobDir, 'bundle') });
+  const bundle = await makeBundle({ spec, specDir, outDir: join(jobDir, 'bundle'), traits: usedTraits(styles) });
   const server = await serveDir(bundle.dir);
   const probeBrowser = await launchBrowser();
   const ctx: Ctx = {
@@ -230,10 +233,21 @@ export async function renderJobWith(
     t = performance.now();
     const qa: GateResult[] = [];
     const inputs = new Map<FormatId, ReelInput>();
-    for (const f of spec.formats) inputs.set(f, await reelInput({ spec, sheet, formatId: f, specDir, bundle }));
+    for (const f of spec.formats) inputs.set(f, await reelInput({ spec, sheet, formatId: f, specDir, bundle, styles }));
+    const warnings = styles.diagnostics.filter((d) => d.level === 'warn');
+    const styleGate: GateResult = {
+      gate: 'style',
+      level: warnings.length ? 'warn' : 'pass',
+      detail: warnings.length
+        ? warnings.map((d) => d.message).join('; ')
+        : `${styles.scenes.length} scene layer(s), traits ${usedTraits(styles).map((t) => `${t.axis}:${t.id}`).join(' ')}`,
+      data: styles.diagnostics,
+    };
     const contrastGate = gateContrast(inputs.get(spec.formats[0]!)!.palette);
-    qa.push(contrastGate);
-    emit({ type: 'qa', phase: 'preflight', result: contrastGate });
+    for (const g of [styleGate, contrastGate]) {
+      qa.push(g);
+      emit({ type: 'qa', phase: 'preflight', result: g });
+    }
     const plans = await Promise.all(spec.formats.map((f) => preflight(ctx, probeBrowser, inputs.get(f)!)));
     await probeBrowser.close();
     for (const p of plans) {
@@ -350,6 +364,7 @@ export async function renderJobWith(
       job: spec.id,
       spec: { path: absSpec, sha256: sha256(loaded.bytes) },
       style: styleId,
+      styles: { sections: styles.sections, scenes: styles.scenes, diagnostics: styles.diagnostics },
       quality: q,
       bpm,
       duration: sheet.duration,

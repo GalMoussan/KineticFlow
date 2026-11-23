@@ -1,15 +1,16 @@
 /**
  * Page bundle (PLAN.md §8.1): one self-contained directory per job that the loopback server serves as-is.
- * `index.html` + `engine.js` (style engine and runtime, one IIFE) + `engine.css` + `fonts/*` + `logos/*`.
- * Everything the page can load is in here, so `hash` covers every byte that can influence pixels except the
- * injected `window.REEL`.
+ * `index.html` + `engine.js` (the generic trait host, the job's traits and the runtime, one IIFE) + `engine.css`
+ * (host + trait stylesheets) + `fonts/*` + `logos/*`. The entry is generated per job and imports only the traits the
+ * job uses, so editing an unrelated trait does not change the hash. Everything the page can load is in here, so
+ * `hash` covers every byte that can influence pixels except the injected `window.REEL`.
  */
 import { createHash } from 'node:crypto';
 import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { build } from 'esbuild';
-import { fontEntry, type JobSpec } from '@reel/core';
-import { styleDir } from '@reel/styles';
+import { fontEntry, type JobSpec, type TraitAxis } from '@reel/core';
+import { HOST_CSS, TRAITS_SRC, traitFiles } from '@reel/traits/files.ts';
 import { ensureFonts } from './fonts.ts';
 
 export interface Bundle {
@@ -45,8 +46,22 @@ export function fontUrl(id: string): string {
   return `fonts/${encodeURIComponent(fontEntry(id).file)}`;
 }
 
-function styleIdOf(spec: JobSpec): string {
-  return typeof spec.style === 'string' ? spec.style : spec.style.base;
+/** The generated page entry: the host plus one import per used trait. */
+async function entrySource(traits: readonly { axis: TraitAxis; id: string }[]): Promise<{ js: string; css: string[] }> {
+  const imports: string[] = [];
+  const css = [HOST_CSS];
+  for (const [i, t] of traits.entries()) {
+    const f = await traitFiles(t.axis, t.id);
+    imports.push(`import t${i} from ${JSON.stringify(`./${relative(TRAITS_SRC, f.impl)}`)};`);
+    if (f.css) css.push(f.css);
+  }
+  const js = [
+    `import { runHost } from './host/host.ts';`,
+    ...imports,
+    `runHost([${traits.map((_, i) => `t${i}`).join(', ')}]);`,
+    '',
+  ].join('\n');
+  return { js, css };
 }
 
 const html = (lang: string, dir: string) =>
@@ -64,15 +79,18 @@ async function listFiles(dir: string): Promise<string[]> {
   }
 }
 
-export async function buildBundle(o: { styleId: string; spec: JobSpec; specDir: string; outDir: string }): Promise<Bundle> {
-  if (styleIdOf(o.spec) !== o.styleId) {
-    throw new Error(`bundle: spec style "${styleIdOf(o.spec)}" does not match "${o.styleId}"`);
-  }
-  const src = styleDir(o.styleId);
+export async function buildBundle(o: {
+  spec: JobSpec;
+  specDir: string;
+  outDir: string;
+  /** Traits the job uses (`usedTraits(resolveStyles(…))`), in axis order. */
+  traits: readonly { axis: TraitAxis; id: string }[];
+}): Promise<Bundle> {
   const files = new Map<string, Uint8Array>();
+  const entry = await entrySource(o.traits);
 
   const js = await build({
-    entryPoints: [join(src, 'engine.ts')],
+    stdin: { contents: entry.js, resolveDir: TRAITS_SRC, sourcefile: 'entry.ts', loader: 'ts' },
     bundle: true,
     format: 'iife',
     platform: 'browser',
@@ -84,7 +102,8 @@ export async function buildBundle(o: { styleId: string; spec: JobSpec; specDir: 
     logLevel: 'silent',
   });
   files.set('engine.js', js.outputFiles[0]!.contents);
-  files.set('engine.css', await readFile(join(src, 'engine.css')));
+  const sheets = await Promise.all(entry.css.map((p) => readFile(p, 'utf8')));
+  files.set('engine.css', new TextEncoder().encode(sheets.join('\n')));
 
   const fontPaths = await ensureFonts(specFontIds(o.spec));
   for (const [id, path] of Object.entries(fontPaths)) files.set(`fonts/${fontEntry(id).file}`, await readFile(path));

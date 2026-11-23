@@ -12,11 +12,8 @@ import {
   type JobSpec,
   type LogoRef,
   type ReelInput,
-  type ResolvedStyle,
-  type StyleRef,
-  type TraitAxis,
 } from '@reel/core';
-import { recipe } from '@reel/styles';
+import type { StyleResolution } from '@reel/traits';
 import { findLogo, fontUrl, type Bundle } from './bundle.ts';
 
 /** Intrinsic size from the PNG IHDR, the SVG viewBox (or width/height) or the JPEG SOF marker. */
@@ -56,32 +53,17 @@ export function imageSize(bytes: Uint8Array, ext: string): { w: number; h: numbe
   throw new Error(`unsupported image type "${ext}"`);
 }
 
-function styleBase(ref: StyleRef): { base: string; traits: Partial<Record<TraitAxis, string>>; params: Record<string, number> } {
-  return typeof ref === 'string' ? { base: ref, traits: {}, params: {} } : { base: ref.base, traits: ref.traits ?? {}, params: ref.params ?? {} };
-}
-
 export async function reelInput(o: {
   spec: JobSpec;
   sheet: CueSheet;
   formatId: FormatId;
   specDir: string;
   bundle: Bundle;
+  /** `resolveStyles` output, already checked for errors. */
+  styles: StyleResolution;
 }): Promise<ReelInput> {
-  const { spec } = o;
-  const job = styleBase(spec.style);
-  const rec = recipe(job.base);
-  const params = { ...rec.params, ...job.params };
-
-  // M1 renders one monolithic style; per-section overrides still merge their traits/params on top of the job's.
-  const styles: Record<string, ResolvedStyle> = {};
-  for (const s of spec.sections) {
-    const own = s.style ? styleBase(s.style) : { traits: {}, params: {} };
-    styles[s.id] = {
-      recipe: rec.id,
-      traits: { ...rec.traits, ...job.traits, ...own.traits } as Record<TraitAxis, string>,
-      params: { ...params, ...own.params },
-    };
-  }
+  const { spec, styles } = o;
+  if (!styles.job) throw new Error('reelInput: the job style did not resolve');
 
   const font = (id: string): FontRef => {
     const f = fontEntry(id);
@@ -102,9 +84,10 @@ export async function reelInput(o: {
     spec,
     cues: o.sheet,
     format: format(o.formatId),
-    styles,
-    params,
-    palette: resolvePalette(spec.palette ?? rec.defaults.palette),
+    styles: styles.sections,
+    scenes: styles.scenes,
+    params: styles.job.params,
+    palette: resolvePalette(spec.palette),
     fonts: { display: font(spec.fonts.display), text: font(spec.fonts.text ?? spec.fonts.display) },
     logos,
   };

@@ -3,7 +3,7 @@ import { mkdir, rm, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Format, FormatId, ReelInput } from '@reel/core';
 import type { Browser } from 'playwright';
-import { launchBrowser, ReelTab } from './capture.ts';
+import { GPU_ARGS, launchBrowser, ReelTab } from './capture.ts';
 import { captureTimes, ChunkEncoder, ffmpegArgs, type QualitySettings } from './encode.ts';
 import { REPO, sha256, stableJson } from './util.ts';
 
@@ -47,6 +47,7 @@ export function chunkKey(k: KeyInput): string {
     stableJson({
       bundle: k.bundleHash,
       chromium: k.chromium,
+      launch: GPU_ARGS,
       format: { id: k.format.id, w: k.format.w, h: k.format.h },
       quality: { ...k.quality, ffmpeg: ffmpegArgs({ out: '', w: k.format.w, h: k.format.h, q: k.quality }) },
       frames: [k.chunk.f0, k.chunk.f1],

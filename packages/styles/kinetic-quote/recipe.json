@@ -5,22 +5,18 @@
   "energy": 2,
   "background": "light",
   "traits": {
-    "rhythm": "beat",
+    "rhythm": "land-kick",
     "camera": "pan-turn",
-    "layout": "world-canvas",
+    "layout": "world-blocks",
     "unit": "word",
-    "reveal": "mask-slide",
+    "reveal": "kinetic-mix",
     "motion": "smooth",
     "axis": "none",
     "material": "flat",
     "background": "paper-grid",
     "transition": "camera-move"
   },
-  "signature": {
-    "module": "kinetic-quote",
-    "owns": ["rhythm", "camera", "layout", "unit", "reveal", "motion", "axis", "material", "background", "transition"]
-  },
-  "params": { "drift": 0.04, "kick": 0.008 },
+  "params": { "camera.drift": 0.04, "rhythm.kick": 0.008 },
   "defaults": {
     "palette": "flamingo-cafe",
     "music": { "preset": "lofi-jazz", "bpm": 100 },
@@ -29,7 +25,10 @@
   "constraints": {
     "maxWordsPerSection": 5,
     "formats": ["9:16", "1:1", "4:5", "16:9"],
-    "roles": ["title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote", "datetime", "location", "endcard"]
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
   },
   "choreography": {
     "unitBeats": 1,

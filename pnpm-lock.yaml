@@ -60,6 +60,9 @@ importers:
       '@reel/timing':
         specifier: workspace:*
         version: link:../timing
+      '@reel/traits':
+        specifier: workspace:*
+        version: link:../traits
       esbuild:
         specifier: ^0.25.12
         version: 0.25.12
@@ -97,6 +100,19 @@ importers:
       '@reel/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@reel/styles':
+        specifier: workspace:*
+        version: link:../styles
+
+  packages/traits:
+    dependencies:
+      '@reel/core':
+        specifier: workspace:*
+        version: link:../core
+      '@reel/runtime':
+        specifier: workspace:*
+        version: link:../runtime
     devDependencies:
       '@reel/styles':
         specifier: workspace:*

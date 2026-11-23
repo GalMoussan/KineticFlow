@@ -1,0 +1,55 @@
+{
+  "id": "ts-list",
+  "language": "he",
+  "contentType": "list",
+  "sections": [
+    {
+      "role": "title",
+      "text": "מה מחכה לכם"
+    },
+    {
+      "role": "list",
+      "title": "בערב הזה",
+      "items": [
+        "דילמות חמות",
+        "ג׳אם חי",
+        "קפה טוב",
+        "אנשים חדשים"
+      ]
+    },
+    {
+      "role": "cta",
+      "text": "בואו *לדבר!*"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "kinetic-quote",
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "lofi-jazz",
+    "bpm": 100,
+    "seed": 1101
+  },
+  "duration": 26,
+  "formats": [
+    "9:16",
+    "1:1",
+    "4:5",
+    "16:9"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}

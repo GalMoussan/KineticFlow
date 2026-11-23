@@ -1,0 +1,8 @@
+/* paper-grid: paper and grain canvases fill the frame; the dot grid lives in the world (camera space). */
+.paper, .grain { position: absolute; left: 0; top: 0; }
+.grid {
+  position: absolute;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--a3) 42%, transparent) 0 2.4px, transparent 3px);
+  background-size: 72px 72px;
+}
+.vignette { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }

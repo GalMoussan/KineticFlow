@@ -3,11 +3,26 @@ import type { Format } from './formats.ts';
 import type { JobSpec } from './spec.ts';
 import type { TraitAxis } from './style.ts';
 
-/** Fully resolved per-section style after overrides and blending (PLAN.md §5.3). */
+/**
+ * Fully resolved style of one section after overrides and blending (PLAN.md §5.3), produced by
+ * `resolveStyles` in `@reel/traits`. `traits.transition` is the effective one (after any fallback).
+ */
 export interface ResolvedStyle {
+  /** The dominant recipe: its discrete traits, defaults and choreography apply. */
   recipe: string;
   traits: Record<TraitAxis, string>;
+  /** Every param of every trait in `traits`, keyed `<axis>.<param>`, blended and overridden. */
   params: Record<string, number>;
+}
+
+/**
+ * A scene layer: one background + camera shared by consecutive sections. Several sections share one layer only as
+ * a world chain (world layout, equal layout/camera/background, camera-move transitions between them).
+ */
+export interface Scene {
+  /** Section ids in reel order. */
+  sections: string[];
+  world: boolean;
 }
 
 export interface ResolvedPalette {
@@ -39,9 +54,11 @@ export interface ReelInput {
   /** Timing, sections with timed items, cues. `cues.sections` is the content the page draws. */
   cues: CueSheet;
   format: Format;
-  /** Section id → resolved style (M2; M1 renders one monolithic style for every section). */
+  /** Section id → resolved style. */
   styles: Record<string, ResolvedStyle>;
-  /** Style params after blending. */
+  /** Scene layers in reel order; every section belongs to exactly one. */
+  scenes: Scene[];
+  /** Params of the job-level style (`spec.style`) after blending; part of the job-wide look. */
   params: Record<string, number>;
   palette: ResolvedPalette;
   fonts: { display: FontRef; text: FontRef };

@@ -1,0 +1,4 @@
+/* world-blocks decorations: rules, the dot beside the top rule, the bar under the block. */
+.u.rule { height: 3px; background: var(--text); }
+.u.dot { width: 16px; height: 16px; background: var(--a3); }
+.u.bar { height: 8px; background: var(--a3); border-radius: 4px; }

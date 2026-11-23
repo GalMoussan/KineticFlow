@@ -1,0 +1,59 @@
+{
+  "id": "ts-mixed-niqqud",
+  "language": "he",
+  "contentType": "event",
+  "sections": [
+    {
+      "role": "title",
+      "text": "שָׁלוֹם עוֹלָם"
+    },
+    {
+      "role": "tagline",
+      "text": "ערב *Open Mic* בְּקִרְיַת שְׁמוֹנָה"
+    },
+    {
+      "role": "body",
+      "text": "הַרְשָׁמָה ב-*WhatsApp* 050-1234567"
+    },
+    {
+      "role": "datetime",
+      "date": "2026-12-10",
+      "time": "20:00"
+    },
+    {
+      "role": "location",
+      "place": "Beit HaChan",
+      "city": "קרית שמונה"
+    },
+    {
+      "role": "endcard",
+      "text": "Open Mic 2026",
+      "logos": [
+        "kiryat-shmona"
+      ]
+    }
+  ],
+  "style": "kinetic-quote",
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "lofi-jazz",
+    "bpm": 100,
+    "seed": 1101
+  },
+  "duration": 26,
+  "formats": [
+    "9:16",
+    "1:1",
+    "4:5",
+    "16:9"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}
