@@ -46,6 +46,32 @@ export type Layer = z.infer<typeof Layer>;
 
 export const Slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'lowercase-kebab-case id');
 
+/**
+ * Style timing rules consumed by the timing engine (PLAN.md §7). Durations in beats are snapped to half-beats.
+ */
+export const Choreography = z.object({
+  /** Beats between consecutive landings in a section. */
+  unitBeats: z.number().positive(),
+  /** Beats before a short (≤ 3 graphemes, non-emphasis) word that follows another landing. */
+  shortUnitBeats: z.number().positive(),
+  /** Beats from a section's `out` to the next section's first landing (the transition). */
+  moveBeats: z.number().positive(),
+  /** Seconds the camera/entry starts before the first landing. */
+  leadIn: z.number().min(0),
+  /** Minimum seconds a section stays after its last landing. */
+  minTail: z.number().positive(),
+  /** Seconds a landing takes to settle; QA reads text only after the last landing has settled. */
+  entry: z.number().min(0),
+  /** Beats between landings inside the end card (a quick restatement of the title). */
+  endUnitBeats: z.number().positive(),
+  /** Minimum seconds from the end card's last landing (or outro decoration) to the end of the video. */
+  endHold: z.number().positive(),
+  /** Decorations that occupy beats without being content: an intro mark at T0, an outro mark after the end card. */
+  introBeats: z.number().min(0),
+  outroBeats: z.number().min(0),
+});
+export type Choreography = z.infer<typeof Choreography>;
+
 /** `styles/<id>/recipe.json`: a catalog style as a bundle of traits. */
 export const StyleRecipe = z.object({
   id: Slug,
@@ -66,9 +92,10 @@ export const StyleRecipe = z.object({
   constraints: z.object({
     maxWordsPerSection: z.number().int().positive(),
     formats: z.array(FormatId).min(1),
-    /** Layout depends on every section (e.g. a world canvas), so every chunk's cache key includes all text. */
-    globalLayout: z.boolean(),
+    /** Section roles this style can lay out; specs using other roles are rejected before rendering. */
+    roles: z.array(z.string().min(1)).min(1),
   }),
+  choreography: Choreography,
 });
 export type StyleRecipe = z.infer<typeof StyleRecipe>;
 

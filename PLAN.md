@@ -334,14 +334,21 @@ every format.
   took ~100–450 s for the same reels and wrote 3.6 GB of frames.
 
 ### 8.2 Audio
-`packages/audio` builds the graph from `{music, sfx, cues}`.
+`packages/audio` turns `{music, sfx, cue sheet}` into audio.
 
-- **Preview** plays the plain single graph in a real-time `AudioContext`.
-- **Render** uses **stem passes** (M0e). A single graph is *not* bit-deterministic: Chromium sums overlapping inputs
-  in a varying order, leaving drift of about −133 dBFS. Instead:
+- **M1 (implemented):** a pure-TypeScript note synthesiser, ported from OpenKatana's `synthesize_score`
+  (sine/triangle/bell/noise, ADSR, equal-power pan). Each preset is a function `CueSheet → note list`, starting with
+  `lofi-jazz`, ported from `make_score11.py`.
+  - It sums notes in a fixed order in one buffer, so it is deterministic by construction, with no Web Audio summing
+    problem.
+  - The final render runs in Node. The preview (M4) runs the same code in the browser; `Math.sin` ulp differences
+    there are inaudible.
+- **M3 (richer DSP, samples, reverb):** either extend the pure synth (biquads, convolution) or use Web Audio stem
+  passes (M0e). A single Web Audio graph is *not* bit-deterministic: Chromium sums overlapping inputs in a varying
+  order (about −133 dBFS drift). With stem passes:
   - each instrument group renders alone in its own `OfflineAudioContext`
   - stems are summed in JS in a fixed order
-  - each bus effect (reverb send, master compressor/limiter) runs as its own pass with one buffer input
+  - each bus effect runs as its own pass with one buffer input
   
   Measured: 1 hash across 8 renders, 4 launches and 2 Chromium builds, in about 2 s for 26 s.
 - ffmpeg then:
@@ -368,10 +375,13 @@ every format.
   - Final is opt-in per export, and its chunks are cached.
 
 ### 8.4 Cache and cleanup
-- **Chunk key:** `sha256(runtime + traits + style bundle hashes, fonts/assets hashes, resolved inputs that affect the
-  chunk, cues ∩ chunk window, format, quality, frame range)`.
-- Styles declare `globalLayout: true` when layout depends on all sections (e.g. `kinetic-quote`'s world canvas). For
-  those, every section's text is in every key. Otherwise only sections overlapping the chunk are.
+- **Chunk key:** `sha256(bundle hash (engine + runtime + CSS + fonts + logos), Chromium version, format, quality
+  settings, frame range, page.fingerprint(t0, t1))`.
+- **`fingerprint(t0, t1)`** is part of the page contract (`ReelPage`). The style itself reports everything that can
+  affect pixels in that window: block geometry, text, colours, timings, camera keys, kicks.
+  - This replaces the `globalLayout` flag: a world-canvas style includes neighbour geometry only where it can be on
+    screen.
+  - It makes a date-only edit re-render only the chunks that show the date.
 - Chunk MP4s are small. Disk per job ≈ final MP4s + chunk cache (tens of MB). `reelgen clean` prunes the cache by
   LRU/age.
 
@@ -443,7 +453,7 @@ New:
 | M | Deliverable | Accept when |
 |---|---|---|
 | M0 | ✅ **Spikes done** (2026-11-23). Results in `spikes/results/`: `capture.md` (a+b), `text.md` (c), `morph.md` (d), `audio.md` (e), `beats.md` (f) | Every spike PASS or PASS WITH CAVEATS; plan adjusted in §5.4, §7, §8, §10, §11, §13 |
-| M1 | `core` + `timing` + `runtime` + `render` + `cli`. `kinetic-quote` ported as one monolithic style | `reelgen render examples/dilemma.json` reproduces the spec §13 (9:16 + 1:1, 26.000 s, AAC, QA pass) with no manual steps. Date-only edit re-renders only affected chunks |
+| M1 | ✅ **Done** (2026-11-23). `core` + `timing` + `runtime` + `audio` + `render` + `cli`, plus `kinetic-quote` ported as one monolithic data-driven style | `pnpm reelgen render examples/dilemma.json` → 9:16 + 1:1, 26.000 s, 780 frames, H.264 BT.709 + AAC −14 LUFS, faststart, `-no-music` copies; all fail-level QA gates pass. Measured: cold 30 s, warm 5 s; a date-only edit re-rendered only the 10–20 s chunk per format (20.7 s) |
 | M2 | Trait system + channels + compat. All three ✅ engines decomposed into traits; per-section styles; blend | The 3 styles render the test-spec set in all formats. One trait-override and one blend example render |
 | M3 | Audio: sequencer + 4 presets + SFX map + own-track analysis (sidecar) + audio-reactive envelopes | Own MP3 → text lands on detected downbeats (±1 frame); preview and render audio hashes match |
 | M4 | Server + Web UI (all screens) + SSE + brand kits + LLM providers | You go from pasted text and dropped logos to a finished MP4 without touching files |
@@ -462,7 +472,7 @@ New:
 | GPU raster leaves ≤ 2/255 order-dependent residue | Fixed chunk boundaries and order; two-part determinism gate (§8.1) |
 | Web Audio single-graph mixing is not bit-deterministic | Stem-pass render (§8.2) |
 | Arbitrary trait combinations can look bad even when valid | Curated presets are the default path; the mixer shows a live preview; compat rules grow from QA findings |
-| Partial cache invalidation for global-layout styles | `globalLayout` flag (§8.4); correctness over cache hits |
+| A style under-reports its `fingerprint`, so a stale chunk is reused | Fingerprint covers geometry of every block that can be on screen in the window; `--no-cache` escape hatch; M2: spot-check that re-rendering a cached chunk's first frame matches its stored hash |
 | troika: niqqud mirrored, worker/CDN hangs, no variable axes (confirmed M0c) | Patched build + `useWorker:false` + cmap preflight + static instances; Canvas2D fallback. Re-verify the patch on every troika upgrade, or upstream it |
 | Morphs between different scripts or letter counts look blobby (M0d) | Compat rule limits `morph-from-previous`; crossfade fallback |
 | Final-quality render time | Measured 201 s for a flat 26 s reel on 4 workers (M0a); heavy styles about 4–6 min [INFERENCE]. Cache, opt-in final, "fast final" with 4 sub-frames |

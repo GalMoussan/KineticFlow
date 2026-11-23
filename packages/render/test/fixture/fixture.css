@@ -1,0 +1,7 @@
+html, body { margin: 0; padding: 0; overflow: hidden; }
+#stage { position: relative; overflow: hidden; font-family: 'Arial Hebrew', Arial, sans-serif; }
+.section { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center;
+  padding: 0 140px; font-size: 96px; line-height: 1.25; font-weight: 700; }
+.item { display: inline; }
+.logos { display: inline-flex; gap: 40px; align-items: center; justify-content: center; }
+.logos img { height: 140px; width: auto; }

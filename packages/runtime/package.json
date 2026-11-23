@@ -1,0 +1,10 @@
+{
+  "name": "@reel/runtime",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@reel/core": "workspace:*",
+    "bidi-js": "^1.1.0"
+  }
+}

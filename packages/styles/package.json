@@ -1,0 +1,10 @@
+{
+  "name": "@reel/styles",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./*": "./*" },
+  "dependencies": {
+    "@reel/core": "workspace:*",
+    "@reel/runtime": "workspace:*"
+  }
+}

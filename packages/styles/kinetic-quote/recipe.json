@@ -1,0 +1,46 @@
+{
+  "id": "kinetic-quote",
+  "name": "Kinetic Quote Typography",
+  "families": ["motion", "dynamic-layout"],
+  "energy": 2,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat",
+    "camera": "pan-turn",
+    "layout": "world-canvas",
+    "unit": "word",
+    "reveal": "mask-slide",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "flat",
+    "background": "paper-grid",
+    "transition": "camera-move"
+  },
+  "signature": {
+    "module": "kinetic-quote",
+    "owns": ["rhythm", "camera", "layout", "unit", "reveal", "motion", "axis", "material", "background", "transition"]
+  },
+  "params": { "drift": 0.04, "kick": 0.008 },
+  "defaults": {
+    "palette": "flamingo-cafe",
+    "music": { "preset": "lofi-jazz", "bpm": 100 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 5,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": ["title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote", "datetime", "location", "endcard"]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 1,
+    "outroBeats": 1
+  }
+}

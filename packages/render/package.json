@@ -1,0 +1,19 @@
+{
+  "name": "@reel/render",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@reel/audio": "workspace:*",
+    "@reel/core": "workspace:*",
+    "@reel/runtime": "workspace:*",
+    "@reel/styles": "workspace:*",
+    "@reel/timing": "workspace:*",
+    "esbuild": "^0.25.12",
+    "playwright": "^1.65.1",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5"
+  }
+}

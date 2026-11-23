@@ -1,5 +1,6 @@
 node_modules/
 data/
+out/
 assets/fonts/*
 !assets/fonts/manifest.json
 assets/samples/*

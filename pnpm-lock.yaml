@@ -15,11 +15,92 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  apps/cli:
+    dependencies:
+      '@reel/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@reel/render':
+        specifier: workspace:*
+        version: link:../../packages/render
+
+  packages/audio:
+    dependencies:
+      '@reel/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@reel/styles':
+        specifier: workspace:*
+        version: link:../styles
+      '@reel/timing':
+        specifier: workspace:*
+        version: link:../timing
+
   packages/core:
     dependencies:
       zod:
         specifier: ^4.1.0
         version: 4.6.7
+
+  packages/render:
+    dependencies:
+      '@reel/audio':
+        specifier: workspace:*
+        version: link:../audio
+      '@reel/core':
+        specifier: workspace:*
+        version: link:../core
+      '@reel/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@reel/styles':
+        specifier: workspace:*
+        version: link:../styles
+      '@reel/timing':
+        specifier: workspace:*
+        version: link:../timing
+      esbuild:
+        specifier: ^0.25.12
+        version: 0.25.12
+      playwright:
+        specifier: ^1.65.1
+        version: 1.65.1
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
+    devDependencies:
+      '@types/pngjs':
+        specifier: ^6.0.5
+        version: 6.0.5
+
+  packages/runtime:
+    dependencies:
+      '@reel/core':
+        specifier: workspace:*
+        version: link:../core
+      bidi-js:
+        specifier: ^1.1.0
+        version: 1.1.0
+
+  packages/styles:
+    dependencies:
+      '@reel/core':
+        specifier: workspace:*
+        version: link:../core
+      '@reel/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+
+  packages/timing:
+    dependencies:
+      '@reel/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@reel/styles':
+        specifier: workspace:*
+        version: link:../styles
 
   spikes:
     dependencies:
