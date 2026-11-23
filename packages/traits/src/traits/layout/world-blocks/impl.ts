@@ -12,7 +12,7 @@
  * - Decorations (layout-animated): top rule + dot, bottom bar, accent rules, intro/outro quote marks, logo badge.
  *   The location pin is a decoration the reveal animates.
  */
-import { clamp01, lerp } from '@reel/runtime';
+import { clamp01, lerp, visualOrder } from '@reel/runtime';
 import { defineLayout, type Metrics, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge, PIN_METRICS, pinSVG, quoteSVG } from '../../../lib/deco.ts';
 import { meta } from './meta.ts';
@@ -256,7 +256,7 @@ export default defineLayout({
           const qh = ln.size * 0.667;
           const start = ln.q === 'open';
           const x = start === rtl ? BW / 2 - qw : -BW / 2;
-          const u = host.deco(s, { deco: 'quote', at: ln.at, z: 1, box: { x, y, w: qw, h: qh }, html: quoteSVG(ln.q, qw, host.accent(0)) });
+          const u = host.deco(s, { deco: 'quote', at: ln.at, z: 1, box: { x, y, w: qw, h: qh }, html: quoteSVG(ln.q, qw, host.accent(0, s)) });
           lay(u, { anim: 'quote', q: ln.q, at: ln.at });
           if (start) quoteUnits.set(s, u);
           placed.push(u);
@@ -264,7 +264,7 @@ export default defineLayout({
           return;
         }
         if (ln.kind === 'badge') {
-          const badge = logoBadge(host, host.reel.logos, BW);
+          const badge = logoBadge(host, s, host.reel.logos, BW);
           const u = ln.u;
           Object.assign(u, {
             box: { x: -badge.w / 2, y: y + 10, w: badge.w, h: badge.h },
@@ -303,22 +303,19 @@ export default defineLayout({
         const base = y;
         y += desc;
         const total = lw.reduce((a, w) => a + w.inkW, 0) + gap * (lw.length - 1);
-        // Lines flow in reading direction from their start edge (right in RTL); end-aligned lines end at the end edge.
+        // A line hugs its start edge (right in RTL) or, end-aligned, its end edge; pieces go left to right in UAX #9
+        // visual order, so a run of LTR items inside an RTL line keeps reading left to right. The pin leads its line.
         const hugsRight = (ln.align === 'end') !== rtl;
-        let x = ln.align === 'end' ? (rtl ? -BW / 2 + total : BW / 2 - total) : rtl ? BW / 2 : -BW / 2;
-        for (const w of lw) {
+        let x = hugsRight ? BW / 2 - total : -BW / 2;
+        const order = visualOrder(lw.map((w) => (w.pin ? (rtl ? '\u200F' : '\u200E') : w.u.text)), host.dir);
+        for (const i of order) {
+          const w = lw[i]!;
           w.base = base;
-          if (rtl) {
-            w.x1 = x;
-            w.x0 = x - w.inkW;
-            x = w.x0 - gap;
-          } else {
-            w.x0 = x;
-            w.x1 = x + w.inkW;
-            x = w.x1 + gap;
-          }
-          ws.push(w);
+          w.x0 = x;
+          w.x1 = x + w.inkW;
+          x = w.x1 + gap;
         }
+        ws.push(...lw);
         if (ln.align) {
           const at = Math.max(...lw.map((w) => w.u.at)) + 0.12;
           const ry = base - Math.min(...lw.map((w) => w.ia)) * 0.42;
@@ -368,7 +365,7 @@ export default defineLayout({
         Object.assign(w.u, { box, baseline: w.base, font: { family: 'display', size: S, weight: w.wt } });
         if (w.pin) {
           w.u.textAt = { x: padX, y: padY + w.ia - 0.864 * S };
-          w.u.html = pinSVG(S, { body: host.accent(1), hole: host.palette.bg, shadow: host.accent(3) });
+          w.u.html = pinSVG(S, { body: host.accent(1, s), hole: s.palette.bg, shadow: host.accent(3, s) });
           continue;
         }
         const mid = S / 2 + ((w.mt.fa - w.mt.fd) * S) / 2;

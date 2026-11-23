@@ -31,8 +31,29 @@ dev/stills.ts       contact sheets, safe-area/overlap check, fingerprint diff, d
 - **Measured units only.** Never split text into naive inline-blocks. Ask for parts with `unit.split`; the host splits
   with `splitMeasured` (measured-absolute, bidi- and niqqud-safe) and gives you `unit.parts`.
 - **Traits write channels, not CSS.** Units, layers and the stage are written by the host's single commit. Write CSS
-  yourself only on elements your trait created itself (a canvas, wipe panels), and then rewrite them completely in
-  every `frame`.
+  yourself only on elements your trait created itself (a canvas, wipe panels), and then rewrite every property you
+  ever set, completely, in every `frame`. A value left over from an earlier seek is a determinism bug.
+- **Trait-owned elements are reset by the host or rewritten every frame.** Create them only in `setup`, `layout` or
+  `mount` through `host.el` (or register them with `host.own`); they then belong to that trait instance. On a seek
+  where the instance is not evaluated (its layer is not drawn, e.g. another section's style is on screen), the host
+  hides them (`display: none`) and restores them before the next `frame`, unless the trait implements `idle` (§4).
+  An element that bypasses both can stay visible from an earlier seek.
+- **Keep text out of composited layers.** Chromium rasters composited layers once and reuses their tiles, so their
+  pixels depend on which frames were shown before (measured: up to 217/255 for stale elements, 46–71/255 for
+  composited text and scaled layers; `spikes/capture/scale-raster.ts`, `dev/stills.ts` check (c)). Text becomes
+  composited by itself (`will-change`, `translateZ`/3D transforms, CSS animations) or, more often, implicitly:
+  anything painted **above** composited content gets promoted ("overlaps other composited content"). Composited
+  content comes from: an accelerated `<canvas>`, `mix-blend-mode`, `will-change`, `overflow: hidden` scrollers.
+  Hence:
+  - no `will-change`, 3D transforms, CSS animations or blend modes anywhere (pre-multiply colours instead, as the
+    `flat` swipe does);
+  - clip with `overflow: clip`, never `overflow: hidden` (the host's masks and layers already do);
+  - canvases drawn once go through `host.freeze(canvas)` (becomes an `<img>`; paper-grid, starfield grain);
+  - a canvas redrawn every frame under text (starfield) stays composited, so the text above it shares one squashed
+    layer: keep it to a full-frame `layer.under` canvas and verify with `dev/stills.ts` (all three determinism
+    checks); canvases in `layer.over` (FX on top) are harmless.
+  Plain 2D `scale()` on non-composited elements is safe when written every frame (≤ 1/255 in every history), and so is
+  resizing the box.
 - **Text stays inside `format.safe`** at every section hold, in all four formats and in RTL and LTR. Layouts fit
   against `host.safe` and `host.zoomRange(section)` (see §5).
 
@@ -142,14 +163,23 @@ Setup (once, inside `reelPage.ready()`):
    (`translate(x, y) rotate(rot)`) to each section group.
 9. `mount(c)` of every trait in axis order: the DOM exists (`unit.el/inner/parts`, `layer.under/back/over`).
 
-Every frame (`seek(t)`), for the layers whose window contains t (§6):
+Every frame (`seek(t)`). A trait instance is **evaluated** when its layer's window contains t (§6); every section of
+that layer is then live.
 
 1. Reset stage, layer and unit/part channels.
-2. `rhythm.frame` (sections) → `camera.view` (sets `layer.view`), then `camera.frame` → `layout.frame` →
-   `unit.frame` → `reveal.frame` → `motion.frame` → `axis.frame` → `material.frame` (sections) →
-   `background.frame` (layers) → `transition.frame` (sections).
+2. In axis order, for every instance: if evaluated, the host first restores elements it hid while the instance was
+   idle, then calls `frame` (`camera.view` first, which sets `layer.view`). If not evaluated, it calls `idle(c, t)`
+   when the trait has one, or else hides every element the instance owns (`display: none`, restored later). Order:
+   `rhythm` (sections) → `camera` → `layout` (layers) → `unit` → `reveal` → `motion` → `axis` → `material`
+   (sections) → `background` (layers) → `transition` (sections).
 3. For each layer inside its incoming transition window: the incoming first section's `transition.between`.
 4. One commit.
+
+Element ownership: every element created through `host.el` while one of an instance's `setup` / `layout` / `mount`
+hooks runs belongs to that instance (also elements outside its layer, such as stage-level wipe panels). Elements
+created another way (`innerHTML` children excepted: they hide with their parent) need `host.own(el)` in the same
+hooks. Never create DOM in `frame`. A trait whose `frame` also writes other instances' elements (one module-level
+map of all panels) is fine: the host only hides and restores, the owning instance's own `frame` decides what shows.
 
 Per-axis extras:
 
@@ -174,7 +204,20 @@ Per-axis extras:
   (world-blocks `layoutBlock`) for any layout that needs ink-tight boxes.
 - `host.dir` / `section.dir`: `'rtl'` for Hebrew specs. Start/end, not left/right: lines start at the start edge,
   rules grow away from text, slides come from the start side.
-- `host.accent(i)` wraps around the palette; CSS sees `--bg --text --a0…--a7 --display --textfont`.
+- `visualOrder(texts, dir): number[]` (`@reel/runtime`, bidi-js UAX #9): the left-to-right placement order of the
+  pieces of one line. **Any layout that puts several items on one line must place them in this order**, never in
+  reversed logical order: in an RTL line a run of LTR items keeps reading left to right (`['ערב', 'Open', 'Mic',
+  '2026']` → `[1, 2, 3, 0]`, i.e. `Open Mic 2026 ערב`), and a Hebrew run inside an English line reads right to left.
+  Pass `'\u200F'` / `'\u200E'` for a textless piece (an icon) that should lead the line in its direction. Pieces
+  that are split further keep their own internal order through `splitMeasured`.
+- **Palettes are per section.** Read colours only from `section.palette` (content, decorations) or `layer.palette`
+  (layer-scoped traits: the layer's first section; all sections of a layer share it), and accents through
+  `host.accent(i, sectionOrLayer)` (wraps around). There is no global palette on the host. Trait CSS sees
+  `--bg --text --a0…--a7` set on each layer element (the layer's palette), plus `--display --textfont`. Elements
+  outside layers (stage-level wipe panels) get inline colours from their section's palette. Which palette a section
+  gets is decided by `resolveStyles` (`style.palette`): the section's own `palette` if set, else `spec.palette` when
+  the section resolves to the job's dominant recipe, else the default palette of the section's own dominant recipe
+  (so a neon section in a kinetic-quote reel is dark). It is part of `style` and hence of every fingerprint.
 - `host.el(tag, cls, parent, style)` for trait-owned DOM; `host.images` holds decoded logos (clone them).
 
 ## 6. Scene layers, world chains and transitions
@@ -183,8 +226,8 @@ Per-axis extras:
 camera and one `.cam` holding a content group per section.
 
 - A **world chain** is a run of consecutive sections whose incoming transition has `scope: 'world'` and that share
-  layout, camera and background traits *and* their params, with `layout.world && camera.world`. They share one layer
-  and one camera (kinetic-quote: one paper world, the camera pans/turns from block to block).
+  layout, camera and background traits *and* their params *and* their palette, with `layout.world && camera.world`.
+  They share one layer and one camera (kinetic-quote: one paper world, the camera pans/turns from block to block).
 - Every other section starts a new layer. Its incoming transition (`scope: 'layer'`) bridges the outgoing layer and
   the new one during the window `[prev.timing.out, section.timing.in]` (the cue sheet's `camera-move` cue).
 - An invalid transition (a world-scope one where no chain can form) falls back to `cut`; the resolver records a
@@ -193,7 +236,9 @@ camera and one `.cam` holding a content group per section.
   incoming window (both layers are visible inside a window, incoming on top). `between` decides what each shows:
   `cut` hides the outgoing layer at the window start; a panel wipe would clip the incoming layer
   (`ch.clip = 'inset(…)'`), push/blur the outgoing content (`ch.tx/ty/s/blur`) and draw its accent panels in its own
-  elements (insert them before `w.incoming.el`).
+  elements (create them with `host.el` in `mount` and insert them before `w.incoming.el`; the host hides them on every
+  seek where their section's layer is not drawn, see §1). Test per-section mixes with
+  `examples/m2/mixed-sections.json` and `dev/stills.ts` check (c) (every still after every other still).
 - Reveals own **exits** too: `section.next`, `section.timing.out` and `section.window` tell a reveal when its content
   has to be gone (neon whip/zoom/fall). Exit only when there is a next section in another layer
   (`section.next && section.next.layer !== section.layer`); inside a world chain the camera moves on instead.
@@ -206,9 +251,9 @@ camera and one `.cam` holding a content group per section.
 identical frames there**, and a date-only edit must change only the windows that show the date. The host builds it
 from, for every layer visible in the window:
 
-- format, palette, fonts, direction, beat grid;
+- format, job palette, fonts, direction, beat grid;
 - each layer-scoped trait's id, params and `fingerprint()`; `layer.data`, `layer.intro`, the layer window;
-- for every section of the layer: id, role, timing, window, resolved style (traits + params) and the
+- for every section of the layer: id, role, timing, window, resolved style (traits + params + palette) and the
   `fingerprint()` of each of its section-scoped traits;
 - for sections that can be **on screen** in the window, additionally `place`, `frame`, `bounds`, `section.data` and a
   snapshot of every unit (text, kind, tags, font, box, textAt, inkBox, baseline, classes, static styles, html,
@@ -267,7 +312,8 @@ axes against spec overrides; use it only when one module truly owns several axes
 Specs combine styles three ways, all resolved by `resolveStyles` (tests in `resolve.test.ts`):
 
 - **override**: `"style": { "base": "kinetic-quote", "traits": { "motion": "overshoot" }, "params": { "motion.overshoot": 2 } }`;
-- **per section**: `section.style` (a style id or the same object) resolves independently for that section;
+- **per section**: `section.style` (a style id or the same object) resolves independently for that section, and
+  brings its own default palette unless `section.palette` (an id or explicit colours) sets one (§5);
 - **blend**: `"blendWith": { "style": "…", "mix": 0.3 }`. Discrete traits come from the dominant side (`mix < 0.5`
   → base). Every param of the final traits lerps `a + (b − a) · mix`, where each side's value is its recipe override,
   else its own trait's default for that param, else the final trait's default. Spec `params` then override.

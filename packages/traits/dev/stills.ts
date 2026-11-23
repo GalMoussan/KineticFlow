@@ -3,7 +3,9 @@
  * every hold and a few transitions into contact sheets, checks content boxes against the safe area, prints
  * fingerprints (and which windows a date-only edit changes), and runs the determinism checks.
  *
- *   node packages/traits/dev/stills.ts [--spec path] [--date YYYY-MM-DD] [--formats 9:16,1:1] [--name kq]
+ *   node packages/traits/dev/stills.ts [--spec path] [--style id] [--date YYYY-MM-DD] [--formats 9:16,1:1] [--name kq]
+ *
+ * `--style` replaces the spec's style with a catalog style and its default palette (as the M2 matrix does).
  *
  * Writes `out/dev/<name>-<format>.png` (stills left→right, top→bottom in the printed order) and `out/dev/fp-*.json`.
  */
@@ -34,12 +36,18 @@ const { PNG } = fromRender('pngjs') as typeof PngJs;
 const REPO = new URL('../../../', import.meta.url).pathname;
 const OUT = join(REPO, 'out/dev');
 const { values: args } = parseArgs({
-  options: { spec: { type: 'string' }, date: { type: 'string' }, formats: { type: 'string' }, name: { type: 'string' } },
+  options: {
+    spec: { type: 'string' },
+    style: { type: 'string' },
+    date: { type: 'string' },
+    formats: { type: 'string' },
+    name: { type: 'string' },
+  },
 });
 const specPath = resolve(args.spec ?? join(REPO, 'examples/dilemma.json'));
 const specDir = dirname(specPath);
 const ALT_DATE = args.date ?? '2026-12-03';
-const NAME = args.name ?? 'kq';
+const NAME = args.name ?? args.style ?? 'kq';
 
 // ---------- server (CSP from spikes/lib.ts) ----------
 const CSP =
@@ -145,9 +153,8 @@ async function contactSheet(pngs: Buffer[], fmt: FormatId, path: string): Promis
 
 function stillTimes(sheet: CueSheet): { t: number; label: string }[] {
   const out = sheet.sections.map((s) => ({ t: Math.round((s.timing.holdEnd - 1 / 30) * 30) / 30, label: `${s.id} hold` }));
-  const moves = sheet.cues.filter((c) => c.type === 'camera-move');
-  for (const i of [0, Math.floor(moves.length / 2), moves.length - 1]) {
-    const m = moves[i]!;
+  // every transition's midpoint (where wipe panels, flashes and camera moves are all on screen)
+  for (const m of sheet.cues.filter((c) => c.type === 'camera-move')) {
     out.push({ t: Math.round(((m.t + m.until!) / 2) * 30) / 30, label: `move→${m.section}` });
   }
   const intro = sheet.cues.find((c) => c.type === 'intro');
@@ -167,6 +174,7 @@ const fpHash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).di
 // ---------- main ----------
 await mkdir(OUT, { recursive: true });
 const raw = JSON.parse(await readFile(specPath, 'utf8'));
+if (args.style) Object.assign(raw, { style: args.style, palette: recipe(args.style).defaults.palette });
 const spec = JobSpec.parse(raw);
 const altSpec = JobSpec.parse({
   ...raw,
@@ -181,8 +189,10 @@ const bpm = spec.music.source === 'preset' ? spec.music.bpm : rec.defaults.music
 const cue = (s: JobSpec) => buildCueSheet({ spec: s, choreography: rec.choreography, bpm, fps: 30 });
 const sheet = cue(spec);
 const altSheet = cue(altSpec);
-const bundle: Bundle = await buildBundle({ spec, specDir, outDir: join(OUT, 'bundle'), traits: usedTraits(styles) });
-const altBundle = await buildBundle({ spec: altSpec, specDir, outDir: join(OUT, 'bundle'), traits: usedTraits(altStyles) });
+// one bundle dir per run name, so concurrent runs (other styles) never overwrite each other's bundle
+const bundleDir = join(OUT, `bundle-${NAME}`);
+const bundle: Bundle = await buildBundle({ spec, specDir, outDir: bundleDir, traits: usedTraits(styles) });
+const altBundle = await buildBundle({ spec: altSpec, specDir, outDir: bundleDir, traits: usedTraits(altStyles) });
 if (altBundle.hash !== bundle.hash) problems.push('bundle hash depends on the date (it must not)');
 console.log(`bundle ${bundle.hash.slice(0, 16)} → ${bundle.dir}`);
 
@@ -246,6 +256,25 @@ for (const fmt of formats) {
   }
   console.log(`determinism forward/reverse: max Δ ${worst}/255 ${worst <= 2 ? 'ok' : 'FAIL'}`);
   if (worst > 2) problems.push(`[${fmt}] forward/reverse max Δ ${worst}/255`);
+
+  // Determinism (c): every still again right after each other still (all holds and transitions, so every layer and its
+  // trait-owned elements have just been shown), compared with the first pass.
+  let worstHistory = 0;
+  for (const [i, s] of times.entries()) {
+    for (const [j, other] of times.entries()) {
+      if (j === i) continue;
+      await o.page.evaluate((tt) => window.reelPage.seek(tt), other.t);
+      const again = await shot(o, s.t);
+      const d = maxDelta(pngs[i]!, again);
+      if (d.max > 2) {
+        console.log(`  ${s.label} t=${s.t.toFixed(3)} after ${other.label}: max Δ ${d.max} at ${d.at}, ${d.count} channel values differ`);
+        await writeFile(join(OUT, `det-${NAME}-${formatSlug(fmt)}-${s.t}-after-${other.t}.png`), again);
+      }
+      worstHistory = Math.max(worstHistory, d.max);
+    }
+  }
+  console.log(`determinism after each other still: max Δ ${worstHistory}/255 ${worstHistory <= 2 ? 'ok' : 'FAIL'}`);
+  if (worstHistory > 2) problems.push(`[${fmt}] history max Δ ${worstHistory}/255`);
   await o.close();
 
   // Determinism (b): the same frames in the same order in two fresh browsers must be identical.

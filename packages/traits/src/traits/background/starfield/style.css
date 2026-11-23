@@ -1,0 +1,3 @@
+/* starfield: the night canvas under the layer; grain and vignette over it (screen space). */
+.starfield, .starfield-grain { position: absolute; left: 0; top: 0; }
+.starfield-vignette { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }

@@ -1,0 +1,75 @@
+{
+  "id": "m2-blend-swiss-kq-50",
+  "language": "he",
+  "contentType": "event",
+  "brief": "Monthly debate café + jam. Warm, playful, invites students to talk.",
+  "sections": [
+    {
+      "role": "title",
+      "text": "קפה דילמה וג׳אם"
+    },
+    {
+      "role": "tagline",
+      "text": "הנושאים הכי *מעניינים* ו*חמים* היום!"
+    },
+    {
+      "role": "body",
+      "text": "בואו, נשב, נדבר ונשתה *קפה*"
+    },
+    {
+      "role": "teaser",
+      "text": "יהיו *הפתעות*"
+    },
+    {
+      "role": "datetime",
+      "date": "2026-12-01",
+      "time": "19:30"
+    },
+    {
+      "role": "location",
+      "place": "בית החאן",
+      "city": "קרית שמונה"
+    },
+    {
+      "role": "cta",
+      "text": "בואו *לדבר!*"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": {
+    "base": "swiss-title-reveal",
+    "blendWith": {
+      "style": "kinetic-quote",
+      "mix": 0.5
+    },
+    "params": {
+      "rhythm.kick": 0.006
+    }
+  },
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "lofi-jazz",
+    "bpm": 100,
+    "seed": 1101
+  },
+  "duration": 26,
+  "formats": [
+    "9:16",
+    "1:1"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}

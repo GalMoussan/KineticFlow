@@ -260,6 +260,8 @@ export interface Section {
   readonly cue: ReelSection;
   readonly timing: SectionTiming;
   readonly style: ResolvedStyle;
+  /** The section's colours (`style.palette`). Never read another palette for this section's content. */
+  readonly palette: ResolvedPalette;
   readonly layer: Layer;
   readonly dir: 'rtl' | 'ltr';
   readonly prev: Section | null;
@@ -289,6 +291,8 @@ export interface Section {
 export interface Layer {
   readonly index: number;
   readonly world: boolean;
+  /** Colours of the layer's sections (one per layer: world chains require equal palettes). CSS vars are set on `el`. */
+  readonly palette: ResolvedPalette;
   readonly sections: Section[];
   /** Visible from `start` (incoming transition start) to `end` (the next layer's transition end, or the duration). */
   readonly start: number;
@@ -315,9 +319,8 @@ export interface Host {
   readonly W: number;
   readonly H: number;
   readonly safe: SafeBox;
-  readonly palette: ResolvedPalette;
-  /** Palette accent by index, wrapping around. */
-  accent(i: number): string;
+  /** Palette accent `i` (wrapping around) of a section's or layer's palette. */
+  accent(i: number, of: Section | Layer): string;
   /** Reel text direction (from the spec language). */
   readonly dir: 'rtl' | 'ltr';
   /** CSS family names of the display/text fonts. */
@@ -334,8 +337,20 @@ export interface Host {
   deco(section: Section, init: Partial<Omit<Unit, 'id' | 'section' | 'item' | 'kind'>> & { deco: string }): Unit;
   /** Camera/rhythm zoom range a hold may reach for `section`: [smallest, largest] scale multiplier. */
   zoomRange(section: Section): [number, number];
-  /** Creates an element (helper for trait-owned DOM). */
+  /**
+   * Creates an element. Called from a trait's `setup`/`layout`/`mount`, the element is **owned** by that trait
+   * instance: while the instance is idle (its layer is not drawn this frame) the host hides it, unless the trait
+   * implements `idle`.
+   */
   el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent: Element | null, style?: Record<string, string>): HTMLElementTagNameMap[K];
+  /** Registers an element created otherwise (`innerHTML`, `cloneNode`) as owned by the running hook's instance. */
+  own(el: HTMLElement | SVGElement): void;
+  /**
+   * Replaces a canvas drawn once (in `setup`/`mount`) by an `<img>` of its pixels, keeping class, inline style, CSS
+   * size and ownership. Canvases are composited layers; composited content under text makes Chromium promote that
+   * text into layers whose tiles depend on seek history (README §1). Redrawn-per-frame canvases cannot be frozen.
+   */
+  freeze(canvas: HTMLCanvasElement): Promise<HTMLImageElement>;
   /** Beat pulse from the cue sheet's beat grid: 1 on each beat, decaying as exp(−decay · age). */
   beatPulse(t: number, decay?: number): number;
 }
@@ -365,6 +380,13 @@ interface Hooks<C> {
   mount?(c: C): void | Promise<void>;
   /** Writes channels for time t. Must be a pure function of t (frames are seeked in any order). */
   frame?(c: C, t: number): void;
+  /**
+   * Called instead of `frame` on every seek where the instance is not evaluated (its layer is not drawn). Default
+   * (no `idle`): the host sets `display: none` on every element the instance owns and restores the previous inline
+   * `display` before its next `frame`. Implement it only to reset state the default cannot (e.g. clear a shared
+   * canvas); it must not make anything visible.
+   */
+  idle?(c: C, t: number): void;
   /**
    * What, besides the host's automatic snapshot (trait ids, params, units, `data`, place/frame/bounds, timing), can
    * affect pixels in [t0, t1]. Called for every trait of every layer visible in the window, also for sections that

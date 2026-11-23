@@ -165,20 +165,29 @@ export function gateWeekday(samples: HoldSample[], spec: JobSpec, input: ReelInp
   };
 }
 
-export function gateContrast(p: ResolvedPalette): GateResult {
-  const rows = [['text', p.text] as const, ...p.accents.map((a, i) => [`accent ${i}`, a] as const)].map(([name, c]) => ({
-    name,
-    color: c,
-    ratio: r2(contrast(c, p.bg)),
-  }));
-  const low = rows.filter((r) => r.ratio < 3);
+/**
+ * Text and accents against the background of every distinct palette in use (sections may carry their own palette).
+ * `palettes` maps each palette to the sections it colours.
+ */
+export function gateContrast(palettes: { palette: ResolvedPalette; sections: string[] }[]): GateResult {
+  const per = palettes.map(({ palette: p, sections }) => {
+    const rows = [['text', p.text] as const, ...p.accents.map((a, i) => [`accent ${i}`, a] as const)].map(([name, c]) => ({
+      name,
+      color: c,
+      ratio: r2(contrast(c, p.bg)),
+    }));
+    const low = rows.filter((r) => r.ratio < 3);
+    const where = palettes.length > 1 ? ` (${sections.join(', ')})` : '';
+    const detail = low.length
+      ? `below 3:1 on ${p.bg}${where}: ${low.map((r) => `${r.name} ${r.color} ${r.ratio}:1`).join(', ')}`
+      : `text ${rows[0]!.ratio}:1, accents ≥ ${Math.min(...rows.slice(1).map((r) => r.ratio))}:1 on ${p.bg}${where}`;
+    return { bg: p.bg, sections, rows, low: low.length > 0, detail };
+  });
   return {
     gate: 'contrast',
-    level: low.length ? 'warn' : 'pass',
-    detail: low.length
-      ? `below 3:1 on ${p.bg}: ${low.map((r) => `${r.name} ${r.color} ${r.ratio}:1`).join(', ')}`
-      : `text ${rows[0]!.ratio}:1, accents ≥ ${Math.min(...rows.slice(1).map((r) => r.ratio))}:1 on ${p.bg}`,
-    data: rows,
+    level: per.some((x) => x.low) ? 'warn' : 'pass',
+    detail: per.map((x) => x.detail).join('; '),
+    data: per.map(({ bg, sections, rows }) => ({ bg, sections, rows })),
   };
 }
 

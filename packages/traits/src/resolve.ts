@@ -3,8 +3,11 @@
  * layers (world chains) and diagnostics. Pure and bit-exact (+ − × ÷ only), so Node and the browser agree.
  */
 import {
+  resolvePalette,
   TRAIT_AXES,
   type FormatId,
+  type PaletteRef,
+  type ResolvedPalette,
   type ResolvedStyle,
   type Scene,
   type SectionRole,
@@ -13,6 +16,9 @@ import {
   type TraitAxis,
   type TraitMeta,
 } from '@reel/core';
+
+/** A style before its palette is decided (that depends on the section, not on the style reference). */
+type Styled = Omit<ResolvedStyle, 'palette'>;
 
 export type DiagnosticCode =
   | 'unknown-style'
@@ -25,6 +31,7 @@ export type DiagnosticCode =
   | 'role'
   | 'format'
   | 'needs'
+  | 'unknown-palette'
   | 'transition-fallback';
 
 export interface StyleDiagnostic {
@@ -47,8 +54,10 @@ export interface StyleResolution {
 
 export interface StyleSpec {
   style: StyleRef;
+  /** The job palette: it colours the sections of the job's own dominant style. */
+  palette: PaletteRef;
   formats: readonly FormatId[];
-  sections: readonly { id: string; role: SectionRole; style?: StyleRef | undefined }[];
+  sections: readonly { id: string; role: SectionRole; style?: StyleRef | undefined; palette?: PaletteRef | undefined }[];
 }
 
 /** The transition every invalid transition falls back to. */
@@ -105,15 +114,15 @@ export function resolveStyles(
   const valueIn = (r: StyleRecipe, axis: TraitAxis, p: string, fallback: number): number =>
     r.params[`${axis}.${p}`] ?? find(axis, r.traits[axis])?.params[p]?.default ?? fallback;
 
-  const cache = new Map<string, ResolvedStyle | null>();
-  const resolveRef = (ref: StyleRef, section?: string): ResolvedStyle | null => {
+  const cache = new Map<string, Styled | null>();
+  const resolveRef = (ref: StyleRef, section?: string): Styled | null => {
     const id = JSON.stringify(ref);
     if (cache.has(id)) return cache.get(id)!;
     const out = resolveUncached(typeof ref === 'string' ? { base: ref } : ref, section);
     cache.set(id, out);
     return out;
   };
-  const resolveUncached = (ref: Exclude<StyleRef, string>, section?: string): ResolvedStyle | null => {
+  const resolveUncached = (ref: Exclude<StyleRef, string>, section?: string): Styled | null => {
     const a = recipes[ref.base];
     if (!a) return err('unknown-style', `unknown style "${ref.base}" (known: ${Object.keys(recipes).join(', ')})`, section), null;
     const b = ref.blendWith ? recipes[ref.blendWith.style] : undefined;
@@ -160,7 +169,7 @@ export function resolveStyles(
   };
 
   /** requires/excludes, roles, formats and needs of one section's style. */
-  const compat = (st: ResolvedStyle, s: StyleSpec['sections'][number]) => {
+  const compat = (st: Styled, s: StyleSpec['sections'][number]) => {
     const r = recipes[st.recipe]!;
     for (const axis of TRAIT_AXES) {
       const m = find(axis, st.traits[axis])!;
@@ -187,19 +196,36 @@ export function resolveStyles(
     if (bad.length) err('format', `style "${r.id}" does not support format(s) ${bad.join(', ')}`, s.id);
   };
 
-  const job = resolveRef(spec.style);
+  const paletteOf = (ref: PaletteRef, section?: string): ResolvedPalette | null => {
+    try {
+      return resolvePalette(ref);
+    } catch (e) {
+      return err('unknown-palette', (e as Error).message, section), null;
+    }
+  };
+  const jobStyle = resolveRef(spec.style);
+  const jobPalette = paletteOf(spec.palette);
+  const job = jobStyle && jobPalette ? { ...jobStyle, palette: jobPalette } : null;
   const styles: Record<string, ResolvedStyle> = {};
   for (const s of spec.sections) {
-    const st = s.style ? resolveRef(s.style, s.id) : job;
+    const st = s.style ? resolveRef(s.style, s.id) : jobStyle;
     if (!st) continue;
     compat(st, s);
-    styles[s.id] = { recipe: st.recipe, traits: { ...st.traits }, params: { ...st.params } };
+    // own palette, else the job's for the job's own style, else the section style's default palette
+    const palette = s.palette
+      ? paletteOf(s.palette, s.id)
+      : st.recipe === jobStyle?.recipe
+        ? jobPalette
+        : paletteOf(recipes[st.recipe]!.defaults.palette, s.id);
+    if (palette) styles[s.id] = { recipe: st.recipe, traits: { ...st.traits }, params: { ...st.params }, palette };
   }
   if (diags.some((d) => d.level === 'error')) return { job, sections: {}, scenes: [], diagnostics: diags };
 
   // ── scene layers: world chains and transition fallbacks ──
-  const worldOf = (st: ResolvedStyle) => !!find('layout', st.traits.layout)!.world && !!find('camera', st.traits.camera)!.world;
+  const worldOf = (st: Styled) => !!find('layout', st.traits.layout)!.world && !!find('camera', st.traits.camera)!.world;
+  /** One layer has one background, camera and palette: these must agree for two sections to share a world. */
   const shared = (a: ResolvedStyle, b: ResolvedStyle) =>
+    JSON.stringify(a.palette) === JSON.stringify(b.palette) &&
     (['layout', 'camera', 'background'] as const).every(
       (axis) =>
         a.traits[axis] === b.traits[axis] &&
@@ -221,7 +247,7 @@ export function resolveStyles(
           ? `the previous section is not in a world layout`
           : !worldOf(st)
             ? `layout:${st.traits.layout} + camera:${st.traits.camera} is not a shared world`
-            : `layout/camera/background differ from the previous section`;
+            : `layout/camera/background or palette differ from the previous section`;
         const cut = find('transition', FALLBACK_TRANSITION);
         if (!cut) throw new Error(`trait registry lacks the fallback transition "${FALLBACK_TRANSITION}"`);
         diags.push({

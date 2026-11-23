@@ -3,7 +3,7 @@
  * markup/geometry; the trait that creates the decoration unit animates it through channels.
  */
 import type { LogoRef } from '@reel/core';
-import type { Host } from '../contract.ts';
+import type { Host, Section } from '../contract.ts';
 
 /** Location pin, `size` px tall-ish (width 0.72·size, height 0.9·size), viewBox 0 0 100 125. */
 export function pinSVG(size: number, c: { body: string; hole: string; shadow: string }): string {
@@ -51,8 +51,8 @@ export interface Badge {
   key: string;
 }
 
-/** A rounded badge holding every logo in a row, at most `maxW` wide. */
-export function logoBadge(host: Host, logos: readonly LogoRef[], maxW: number, o: BadgeOptions = {}): Badge {
+/** A rounded badge holding every logo in a row, at most `maxW` wide, in `section`'s palette unless overridden. */
+export function logoBadge(host: Host, section: Section, logos: readonly LogoRef[], maxW: number, o: BadgeOptions = {}): Badge {
   const logoH = o.logoH ?? 240;
   const pad = o.pad ?? 44;
   const gap = o.gap ?? 56;
@@ -72,8 +72,8 @@ export function logoBadge(host: Host, logos: readonly LogoRef[], maxW: number, o
     gap: `${gap}px`,
     background: o.fill ?? '#FEF2E2',
     'border-radius': `${o.radius ?? 44}px`,
-    border: `3px solid ${o.border ?? host.palette.text}`,
-    ...(o.shadow !== null ? { 'box-shadow': `0 18px 0 -6px color-mix(in srgb, ${o.shadow ?? host.accent(3)} 55%, transparent)` } : {}),
+    border: `3px solid ${o.border ?? section.palette.text}`,
+    ...(o.shadow !== null ? { 'box-shadow': `0 18px 0 -6px color-mix(in srgb, ${o.shadow ?? host.accent(3, section)} 55%, transparent)` } : {}),
   };
   return {
     w,

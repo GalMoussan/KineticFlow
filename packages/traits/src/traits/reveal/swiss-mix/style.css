@@ -1,0 +1,4 @@
+/* swiss-mix odometer: a digit strip spinning in a column over each digit (the digit part is hidden meanwhile). */
+.u > .odo { position: absolute; display: none; clip-path: inset(0 -40% 0 -40%); }
+.odo-strip { position: absolute; left: 0; top: 0; width: 100%; }
+.odo-strip > div { text-align: center; white-space: nowrap; direction: ltr; }

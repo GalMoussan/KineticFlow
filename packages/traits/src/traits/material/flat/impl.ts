@@ -5,19 +5,29 @@ import { meta } from './meta.ts';
 /** Emphasis treatments rotate with the reveal's (scale · drop + swipe · letters): the second one gets a swipe. */
 const swiped = (ordinal: number) => ordinal >= 0 && ordinal % 3 === 1;
 
+/**
+ * `marker` multiplied onto `paper`, at 92 % so the paper texture shows through. Stands in for `mix-blend-mode:
+ * multiply`, which composites the swipe and, through overlap, every unit above it (README §1).
+ */
+function multiplied(marker: string, paper: string): string {
+  const ch = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+  const rgb = [0, 1, 2].map((i) => Math.round((ch(marker, i) * ch(paper, i)) / 255));
+  return `rgba(${rgb.join(', ')}, 0.92)`;
+}
+
 export default defineMaterial({
   meta,
-  prepare({ host }, u) {
+  prepare({ host, section }, u) {
     if (u.item < 0) return; // decorations are coloured by their creators
     u.color = u.tags.hero
-      ? host.accent(4)
+      ? host.accent(4, section)
       : u.tags.ordinal >= 0
         ? swiped(u.tags.ordinal)
-          ? host.palette.text
-          : host.accent(0)
+          ? section.palette.text
+          : host.accent(0, section)
         : u.tags.align === 'end' || u.kind === 'time' || u.kind === 'city'
-          ? host.accent(1)
-          : host.palette.text;
+          ? host.accent(1, section)
+          : section.palette.text;
   },
   setup({ host, section, params }) {
     if (!params.swipes) return;
@@ -33,7 +43,7 @@ export default defineMaterial({
         at: u.at + 0.15,
         origin: section.dir === 'rtl' ? '100% 50%' : '0 50%',
         box: { x: inkLeft - 0.07 * S, y: u.baseline - ia * 0.58, w: u.inkBox.w + 0.14 * S, h: ia * 0.58 + 0.1 * S },
-        style: { background: host.accent(2) },
+        style: { background: multiplied(host.accent(2, section), section.palette.bg) },
       });
       sw.data.material = { swipe: true };
     }

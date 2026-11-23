@@ -1,2 +1,2 @@
-/* flat: marker swipe behind an emphasised word. */
-.u.swipe { border-radius: 10px 22px 14px 26px; mix-blend-mode: multiply; }
+/* flat: marker swipe behind an emphasised word (its colour is pre-multiplied onto the paper: no blend modes). */
+.u.swipe { border-radius: 10px 22px 14px 26px; }

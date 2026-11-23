@@ -10,6 +10,7 @@ import {
   formatSlug,
   type CueSheet,
   type ReelInput,
+  type ResolvedPalette,
 } from '@reel/core';
 import { RECIPES, recipe } from '@reel/styles';
 import { formatDiagnostics, resolveStyles, TRAIT_META, usedTraits, type StyleResolution } from '@reel/traits';
@@ -243,7 +244,13 @@ export async function renderJobWith(
         : `${styles.scenes.length} scene layer(s), traits ${usedTraits(styles).map((t) => `${t.axis}:${t.id}`).join(' ')}`,
       data: styles.diagnostics,
     };
-    const contrastGate = gateContrast(inputs.get(spec.formats[0]!)!.palette);
+    const inUse = new Map<string, { palette: ResolvedPalette; sections: string[] }>();
+    for (const [id, st] of Object.entries(styles.sections)) {
+      const k = JSON.stringify(st.palette);
+      if (!inUse.has(k)) inUse.set(k, { palette: st.palette, sections: [] });
+      inUse.get(k)!.sections.push(id);
+    }
+    const contrastGate = gateContrast([...inUse.values()]);
     for (const g of [styleGate, contrastGate]) {
       qa.push(g);
       emit({ type: 'qa', phase: 'preflight', result: g });

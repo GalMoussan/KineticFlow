@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readdir } from 'node:fs/promises';
 import { test } from 'node:test';
-import { JobSpec, StyleRecipe, TRAIT_AXES, type JobSpecInput, type TraitMeta } from '@reel/core';
+import { JobSpec, PALETTES, StyleRecipe, TRAIT_AXES, type JobSpecInput, type TraitMeta } from '@reel/core';
 import { RECIPES } from '@reel/styles';
 import { resolveStyles, TRAIT_META, usedTraits, type StyleResolution } from './index.ts';
 
@@ -24,7 +24,9 @@ const recipeOf = (over: Partial<StyleRecipe> & { id: string }): StyleRecipe =>
 
 const hot = recipeOf({ id: 'kq-hot', params: { 'camera.drift': 0.12, 'rhythm.kick': 0.02, 'rhythm.decay': 10 }, traits: { ...kq.traits, motion: 'overshoot' } });
 const stacked = recipeOf({ id: 'stacked', traits: { ...kq.traits, camera: 'static', layout: 'stack', transition: 'camera-move' }, params: {} });
-const RECIPES_T = { ...RECIPES, 'kq-hot': hot, stacked };
+/** kinetic-quote traits with another default palette. */
+const night = recipeOf({ id: 'night', defaults: { ...kq.defaults, palette: 'neon-night' } });
+const RECIPES_T = { ...RECIPES, 'kq-hot': hot, stacked, night };
 
 const SECTIONS: JobSpecInput['sections'] = [
   { role: 'title', text: 'קפה דילמה' },
@@ -154,7 +156,39 @@ test('fallback: camera-move into a non-world section becomes a cut, recorded as 
   drift[1] = { role: 'tagline', text: 'הכי *חמים*', style: { base: 'kinetic-quote', params: { 'camera.drift': 0.1 } } };
   const d = resolve({ sections: drift });
   assert.deepEqual(d.scenes.map((s) => s.sections), [['title-0'], ['tagline-1'], ['cta-2', 'endcard-3']]);
-  assert.match(d.diagnostics[0]!.message, /layout\/camera\/background differ/);
+  assert.match(d.diagnostics[0]!.message, /layout\/camera\/background or palette differ/);
+});
+
+test('palettes: the job palette for the job style, a section style’s own default otherwise, section palette wins', () => {
+  const flamingo = PALETTES['flamingo-cafe']!;
+  const plain = resolve();
+  for (const st of Object.values(plain.sections)) assert.deepEqual(st.palette, flamingo);
+  assert.deepEqual(plain.job!.palette, flamingo);
+
+  const sections = structuredClone(SECTIONS);
+  sections[1] = { role: 'tagline', text: 'הכי *חמים*', style: 'night' };
+  sections[2] = { role: 'cta', text: 'בואו', style: 'night', palette: 'latte' };
+  sections[3] = { role: 'endcard', logos: [], palette: 'ink-paper' };
+  const own = { bg: '#101010', text: '#FAFAFA', accents: ['#FF0000'] };
+  const r = resolve({ sections, palette: own });
+  assert.deepEqual(errors(r), []);
+  assert.deepEqual(r.sections['title-0']!.palette, own, 'job style: the spec palette (explicit colours)');
+  assert.deepEqual(r.sections['tagline-1']!.palette, PALETTES['neon-night'], 'other style: its default palette');
+  assert.deepEqual(r.sections['cta-2']!.palette, PALETTES.latte, 'section palette beats the style default');
+  assert.deepEqual(r.sections['endcard-3']!.palette, PALETTES['ink-paper'], 'section palette beats the job palette');
+  // same traits and params, different palettes: one world each (a layer has one palette)
+  assert.deepEqual(r.scenes.map((s) => s.sections), [['title-0'], ['tagline-1'], ['cta-2'], ['endcard-3']]);
+
+  // a blend's dominant recipe decides whose default applies
+  const blend = structuredClone(SECTIONS);
+  blend[1] = { role: 'tagline', text: 'הכי *חמים*', style: { base: 'kinetic-quote', blendWith: { style: 'night', mix: 0.6 } } };
+  assert.deepEqual(resolve({ sections: blend }).sections['tagline-1']!.palette, PALETTES['neon-night']);
+
+  const bad = structuredClone(SECTIONS);
+  bad[1] = { role: 'tagline', text: 'הכי *חמים*', palette: 'no-such-palette' };
+  const e = errors(resolve({ sections: bad }));
+  assert.equal(e[0]!.code, 'unknown-palette');
+  assert.deepEqual(e[0]!.sections, ['tagline-1']);
 });
 
 test('usedTraits lists each trait once, in axis order', () => {

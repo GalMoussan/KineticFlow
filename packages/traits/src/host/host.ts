@@ -3,7 +3,7 @@
  * from `REEL.scenes`, units from the cue sheet's items, runs the traits' hooks in axis order every frame and commits
  * all channels in one pass. Every frame is a pure function of t. Guide: `packages/traits/README.md`.
  */
-import type { TextBox, TraitAxis } from '@reel/core';
+import type { ResolvedPalette, TextBox, TraitAxis } from '@reel/core';
 import { decodeImages, defineReelPage, loadFonts, splitMeasured } from '@reel/runtime';
 import type {
   AnyTrait,
@@ -48,13 +48,24 @@ const isLayerAxis = (a: TraitAxis): a is LayerAxis => a === 'camera' || a === 'l
 const NUMERIC: Partial<Record<string, true>> = { date: true, time: true, stat: true, countdown: true };
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+type Owned = HTMLElement | SVGElement;
+/** One trait instance (per layer for layer axes, per section otherwise) and the DOM it owns. */
+interface Instance<T, C> {
+  trait: T;
+  c: C;
+  /** Elements created through `host.el` / registered with `host.own` during this instance's hooks. */
+  owned: Owned[];
+  /** Owned elements the host hid while the instance was idle → their inline `display` before that. */
+  parked: Map<Owned, string>;
+}
+type AnyInstance = Instance<AnyTrait, LayerCtx<Record<string, number>>>;
 interface SectionState extends Mutable<Section> {
   units: Unit[];
-  ctx: { [A in SectionAxis]: { trait: TraitByAxis[A]; c: SectionCtx<Record<string, number>> } };
+  ctx: { [A in SectionAxis]: Instance<TraitByAxis[A], SectionCtx<Record<string, number>>> };
 }
 interface LayerState extends Mutable<Layer> {
   sections: SectionState[];
-  ctx: { [A in LayerAxis]: { trait: TraitByAxis[A]; c: LayerCtx<Record<string, number>> } };
+  ctx: { [A in LayerAxis]: Instance<TraitByAxis[A], LayerCtx<Record<string, number>>> };
 }
 
 /** Params of one axis, unprefixed. */
@@ -76,11 +87,14 @@ export function runHost(traits: readonly AnyTrait[]): void {
   };
 
   const stage = document.getElementById('stage') as HTMLDivElement;
+  /** The trait instance whose setup/layout/mount hook is running: it owns the elements created meanwhile. */
+  let owner: AnyInstance | null = null;
   const el: Host['el'] = (tag, cls, parent, style = {}) => {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
     for (const [k, v] of Object.entries(style)) e.style.setProperty(k, v);
     parent?.appendChild(e);
+    owner?.owned.push(e);
     return e;
   };
 
@@ -160,7 +174,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
       split: 'none',
       masked: false,
       revealed: item >= 0,
-      color: PAL.text,
+      color: section.palette.text,
       origin: '50% 50%',
       innerOrigin: '50% 50%',
       hit: null,
@@ -189,8 +203,10 @@ export function runHost(traits: readonly AnyTrait[]): void {
       cx: S.left + (W - S.left - S.right) / 2,
       cy: S.top + (H - S.top - S.bottom) / 2,
     },
-    palette: PAL,
-    accent: (i) => PAL.accents[((i % PAL.accents.length) + PAL.accents.length) % PAL.accents.length]!,
+    accent: (i, of) => {
+      const a = of.palette.accents;
+      return a[((i % a.length) + a.length) % a.length]!;
+    },
     dir: REEL.spec.language === 'he' ? 'rtl' : 'ltr',
     families,
     stage,
@@ -211,18 +227,43 @@ export function runHost(traits: readonly AnyTrait[]): void {
       return [cam[0], cam[1] * kick];
     },
     el,
+    own(e) {
+      if (!owner) throw new Error('host.own: call it from a trait’s setup, layout or mount hook');
+      if (!owner.owned.includes(e)) owner.owned.push(e);
+    },
+    async freeze(canvas) {
+      const by = owner;
+      const blob = await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('host.freeze: toBlob failed')))));
+      const img = new Image();
+      img.decoding = 'sync';
+      img.src = URL.createObjectURL(blob);
+      await img.decode();
+      img.className = canvas.className;
+      img.style.cssText = canvas.style.cssText;
+      if (!canvas.style.width) img.style.width = `${canvas.width}px`;
+      if (!canvas.style.height) img.style.height = `${canvas.height}px`;
+      canvas.replaceWith(img);
+      const k = by?.owned.indexOf(canvas) ?? -1;
+      if (by && k >= 0) by.owned[k] = img;
+      return img;
+    },
     beatPulse,
   };
   const { cx: CX, cy: CY } = host.safe;
   const IDENTITY: View = { x: CX, y: CY, r: 0, s: 1 };
 
   // ── scene skeleton: layers, sections, content units (synchronous: needs no fonts) ──
+  /** Palette custom properties (`--bg --text --a0…--a7`, accents wrapping around) on `target`. */
+  function paletteVars(target: CSSStyleDeclaration, p: ResolvedPalette): void {
+    target.setProperty('--bg', p.bg);
+    target.setProperty('--text', p.text);
+    for (let i = 0; i < 8; i++) target.setProperty(`--a${i}`, p.accents[i % p.accents.length]!);
+  }
+
+  // ── scene skeleton: layers, sections, content units (synchronous: needs no fonts) ──
   function skeleton(): void {
     const root = document.documentElement.style;
-    root.setProperty('--bg', PAL.bg);
-    root.setProperty('--text', PAL.text);
-    PAL.accents.forEach((a, i) => root.setProperty(`--a${i}`, a));
-    for (let i = PAL.accents.length; i < 8; i++) root.setProperty(`--a${i}`, host.accent(i));
+    paletteVars(root, PAL);
     root.setProperty('--display', `"${families.display}"`);
     root.setProperty('--textfont', `"${families.text}"`);
     Object.assign(stage.style, { width: `${W}px`, height: `${H}px` });
@@ -234,6 +275,9 @@ export function runHost(traits: readonly AnyTrait[]): void {
 
     scenes.forEach((scene, li) => {
       const lel = el('div', 'layer', stage);
+      // one palette per layer (world chains require equal palettes): its custom properties scope every trait's CSS
+      const palette = REEL.styles[scene.sections[0]!]!.palette;
+      paletteVars(lel.style, palette);
       const under = el('div', 'under', lel);
       const cam = el('div', 'cam', lel);
       const back = el('div', 'back', cam);
@@ -242,6 +286,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
       const layer = {
         index: li,
         world: scene.world,
+        palette,
         sections: [] as SectionState[],
         start: 0,
         end: REEL.cues.duration,
@@ -268,6 +313,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
           cue,
           timing: cue.timing,
           style: REEL.styles[id]!,
+          palette: REEL.styles[id]!.palette,
           layer,
           dir: host.dir,
           prev,
@@ -307,7 +353,12 @@ export function runHost(traits: readonly AnyTrait[]): void {
       const st = L.sections[0]!.style;
       const ctx = {} as Record<LayerAxis, unknown>;
       for (const axis of ['camera', 'layout', 'background'] as const) {
-        ctx[axis] = { trait: traitFor(axis, st.traits[axis]), c: { host, layer: L, params: axisParams(st.params, axis) } };
+        ctx[axis] = {
+          trait: traitFor(axis, st.traits[axis]),
+          c: { host, layer: L, params: axisParams(st.params, axis) },
+          owned: [],
+          parked: new Map(),
+        };
       }
       L.ctx = ctx as LayerState['ctx'];
     }
@@ -318,6 +369,8 @@ export function runHost(traits: readonly AnyTrait[]): void {
         ctx[axis] = {
           trait: traitFor(axis, s.style.traits[axis]),
           c: { host, layer: s.layer, section: s, params: axisParams(s.style.params, axis) },
+          owned: [],
+          parked: new Map(),
         };
       }
       s.ctx = ctx as SectionState['ctx'];
@@ -334,10 +387,23 @@ export function runHost(traits: readonly AnyTrait[]): void {
     }
   }
 
-  /** Runs `fn` for every trait of `axis` (per layer or per section). */
+  /** Every trait instance of `axis`: one per layer for layer axes, one per section otherwise. */
+  const instancesOf = (axis: TraitAxis): AnyInstance[] =>
+    isLayerAxis(axis) ? layers.map((L) => L.ctx[axis] as AnyInstance) : sections.map((s) => s.ctx[axis] as AnyInstance);
+
+  /** Runs `fn` for one instance, which owns the elements created meanwhile. */
+  async function as(i: AnyInstance, fn: () => unknown): Promise<void> {
+    owner = i;
+    try {
+      await fn();
+    } finally {
+      owner = null;
+    }
+  }
+
+  /** Runs `fn` for every instance of `axis`, as its owner. */
   async function each(axis: TraitAxis, fn: (trait: AnyTrait, c: LayerCtx<Record<string, number>>) => unknown): Promise<void> {
-    if (isLayerAxis(axis)) for (const L of layers) await fn(L.ctx[axis].trait, L.ctx[axis].c);
-    else for (const s of sections) await fn(s.ctx[axis].trait, s.ctx[axis].c);
+    for (const i of instancesOf(axis)) await as(i, () => fn(i.trait, i.c));
   }
 
   // ── setup (once): fonts → motion/rhythm → unit.prepare → layout → ordinals → prepares → setups → DOM → mounts ──
@@ -348,10 +414,10 @@ export function runHost(traits: readonly AnyTrait[]): void {
 
     for (const s of sections) {
       s.motion = s.ctx.motion.trait.curves(s.ctx.motion.c);
-      await s.ctx.rhythm.trait.setup?.(s.ctx.rhythm.c);
+      await as(s.ctx.rhythm as AnyInstance, () => s.ctx.rhythm.trait.setup?.(s.ctx.rhythm.c));
     }
     for (const s of sections) for (const u of [...s.units]) s.ctx.unit.trait.prepare?.(s.ctx.unit.c, u);
-    for (const L of layers) await L.ctx.layout.trait.layout(L.ctx.layout.c);
+    for (const L of layers) await as(L.ctx.layout as AnyInstance, () => L.ctx.layout.trait.layout(L.ctx.layout.c));
 
     let ordinal = 0;
     for (const s of sections) {
@@ -381,7 +447,8 @@ export function runHost(traits: readonly AnyTrait[]): void {
         width: px(u.box.w),
         height: px(u.box.h),
         'transform-origin': u.origin,
-        ...(u.masked ? { overflow: 'hidden' } : {}),
+        // `clip`, not `hidden`: an overflow:hidden box is a scroll container, which Chromium composites
+        ...(u.masked ? { overflow: 'clip' } : {}),
         ...u.style,
       });
       u.el = e;
@@ -436,14 +503,19 @@ export function runHost(traits: readonly AnyTrait[]): void {
         for (const p of u.parts) resetPart(p.ch);
       }
     }
+    // Every instance gets a frame-time hook on every seek: `frame` when its layer/section is evaluated, otherwise
+    // `idle` or, by default, the host hides the elements it owns (so nothing from an earlier seek can linger).
     for (const axis of AXES) {
-      if (axis === 'camera') {
-        for (const L of active) {
-          L.view = L.ctx.camera.trait.view(L.ctx.camera.c, t);
-          L.ctx.camera.trait.frame?.(L.ctx.camera.c, t);
-        }
-      } else if (isLayerAxis(axis)) for (const L of active) L.ctx[axis].trait.frame?.(L.ctx[axis].c as never, t);
-      else for (const s of live) s.ctx[axis].trait.frame?.(s.ctx[axis].c as never, t);
+      for (const i of instancesOf(axis)) {
+        const L = i.c.layer as LayerState;
+        const evaluated = active.includes(L);
+        if (evaluated) unpark(i);
+        else if (i.trait.idle) i.trait.idle(i.c as never, t);
+        else park(i);
+        if (!evaluated) continue;
+        if (axis === 'camera') L.view = L.ctx.camera.trait.view(L.ctx.camera.c, t);
+        i.trait.frame?.(i.c as never, t);
+      }
     }
     for (const L of active) {
       const first = L.sections[0]!;
@@ -457,6 +529,21 @@ export function runHost(traits: readonly AnyTrait[]): void {
       if (!L.ch.visible || !activeAt(L, t)) continue;
       for (const s of L.sections) for (const u of s.units) commitUnit(u);
     }
+  }
+
+  /** Hides an idle instance's owned elements (once), remembering their inline `display`. */
+  function park(i: AnyInstance): void {
+    for (const e of i.owned) {
+      if (i.parked.has(e)) continue;
+      i.parked.set(e, e.style.display);
+      e.style.display = 'none';
+    }
+  }
+
+  /** Restores what `park` hid, before the instance's `frame` rewrites its elements. */
+  function unpark(i: AnyInstance): void {
+    for (const [e, display] of i.parked) e.style.display = display;
+    i.parked.clear();
   }
 
   // ── QA read-back ──

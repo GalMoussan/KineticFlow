@@ -1,0 +1,2 @@
+/* center-stack: the logo badge glows in the palette's first two accents. */
+.u.neon-badge .badge { box-shadow: 0 0 60px color-mix(in srgb, var(--a0) 55%, transparent), 0 0 140px color-mix(in srgb, var(--a1) 35%, transparent) !important; }

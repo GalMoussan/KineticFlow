@@ -1,0 +1,65 @@
+{
+  "id": "neon-dilemma",
+  "language": "he",
+  "contentType": "event",
+  "brief": "Monthly debate café + jam. Warm, playful, invites students to talk.",
+  "sections": [
+    {
+      "role": "title",
+      "text": "קפה דילמה וג׳אם"
+    },
+    {
+      "role": "tagline",
+      "text": "הנושאים הכי *מעניינים* ו*חמים* היום!"
+    },
+    {
+      "role": "body",
+      "text": "בואו, נשב, נדבר ונשתה *קפה*"
+    },
+    {
+      "role": "teaser",
+      "text": "יהיו *הפתעות*"
+    },
+    {
+      "role": "datetime",
+      "date": "2026-12-01",
+      "time": "19:30"
+    },
+    {
+      "role": "location",
+      "place": "בית החאן",
+      "city": "קרית שמונה"
+    },
+    {
+      "role": "cta",
+      "text": "בואו *לדבר!*"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "neon-psychedelic",
+  "palette": "neon-night",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "lofi-jazz",
+    "bpm": 120,
+    "seed": 1101
+  },
+  "duration": 26,
+  "formats": [
+    "9:16"
+  ],
+  "quality": "draft",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}

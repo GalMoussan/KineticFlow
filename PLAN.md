@@ -71,13 +71,13 @@ makeAvideo/
   PLAN.md
   package.json · pnpm-workspace.yaml · tsconfig.json
   packages/
-    core/        ✅ scaffolded: Job Spec schema, emphasis parser, derived fields, all cross-package contracts
-    timing/      M1  beat grid (generated or detected) → section budget → cue sheet
-    runtime/     M1  in-page host: window.REEL, reelPage (seek), channels, unit splitting (Intl.Segmenter + bidi-js), ease/hash
-    traits/      M2  trait modules: layout/ unit/ reveal/ motion/ rhythm/ material/ axis/ camera/ background/ transition/ signature/
-    styles/      M2  one folder per catalog style: recipe.json + optional signature module + thumb
-    audio/       M3  Web Audio graph builders: sequencer presets, SFX map, track playback; offline render helper
-    render/      M1  capture pool, ffmpeg pipelines, chunk cache, QA gates
+    core/        ✅ Job Spec schema, items, palettes, fonts, cue sheet, page + trait-meta contracts
+    timing/      ✅ beat grid → section budget → cue sheet
+    runtime/     ✅ in-page helpers: eases, hash, fonts/images, measured unit splitting, visualOrder (bidi)
+    traits/      ✅ trait contract, generic page host, resolver, 29 trait modules; authoring guide in README.md
+    styles/      ✅ one folder per catalog style: recipe.json only (kinetic-quote, swiss-title-reveal, neon-psychedelic)
+    audio/       ✅ pure-TS note synth + cue-driven presets (lofi-jazz); M3 adds samples, SFX, tracks
+    render/      ✅ capture pool, ffmpeg pipelines, fingerprint chunk cache, QA gates, dev/matrix.ts
   apps/
     server/      M4  Hono API, job queue, SSE, SQLite (node:sqlite), LLM providers, asset processing
     web/         M4  Vite + React UI
@@ -169,9 +169,12 @@ either module knowing about the others.
 ### 5.3 The three ways to combine (your choices)
 
 1. **Trait override:** `style.traits = { reveal: "typewriter" }` on top of a base style.
-2. **Per section:** `section.style` resolves its own recipe. The incoming section's `transition` trait bridges the two.
-3. **Blend:** `blendWith: { style, mix }`. Numeric params lerp: energy, shake, glow, speed, density, easing sharpness,
-   overshoot. Discrete traits come from the dominant style (`mix < 0.5` → base).
+2. **Per section:** `section.style` resolves its own recipe. Each non-world section is its own scene layer; the incoming
+   section's `transition` trait bridges layers (an invalid world move falls back to `cut` with a QA warning). A section
+   whose style differs from the job style uses that style's default palette unless it sets `palette`.
+3. **Blend:** `blendWith: { style, mix }`. Discrete traits come from the dominant style (`mix < 0.5` → base). Every param
+   lerps where both sides' traits on an axis share the param name; shared names are a convention across traits (reveal
+   `lead`/`duration`, rhythm `kick`/`decay`/`length`, background `grain`/`vignette`, material `glow`/`split`).
 
 **Compatibility:** each trait declares `requires` / `excludes`, e.g. `unit: grapheme` excludes `reveal: morph-from-previous`,
 and `layout: world-canvas` requires `camera: pan-turn | push-zoom`. The UI greys out invalid picks and explains why;
@@ -454,7 +457,7 @@ New:
 |---|---|---|
 | M0 | ✅ **Spikes done** (2026-11-23). Results in `spikes/results/`: `capture.md` (a+b), `text.md` (c), `morph.md` (d), `audio.md` (e), `beats.md` (f) | Every spike PASS or PASS WITH CAVEATS; plan adjusted in §5.4, §7, §8, §10, §11, §13 |
 | M1 | ✅ **Done** (2026-11-23). `core` + `timing` + `runtime` + `audio` + `render` + `cli`, plus `kinetic-quote` ported as one monolithic data-driven style | `pnpm reelgen render examples/dilemma.json` → 9:16 + 1:1, 26.000 s, 780 frames, H.264 BT.709 + AAC −14 LUFS, faststart, `-no-music` copies; all fail-level QA gates pass. Measured: cold 30 s, warm 5 s; a date-only edit re-rendered only the 10–20 s chunk per format (20.7 s) |
-| M2 | Trait system + channels + compat. All three ✅ engines decomposed into traits; per-section styles; blend | The 3 styles render the test-spec set in all formats. One trait-override and one blend example render |
+| M2 | ✅ **Done** (2026-11-23). Trait host + resolver; kinetic-quote, swiss-title-reveal and neon-psychedelic as recipes over 29 traits; per-section styles and palettes; blend; override | `dev/matrix.ts`: 3 styles × 5 test specs (event he/en, mixed he/en + niqqud, list, stats) × 4 formats, 15/15 with no QA failure. `examples/m2/`: mixed-sections, 3 blends and 2 overrides render with QA passing. Date-only edit still re-renders only chunk 2 |
 | M3 | Audio: sequencer + 4 presets + SFX map + own-track analysis (sidecar) + audio-reactive envelopes | Own MP3 → text lands on detected downbeats (±1 frame); preview and render audio hashes match |
 | M4 | Server + Web UI (all screens) + SSE + brand kits + LLM providers | You go from pasted text and dropped logos to a finished MP4 without touching files |
 | M5 | Quality presets (60 fps, motion blur, 2× SS), cache, cleanup, multi-format | Final preset renders; disk after a job < 100 MB excluding outputs |
@@ -469,7 +472,7 @@ New:
 | Risk | Mitigation |
 |---|---|
 | ~~Headless Chromium on macOS may not use the GPU~~ | **Retired (M0a):** `chrome-headless-shell` + GPU flags gives ANGLE Metal |
-| GPU raster leaves ≤ 2/255 order-dependent residue | Fixed chunk boundaries and order; two-part determinism gate (§8.1) |
+| GPU raster leaves order-dependent residue | Fixed chunk boundaries and order; two-part determinism gate (§8.1); `--disable-partial-raster` (M2: up to 8/255 without it). Composited layers (accelerated canvas under text, `will-change`, `mix-blend-mode`, `overflow:hidden`) reuse tiles across seeks (46–71/255): banned in traits, canvases frozen to images, `overflow: clip` (traits README §1). Stills harness re-shoots every still after every other still |
 | Web Audio single-graph mixing is not bit-deterministic | Stem-pass render (§8.2) |
 | Arbitrary trait combinations can look bad even when valid | Curated presets are the default path; the mixer shows a live preview; compat rules grow from QA findings |
 | A style under-reports its `fingerprint`, so a stale chunk is reused | Fingerprint covers geometry of every block that can be on screen in the window; `--no-cache` escape hatch; M2: spot-check that re-rendering a cached chunk's first frame matches its stored hash |

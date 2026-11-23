@@ -13,6 +13,11 @@ export interface ResolvedStyle {
   traits: Record<TraitAxis, string>;
   /** Every param of every trait in `traits`, keyed `<axis>.<param>`, blended and overridden. */
   params: Record<string, number>;
+  /**
+   * The section's colours: its own `palette`, else the job's `palette` for sections of the job's dominant recipe, else
+   * the default palette of its own dominant recipe. (On `job`: the job palette.)
+   */
+  palette: ResolvedPalette;
 }
 
 /**
@@ -60,6 +65,7 @@ export interface ReelInput {
   scenes: Scene[];
   /** Params of the job-level style (`spec.style`) after blending; part of the job-wide look. */
   params: Record<string, number>;
+  /** The job palette (`spec.palette`); sections may use others (`styles[id].palette`). */
   palette: ResolvedPalette;
   fonts: { display: FontRef; text: FontRef };
   logos: LogoRef[];

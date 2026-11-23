@@ -8,11 +8,16 @@ const GRID_EXT = GRID * 400;
 const rgba = (hex: string, a: number) =>
   `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
 
-/** Static layers, drawn once at setup: paper (blotches + fibres) under the world, grain and vignette over it. */
+/**
+ * Static layers, drawn once at setup: paper (blotches + fibres) under the world, grain and vignette over it. Both
+ * canvases are frozen into images: a canvas is a composited layer, and composited content under the world would get
+ * every text element above it promoted (see README §1).
+ */
 export default defineBackground({
   meta,
-  setup({ host, layer, params }) {
-    const { W, H, palette: PAL } = host;
+  async setup({ host, layer, params }) {
+    const { W, H } = host;
+    const PAL = layer.palette;
     const paper = host.el('canvas', 'paper', layer.under);
     paper.width = W;
     paper.height = H;
@@ -38,7 +43,7 @@ export default defineBackground({
       const y = hash(i + 41) * H;
       const r = (220 + hash(i + 77) * 520) * scale;
       const gr = g.createRadialGradient(x, y, 0, x, y, r);
-      gr.addColorStop(0, i % 3 === 0 ? rgba(host.accent(2), 0.07) : i % 3 === 1 ? rgba(host.accent(3), 0.06) : 'rgba(255,250,240,0.22)');
+      gr.addColorStop(0, i % 3 === 0 ? rgba(host.accent(2, layer), 0.07) : i % 3 === 1 ? rgba(host.accent(3, layer), 0.06) : 'rgba(255,250,240,0.22)');
       gr.addColorStop(1, rgba(PAL.bg, 0));
       g.fillStyle = gr;
       g.fillRect(0, 0, W, H);
@@ -68,5 +73,6 @@ export default defineBackground({
       im.data[i * 4 + 3] = Math.round(Math.abs(v) * params.grain * 255);
     }
     gg.putImageData(im, 0, 0);
+    await Promise.all([host.freeze(paper), host.freeze(grain)]);
   },
 });

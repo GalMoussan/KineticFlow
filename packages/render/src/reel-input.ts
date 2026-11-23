@@ -5,7 +5,6 @@ import { readFile } from 'node:fs/promises';
 import {
   fontEntry,
   format,
-  resolvePalette,
   type CueSheet,
   type FontRef,
   type FormatId,
@@ -87,7 +86,7 @@ export async function reelInput(o: {
     styles: styles.sections,
     scenes: styles.scenes,
     params: styles.job.params,
-    palette: resolvePalette(spec.palette),
+    palette: styles.job.palette,
     fonts: { display: font(spec.fonts.display), text: font(spec.fonts.text ?? spec.fonts.display) },
     logos,
   };

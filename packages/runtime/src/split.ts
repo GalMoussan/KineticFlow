@@ -4,12 +4,7 @@
  * positioned span per unit anchored at its logical start edge. This keeps kerning, niqqud and bidi order exactly
  * as in the unsplit line (≤ 0.84 % ink diff, 0 px shift). Never split into naive inline-block spans.
  */
-// bidi-js ships CJS typings, so NodeNext types the namespace's `default` as the whole module; the ESM build that
-// esbuild bundles exports the factory there.
-import * as bidiModule from 'bidi-js';
-import type { Bidi } from 'bidi-js';
-
-const bidi = (bidiModule.default as unknown as () => Bidi)();
+import { bidi } from './bidi.ts';
 
 export type Granularity = 'grapheme' | 'word';
 

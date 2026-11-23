@@ -18,11 +18,22 @@ export const StyleRef = z.union([
 ]);
 export type StyleRef = z.infer<typeof StyleRef>;
 
+/** A catalog palette id or explicit colours. */
+export const Palette = z.union([
+  Slug,
+  z.object({ bg: Hex, text: Hex, accents: z.array(Hex).min(1).max(5) }),
+]);
+
 const common = {
   /** Stable id; defaults to `<role>-<index>` after parsing. */
   id: Slug.optional(),
   /** Per-section style override (PLAN.md §5.3). */
   style: StyleRef.optional(),
+  /**
+   * Per-section palette. Default: the job's `palette` when the section resolves to the job's dominant style, else the
+   * default palette of the section's own dominant style.
+   */
+  palette: Palette.optional(),
   /** Minimum hold in seconds, overriding the timing engine's default. */
   minHold: z.number().min(0.5).max(10).optional(),
 };
@@ -55,11 +66,6 @@ export const Section = z.discriminatedUnion('role', [
 ]);
 export type Section = z.infer<typeof Section>;
 export type SectionRole = Section['role'];
-
-export const Palette = z.union([
-  Slug,
-  z.object({ bg: Hex, text: Hex, accents: z.array(Hex).min(1).max(5) }),
-]);
 
 export const Music = z.discriminatedUnion('source', [
   z.object({
