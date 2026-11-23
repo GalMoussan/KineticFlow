@@ -6,7 +6,7 @@
   "engines": { "node": ">=26" },
   "scripts": {
     "reelgen": "node apps/cli/src/main.ts",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/web",
     "test": "node --test \"packages/**/*.test.ts\" \"apps/**/*.test.ts\""
   },
   "devDependencies": {

@@ -1,8 +1,19 @@
 /** QA gates (PLAN.md §10): each returns pass/warn/fail with a readable detail; `fail` fails the job. */
-import { open } from 'node:fs/promises';
+import { open, readFile, stat } from 'node:fs/promises';
 import { PNG } from 'pngjs';
-import { contrast, type CueSheet, type FormatId, type JobSpec, type ReelInput, type ResolvedPalette, type SoundCue, type TextBox } from '@reel/core';
+import {
+  contrast,
+  sectionItems,
+  type CueSheet,
+  type FormatId,
+  type JobSpec,
+  type ReelInput,
+  type ResolvedPalette,
+  type SoundCue,
+  type TextBox,
+} from '@reel/core';
 import { launchBrowser, ReelTab } from './capture.ts';
+import { missingChars, readFont } from './fonts.ts';
 import { exec, sha256 } from './util.ts';
 
 export type Level = 'pass' | 'warn' | 'fail';
@@ -188,6 +199,46 @@ export function gateContrast(palettes: { palette: ResolvedPalette; sections: str
     level: per.some((x) => x.low) ? 'warn' : 'pass',
     detail: per.map((x) => x.detail).join('; '),
     data: per.map(({ bg, sections, rows }) => ({ bg, sections, rows })),
+  };
+}
+
+// ───────────────────────────── glyph coverage ─────────────────────────────
+
+const cmapCache = new Map<string, { mtimeMs: number; codepoints: Set<number> }>();
+
+/** Code points the font file maps to glyphs (cached per path + mtime). */
+export async function fontCodepoints(path: string): Promise<Set<number>> {
+  const { mtimeMs } = await stat(path);
+  const hit = cmapCache.get(path);
+  if (hit?.mtimeMs === mtimeMs) return hit.codepoints;
+  const { codepoints } = readFont(await readFile(path));
+  cmapCache.set(path, { mtimeMs, codepoints });
+  return codepoints;
+}
+
+/** Every character the page will draw: the items of every section (derived weekday/date text included). */
+export function specText(spec: JobSpec): string {
+  return spec.sections.flatMap((s) => sectionItems(s, spec).map((it) => it.text)).join(' ');
+}
+
+/**
+ * Font glyph coverage (PLAN.md §10): every character the page draws must exist in each font in use, otherwise the
+ * DOM shows tofu and troika hangs fetching a CDN fallback. A hard fail.
+ */
+export async function gateGlyphs(spec: JobSpec, fonts: readonly { id: string; family: string; path: string }[]): Promise<GateResult> {
+  const text = specText(spec);
+  const missing: { font: string; chars: string }[] = [];
+  for (const f of fonts) {
+    const chars = missingChars(text, await fontCodepoints(f.path));
+    if (chars) missing.push({ font: f.id, chars });
+  }
+  return {
+    gate: 'glyphs',
+    level: missing.length ? 'fail' : 'pass',
+    detail: missing.length
+      ? missing.map((m) => `font "${m.font}" cannot draw ${[...m.chars].map((c) => `"${c}"`).join(' ')}`).join('; ')
+      : `${fonts.map((f) => f.family).join(' + ')} cover all ${new Set(text.replace(/\s/g, '')).size} characters`,
+    data: missing,
   };
 }
 

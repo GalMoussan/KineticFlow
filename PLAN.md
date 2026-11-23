@@ -79,9 +79,9 @@ makeAvideo/
     audio/       ✅ deterministic DSP engine (dmath), CC0 sampler, 4 presets, SFX, envelopes; Node == Chromium hashes
     render/      ✅ capture pool, ffmpeg pipelines, fingerprint chunk cache, QA gates, dev/matrix.ts
   apps/
-    server/      M4  Hono API, job queue, SSE, SQLite (node:sqlite), LLM providers, asset processing
-    web/         M4  Vite + React UI
-    cli/         M1  `reelgen serve | render <job.json> | setup [fonts|samples|music-ai] | clean`
+    server/      ✅ Hono API (contract in packages/api), SQLite store, preview sessions, style stills, render queue + SSE, LLM/rules splitter
+    web/         ✅ Vite + React 19 studio: Content, Brand, Style + mixer, Look, live preview player, Render; e2e/happy-path.ts
+    cli/         ✅ `reelgen serve [--dev] | render <job.json> | setup [fonts|samples|analysis] | clean`
   sidecar/       ✅  uv project: Beat This! beats/downbeats CLI (model from local file); ACE-Step generate.py in M7
   assets/        fonts/, samples/ (populated by `reelgen setup`, manifests committed)
   data/          gitignored: brand kits, uploads, jobs, cache, SQLite
@@ -465,7 +465,7 @@ New:
 | M1 | ✅ **Done** (2026-11-23). `core` + `timing` + `runtime` + `audio` + `render` + `cli`, plus `kinetic-quote` ported as one monolithic data-driven style | `pnpm reelgen render examples/dilemma.json` → 9:16 + 1:1, 26.000 s, 780 frames, H.264 BT.709 + AAC −14 LUFS, faststart, `-no-music` copies; all fail-level QA gates pass. Measured: cold 30 s, warm 5 s; a date-only edit re-rendered only the 10–20 s chunk per format (20.7 s) |
 | M2 | ✅ **Done** (2026-11-23). Trait host + resolver; kinetic-quote, swiss-title-reveal and neon-psychedelic as recipes over 29 traits; per-section styles and palettes; blend; override | `dev/matrix.ts`: 3 styles × 5 test specs (event he/en, mixed he/en + niqqud, list, stats) × 4 formats, 15/15 with no QA failure. `examples/m2/`: mixed-sections, 3 blends and 2 overrides render with QA passing. Date-only edit still re-renders only chunk 2 |
 | M3 | ✅ **Done** (2026-11-23). DSP engine + CC0 sampler + 4 presets; SFX from page sound cues; own-track source with beat analysis sidecar; envelopes + `audio-reactive` trait + `bass-pulse` style | `examples/m3/track-he.json`: 27/27 landings on detected beats (0 ms at the cue sheet; re-detected on the delivered MP4: max 20 ms, mean 4 ms, all within 1 frame). Node == Chromium SHA-256 for all presets and SFX. Matrix 20/20 (4 styles × 5 specs × 4 formats) |
-| M4 | Server + Web UI (all screens) + SSE + brand kits + LLM providers | You go from pasted text and dropped logos to a finished MP4 without touching files |
+| M4 | ✅ **Done** (2026-11-24). `reelgen serve` → local studio: paste-and-split (Gemini/Claude or offline rules), logo background removal + palette extraction, brand kits, font upload, style grid from your own content, mixer, live preview with music + SFX, check, render queue with SSE | `apps/web/e2e/happy-path.ts` passes against the real server in 36 s: pasted Hebrew text + two dropped logos → split → style/palette/music → preview plays with audio → check → draft 9:16 MP4 plays; no files touched. Preview text edit 1.3 s, palette edit 3 ms |
 | M5 | Quality presets (60 fps, motion blur, 2× SS), cache, cleanup, multi-format | Final preset renders; disk after a job < 100 MB excluding outputs |
 | M6 | **R1 catalog**: styles #1–#25 | Each passes QA on the test-spec set in its formats |
 | M7 | Catalog to 54, ≥10 music presets, ACE-Step add-on (`reelgen setup music-ai`) | Same QA bar |

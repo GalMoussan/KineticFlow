@@ -46,3 +46,11 @@ export function fontEntry(id: string): FontEntry {
   if (!f) throw new Error(`unknown font "${id}" (known: ${Object.keys(FONTS).join(', ')})`);
   return f;
 }
+
+/** Whether `id` names a catalog font; any other font id in a spec is an uploaded font asset. */
+export function isCatalogFont(id: string): boolean {
+  return Object.hasOwn(FONTS, id);
+}
+
+/** File types an uploaded font can have, in lookup order (`<specDir>/assets/<id>.<ext>`). */
+export const FONT_EXTS = ['ttf', 'otf', 'woff2'] as const;

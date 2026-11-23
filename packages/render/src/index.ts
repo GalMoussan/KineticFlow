@@ -20,7 +20,8 @@ import { RECIPES, recipe } from '@reel/styles';
 import { formatDiagnostics, resolveStyles, TRAIT_META, usedTraits, type StyleResolution } from '@reel/traits';
 import { assemble, type Exported } from './assemble.ts';
 import { finishAudio, prepareMusic, SAMPLE_RATE, type AudioResult, type MusicInfo } from './audio.ts';
-import { buildBundle, type Bundle } from './bundle.ts';
+import { buildBundle, specFontIds, type Bundle } from './bundle.ts';
+import { resolveFonts } from './fonts.ts';
 import type { Browser } from 'playwright';
 import { launchBrowser, ReelTab } from './capture.ts';
 import { chunkKey, chunkPath, chunkWindow, planChunks, renderChunks, type ChunkPlan, type ChunkTask } from './chunks.ts';
@@ -33,6 +34,7 @@ import {
   gateContrast,
   gateDeterminism,
   gateFidelity,
+  gateGlyphs,
   gateLoudness,
   gateOverlap,
   gateSfx,
@@ -47,15 +49,24 @@ import { reelInput } from './reel-input.ts';
 import { serveDir } from './server.ts';
 import { exec, REPO, sha256, writeAtomic } from './util.ts';
 
-export { ensureFonts, FONT_DIR } from './fonts.ts';
+export { ensureFonts, findFontFile, FONT_DIR, missingChars, readFont, resolveFonts } from './fonts.ts';
+export type { FontInfo, SpecFont } from './fonts.ts';
 export { CHUNK_DIR } from './chunks.ts';
-export { setupSamples, nodeSampleBank, SetupError, SAMPLE_DIR } from './samples.ts';
+export { checkSamples, setupSamples, nodeSampleBank, SetupError, SAMPLE_DIR } from './samples.ts';
 export { setupAnalysis, analyzeTrack, ANALYSIS_DIR, MODEL_PATH } from './analysis.ts';
-export { prepareMusic, finishAudio, stereoSha } from './audio.ts';
+export { prepareMusic, finishAudio, mixStems, stereoSha, SAMPLE_RATE } from './audio.ts';
 export type { MusicInfo, MusicStage, AudioResult } from './audio.ts';
+export { fontCodepoints, gateGlyphs, specText } from './qa.ts';
 export type { GateResult, Level, ProbeSummary } from './qa.ts';
 export type { Exported } from './assemble.ts';
 export type { Preset, QualitySettings } from './encode.ts';
+export { buildBundle, findLogo, specFontIds, type Bundle } from './bundle.ts';
+export { imageSize, logoColors, reelInput } from './reel-input.ts';
+export { launchBrowser, ReelTab } from './capture.ts';
+export type { Browser } from 'playwright';
+export { CSP } from './server.ts';
+export { resolveQuality } from './encode.ts';
+export { REPO } from './util.ts';
 
 export const DATA_DIR = join(REPO, 'data');
 export const JOBS_DIR = join(DATA_DIR, 'jobs');
@@ -69,6 +80,26 @@ export interface RenderOptions {
   outDir?: string;
   /** `false` re-renders every chunk (results still refresh the cache). */
   cache?: boolean;
+  /** Temp directory of the job (bundle, audio); default `data/jobs/<job-id>`. Removed when the job ends. */
+  workDir?: string;
+  /** Stop after the preflight QA gates: no video, no audio, no outputs; resolves to the gates instead of a receipt. */
+  preflightOnly?: boolean;
+  /** Aborting stops the job at the next frame and rejects with `RenderCancelled`. */
+  signal?: AbortSignal;
+}
+
+/** Result of a `preflightOnly` run. */
+export interface Preflight {
+  qa: GateResult[];
+  ms: number;
+}
+
+/** The job's `signal` was aborted. */
+export class RenderCancelled extends Error {
+  constructor() {
+    super('render cancelled');
+    this.name = 'RenderCancelled';
+  }
 }
 
 export type Phase = 'preflight' | 'post';
@@ -196,17 +227,34 @@ async function loadSpec(path: string): Promise<{ spec: JobSpec; bytes: Buffer }>
   return { spec: parsed.data, bytes };
 }
 
-export function renderJob(specPath: string, opts: RenderOptions, emit: (e: RenderEvent) => void): Promise<Receipt> {
+export function renderJob(specPath: string, opts: RenderOptions & { preflightOnly: true }, emit: (e: RenderEvent) => void): Promise<Preflight>;
+export function renderJob(specPath: string, opts: RenderOptions & { preflightOnly?: false }, emit: (e: RenderEvent) => void): Promise<Receipt>;
+export function renderJob(specPath: string, opts: RenderOptions, emit: (e: RenderEvent) => void): Promise<Receipt | Preflight> {
   return renderJobWith(specPath, opts, emit, buildBundle);
 }
 
 /** `renderJob` with the bundle step swapped out: the fixture-page tests render through the real pipeline. */
+export function renderJobWith(
+  specPath: string,
+  opts: RenderOptions & { preflightOnly?: false },
+  emit: (e: RenderEvent) => void,
+  makeBundle: typeof buildBundle,
+): Promise<Receipt>;
+export function renderJobWith(
+  specPath: string,
+  opts: RenderOptions,
+  emit: (e: RenderEvent) => void,
+  makeBundle: typeof buildBundle,
+): Promise<Receipt | Preflight>;
 export async function renderJobWith(
   specPath: string,
   opts: RenderOptions,
   emit: (e: RenderEvent) => void,
   makeBundle: typeof buildBundle,
-): Promise<Receipt> {
+): Promise<Receipt | Preflight> {
+  const cancelled = () => {
+    if (opts.signal?.aborted) throw new RenderCancelled();
+  };
   const start = performance.now();
   const timings: Record<string, number> = {};
   const absSpec = resolve(specPath);
@@ -255,10 +303,11 @@ export async function renderJobWith(
   });
   emit({ type: 'music', info: stage.info });
 
-  const jobDir = join(JOBS_DIR, spec.id);
+  const jobDir = resolve(opts.workDir ?? join(JOBS_DIR, spec.id));
   const outDir = join(resolve(opts.outDir ?? OUT_DIR), spec.id);
   await mkdir(jobDir, { recursive: true });
-  await mkdir(outDir, { recursive: true });
+  if (!opts.preflightOnly) await mkdir(outDir, { recursive: true });
+  cancelled();
 
   // ── bundle + browsers ──
   t = performance.now();
@@ -300,10 +349,15 @@ export async function renderJobWith(
       inUse.get(k)!.sections.push(id);
     }
     const contrastGate = gateContrast([...inUse.values()]);
-    for (const g of [styleGate, contrastGate]) {
+    // glyph coverage first: a page with tofu can hang in `ready()` (troika's CDN fallback)
+    const fonts = Object.values(await resolveFonts(specFontIds(spec), specDir));
+    for (const g of [styleGate, contrastGate, await gateGlyphs(spec, fonts)]) {
       qa.push(g);
       emit({ type: 'qa', phase: 'preflight', result: g });
     }
+    if (opts.preflightOnly && qa.some((g) => g.level === 'fail')) return { qa, ms: ms(start) };
+    if (!opts.preflightOnly) await failOnQa(qa, outDir);
+    cancelled();
     const plans = await Promise.all(spec.formats.map((f) => preflight(ctx, probeBrowser, inputs.get(f)!)));
     await probeBrowser.close();
     for (const p of plans) {
@@ -311,7 +365,9 @@ export async function renderJobWith(
       for (const g of p.gates) emit({ type: 'qa', phase: 'preflight', result: g });
     }
     timings.preflight = ms(t);
+    if (opts.preflightOnly) return { qa, ms: ms(start) };
     await failOnQa(qa, outDir);
+    cancelled();
 
     // ── render order 4: the page's sound cues (first format; cues are a pure function of REEL) → SFX stem ──
     t = performance.now();
@@ -352,13 +408,19 @@ export async function renderJobWith(
       origin: ctx.origin,
       entry: bundle.entry,
       quality: q,
-      onProgress: (task, done) =>
-        emit({ type: 'chunk', format: task.format, index: task.chunk.index, done, total: task.chunk.f1 - task.chunk.f0 }),
+      onProgress: (task, done) => {
+        cancelled();
+        emit({ type: 'chunk', format: task.format, index: task.chunk.index, done, total: task.chunk.f1 - task.chunk.f0 });
+      },
       onDone: (task, took) => {
         byTask.get(task)!.ms = Math.round(took);
         emit({ type: 'chunk-done', format: task.format, index: task.chunk.index, ms: took });
       },
+    }).catch((e: unknown) => {
+      cancelled();
+      throw e;
     });
+    cancelled();
     timings.render = ms(t);
     emit({ type: 'rendered', rendered: tasks.length, cached: plans.reduce((n, p) => n + p.chunks.length, 0) - tasks.length, ms: timings.render });
 
@@ -469,6 +531,7 @@ export async function renderJobWith(
   } finally {
     await probeBrowser.close().catch(() => {});
     await server.close();
+    if (opts.preflightOnly) await rm(jobDir, { recursive: true, force: true });
   }
 }
 

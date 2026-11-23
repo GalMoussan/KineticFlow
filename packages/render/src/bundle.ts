@@ -9,9 +9,9 @@ import { createHash } from 'node:crypto';
 import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { build } from 'esbuild';
-import { fontEntry, type JobSpec, type TraitAxis } from '@reel/core';
+import type { JobSpec, TraitAxis } from '@reel/core';
 import { HOST_CSS, TRAITS_SRC, traitFiles } from '@reel/traits/files.ts';
-import { ensureFonts } from './fonts.ts';
+import { resolveFonts, type SpecFont } from './fonts.ts';
 
 export interface Bundle {
   /** Absolute directory served as the page root. */
@@ -41,9 +41,9 @@ export function specFontIds(spec: JobSpec): string[] {
   return spec.fonts.text ? [spec.fonts.display, spec.fonts.text] : [spec.fonts.display];
 }
 
-/** Bundle-relative URL of a catalog font. */
-export function fontUrl(id: string): string {
-  return `fonts/${encodeURIComponent(fontEntry(id).file)}`;
+/** Bundle-relative URL of a resolved font (catalog or uploaded). */
+export function fontUrl(font: SpecFont): string {
+  return `fonts/${encodeURIComponent(font.file)}`;
 }
 
 /** The generated page entry: the host plus one import per used trait. */
@@ -105,8 +105,7 @@ export async function buildBundle(o: {
   const sheets = await Promise.all(entry.css.map((p) => readFile(p, 'utf8')));
   files.set('engine.css', new TextEncoder().encode(sheets.join('\n')));
 
-  const fontPaths = await ensureFonts(specFontIds(o.spec));
-  for (const [id, path] of Object.entries(fontPaths)) files.set(`fonts/${fontEntry(id).file}`, await readFile(path));
+  for (const f of Object.values(await resolveFonts(specFontIds(o.spec), o.specDir))) files.set(`fonts/${f.file}`, await readFile(f.path));
 
   for (const id of new Set(o.spec.sections.flatMap((s) => (s.role === 'endcard' ? s.logos : [])))) {
     const logo = await findLogo(o.specDir, id);

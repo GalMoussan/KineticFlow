@@ -1,0 +1,20 @@
+{
+  "name": "@reel/server",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./term": "./src/term.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.11",
+    "@reel/api": "workspace:*",
+    "@reel/audio": "workspace:*",
+    "@reel/core": "workspace:*",
+    "@reel/render": "workspace:*",
+    "@reel/styles": "workspace:*",
+    "@reel/timing": "workspace:*",
+    "@reel/traits": "workspace:*",
+    "hono": "^4.13.21"
+  }
+}

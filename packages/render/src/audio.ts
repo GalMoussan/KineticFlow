@@ -237,20 +237,16 @@ export async function finishAudio(o: {
   const fit = `aresample=${sr},apad=whole_len=${samples},atrim=end_sample=${samples}`;
   const enc = (out: string) => ['-c:a', 'aac', '-b:a', '256k', '-ar', String(sr), '-ac', '2', '-movflags', '+faststart', out];
 
-  const stems = [
-    ...(o.music ? [{ audio: o.music, gain: MUSIC_GAIN }] : []),
-    ...(o.sfx ? [{ audio: o.sfx, gain: SFX_GAIN }] : []),
-  ];
   const hashes: AudioResult['hashes'] = {
     ...(o.music ? { music: stereoSha(o.music) } : {}),
     ...(o.sfx ? { sfx: stereoSha(o.sfx) } : {}),
   };
-  if (!stems.length) {
+  const pre = mixStems(o.music, o.sfx, duration);
+  if (!pre) {
     await ffmpeg(['-y', '-v', 'error', '-f', 'lavfi', '-i', `anullsrc=r=${sr}:cl=stereo`, '-af', fit, ...enc(aac)]);
     return { aac, samples, sampleRate: sr, hashes, ms: performance.now() - t0 };
   }
 
-  const pre = mix(stems, duration);
   // kept for `masterScale` (the limiter may work in place)
   const preCopy = { l: pre.l.slice(), r: pre.r.slice() };
   const mastered = master(pre);
@@ -324,4 +320,13 @@ function masterScale(pre: { l: Float32Array; r: Float32Array }, post: Stereo): n
     }
   }
   return den > 0 ? num / den : 1;
+}
+
+/**
+ * Music + SFX stems summed with the delivery gains (before `master`); null when there is neither. The render
+ * (`finishAudio`) and the live preview mix through this one function, so they sound the same.
+ */
+export function mixStems(music: Stereo | null, sfx: Stereo | null, duration: number): Stereo | null {
+  const stems = [...(music ? [{ audio: music, gain: MUSIC_GAIN }] : []), ...(sfx ? [{ audio: sfx, gain: SFX_GAIN }] : [])];
+  return stems.length ? mix(stems, duration) : null;
 }

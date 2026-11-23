@@ -2,18 +2,11 @@
  * Builds `window.REEL` (PLAN.md §8.1) for one format: everything the page needs, with bundle-relative asset URLs.
  */
 import { readFile } from 'node:fs/promises';
-import {
-  fontEntry,
-  format,
-  type CueSheet,
-  type FontRef,
-  type FormatId,
-  type JobSpec,
-  type LogoRef,
-  type ReelInput,
-} from '@reel/core';
+import { PNG } from 'pngjs';
+import { format, type CueSheet, type FontRef, type FormatId, type JobSpec, type LogoRef, type ReelInput } from '@reel/core';
 import type { StyleResolution } from '@reel/traits';
-import { findLogo, fontUrl, type Bundle } from './bundle.ts';
+import { findLogo, fontUrl, specFontIds, type Bundle } from './bundle.ts';
+import { resolveFonts } from './fonts.ts';
 
 /** Intrinsic size from the PNG IHDR, the SVG viewBox (or width/height) or the JPEG SOF marker. */
 export function imageSize(bytes: Uint8Array, ext: string): { w: number; h: number } {
@@ -52,6 +45,43 @@ export function imageSize(bytes: Uint8Array, ext: string): { w: number; h: numbe
   throw new Error(`unsupported image type "${ext}"`);
 }
 
+/**
+ * Dominant colours of a logo as `#RRGGBB`, most frequent first: opaque PNG pixels quantised to 4 bits per channel
+ * (bucket mean), or the distinct hex fills of an SVG. JPEGs report none (no decoder here).
+ */
+export function logoColors(bytes: Uint8Array, ext: string, max = 5): string[] {
+  const hex = (r: number, g: number, b: number) => `#${[r, g, b].map((x) => Math.round(x).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
+  if (ext === 'svg') {
+    const counts = new Map<string, number>();
+    for (const m of new TextDecoder().decode(bytes).matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)) {
+      const h = m[1]!.length === 3 ? [...m[1]!].map((c) => c + c).join('') : m[1]!;
+      const k = `#${h.toUpperCase()}`;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return [...counts].sort((a, b) => b[1] - a[1]).slice(0, max).map(([k]) => k);
+  }
+  if (ext !== 'png') return [];
+  const png = PNG.sync.read(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+  const buckets = new Map<number, { n: number; r: number; g: number; b: number }>();
+  const step = Math.max(1, Math.floor((png.width * png.height) / 200_000));
+  for (let i = 0; i < png.width * png.height; i += step) {
+    const o = i * 4;
+    if (png.data[o + 3]! < 200) continue;
+    const [r, g, b] = [png.data[o]!, png.data[o + 1]!, png.data[o + 2]!];
+    const k = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+    const e = buckets.get(k) ?? { n: 0, r: 0, g: 0, b: 0 };
+    e.n++;
+    e.r += r;
+    e.g += g;
+    e.b += b;
+    buckets.set(k, e);
+  }
+  return [...buckets.values()]
+    .sort((a, b) => b.n - a.n)
+    .slice(0, max)
+    .map((e) => hex(e.r / e.n, e.g / e.n, e.b / e.n));
+}
+
 export async function reelInput(o: {
   spec: JobSpec;
   sheet: CueSheet;
@@ -64,9 +94,10 @@ export async function reelInput(o: {
   const { spec, styles } = o;
   if (!styles.job) throw new Error('reelInput: the job style did not resolve');
 
+  const fonts = await resolveFonts(specFontIds(spec), o.specDir);
   const font = (id: string): FontRef => {
-    const f = fontEntry(id);
-    return { family: f.family, url: fontUrl(id), weights: f.weights };
+    const f = fonts[id]!;
+    return { family: f.family, url: fontUrl(f), weights: f.weights };
   };
 
   const logos: LogoRef[] = [];

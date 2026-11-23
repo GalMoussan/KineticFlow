@@ -2,9 +2,12 @@
   "name": "@reel/cli",
   "private": true,
   "type": "module",
-  "bin": { "reelgen": "./src/main.ts" },
+  "bin": {
+    "reelgen": "./src/main.ts"
+  },
   "dependencies": {
     "@reel/core": "workspace:*",
-    "@reel/render": "workspace:*"
+    "@reel/render": "workspace:*",
+    "@reel/server": "workspace:*"
   }
 }
