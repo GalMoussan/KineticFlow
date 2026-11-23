@@ -1,5 +1,5 @@
 /**
- * Render queue: FIFO, one job at a time (each job already drives 4 GPU workers). Each job runs `renderJob` with an
+ * Render queue: FIFO, one job at a time (each job already drives 8 GPU workers). Each job runs `renderJob` with an
  * `emit` that persists progress/QA/outputs, fans every `RenderEvent` out to SSE subscribers and prints the CLI's
  * terminal lines. Cancel aborts the job at the next frame.
  */

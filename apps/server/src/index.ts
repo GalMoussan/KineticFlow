@@ -8,6 +8,7 @@ import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
 import type { RenderStreamEvent } from '@reel/api';
+import { cacheBudgetBytes, pruneCaches } from '@reel/render';
 import { createApp } from './app.ts';
 import { loadDotEnv } from './llm/index.ts';
 import { paths as defaultPaths, REPO, type Paths } from './paths.ts';
@@ -15,7 +16,7 @@ import { PreviewService } from './preview.ts';
 import { Hub, RenderQueue } from './renders.ts';
 import { StillService } from './stills.ts';
 import { Store } from './store.ts';
-import { bold, dim, green, red } from './term.ts';
+import { bold, dim, green, mb, red } from './term.ts';
 
 export { createApp } from './app.ts';
 export { Store, MIGRATIONS } from './store.ts';
@@ -140,6 +141,11 @@ export async function serveApp(o: { port?: number; dev?: boolean; open?: boolean
     server = await startServer({ port: o.port ?? (await freePort(5173)) });
     url = server.url;
   }
+  const pruned = await pruneCaches({ minAgeMs: 0 });
+  console.log(
+    dim(`cache ${mb(pruned.left)} of ${mb(cacheBudgetBytes())} budget`) +
+      (pruned.removed ? dim(` · pruned ${pruned.removed} old entries (${mb(pruned.freed)})`) : ''),
+  );
   console.log(`\n  ${bold('Reel Studio')} ${green('→')} ${bold(url)}\n`);
   if (o.open !== false) spawn('open', [url], { stdio: 'ignore', detached: true }).unref();
   const done = Promise.withResolvers<void>();

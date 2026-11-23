@@ -222,6 +222,12 @@ export function renderPrinter(o: { live?: boolean; prefix?: string } = {}): Rend
         );
         break;
       }
+      case 'cache':
+        screen.line(
+          `cache ${green('✓')} ${mb(e.left)} of ${mb(e.budget)} budget` +
+            (e.removed ? ` · pruned ${e.removed} old entr${e.removed === 1 ? 'y' : 'ies'} (${mb(e.freed)})` : ''),
+        );
+        break;
       case 'done':
         screen.line(`done ${green('✓')} ${secs(e.ms)} · ${rel(e.receipt)}`);
         break;

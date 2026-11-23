@@ -193,10 +193,15 @@ function FontPicker() {
   );
 }
 
-const QUALITY_TIME: Record<'draft' | 'standard' | 'final', [number, number]> = { draft: [0.4, 0.8], standard: [0.7, 1.6], final: [8, 15] };
+/**
+ * Render seconds per video-second per format (low, high), plus a fixed preflight/audio/export cost. Measured in M5
+ * on an M1 Pro with 8 workers: dilemma 26 s × 2 formats, standard 25 s cold, final 9:16 196 s + 1:1 125 s.
+ */
+const QUALITY_TIME: Record<'draft' | 'standard' | 'final', [number, number]> = { draft: [0.3, 1], standard: [0.35, 1.2], final: [6, 12] };
+const FIXED_SECONDS = 8;
 
 export function estimate(q: 'draft' | 'standard' | 'final', duration: number, formats: number): string {
-  const [lo, hi] = QUALITY_TIME[q].map((k) => k * duration * formats) as [number, number];
+  const [lo, hi] = QUALITY_TIME[q].map((k) => FIXED_SECONDS + k * duration * formats) as [number, number];
   const f = (x: number) => (x >= 90 ? `${Math.round(x / 60)} min` : `${Math.max(5, Math.round(x / 5) * 5)} s`);
   return `≈ ${f(lo)}–${f(hi)}`;
 }

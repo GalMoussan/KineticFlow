@@ -8,13 +8,14 @@ import { access, mkdir, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { StyleStill } from '@reel/api';
 import { format as formatOf, type FormatId } from '@reel/core';
-import { launchBrowser, ReelTab, type Browser } from '@reel/render';
+import { launchBrowser, ReelTab, touch, type Browser } from '@reel/render';
 import { RECIPES } from '@reel/styles';
 import { HttpError } from './http.ts';
 import type { PreviewService } from './preview.ts';
 
 const SLOTS = 3;
-const exists = (p: string) => access(p).then(() => true, () => false);
+/** Cache hit check that also marks the entry as recently used for the LRU (`pruneCaches`). */
+const exists = (p: string) => access(p).then(async () => (await touch(p), true), () => false);
 
 /** The draft re-styled as one catalog style: its default palette, no per-section looks, no music (visual grid). */
 export function restyle(raw: unknown, style: string): Record<string, unknown> {

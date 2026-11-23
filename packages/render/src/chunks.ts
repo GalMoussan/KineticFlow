@@ -7,8 +7,14 @@ import { GPU_ARGS, launchBrowser, ReelTab } from './capture.ts';
 import { captureTimes, ChunkEncoder, ffmpegArgs, type QualitySettings } from './encode.ts';
 import { REPO, sha256, stableJson } from './util.ts';
 
-/** Fixed chunk length: stable boundaries keep cached and fresh chunks in the same render order (M0a). */
-export const CHUNK_SECONDS = 10;
+/**
+ * Fixed chunk length: stable boundaries keep cached and fresh chunks in the same render order (M0a). Capture is
+ * latency-bound, not CPU-bound, so short chunks over 8 workers beat long ones over 4 (M5, dilemma 9:16 final:
+ * 10 s × 4 workers 424 s, 4 s × 4 345 s, 4 s × 8 196 s, 2 s × 12 249 s), and a date edit re-renders less.
+ */
+export const CHUNK_SECONDS = 4;
+/** Default browser workers per job (see CHUNK_SECONDS). */
+export const WORKERS = 8;
 export const CHUNK_DIR = join(REPO, 'data/cache/chunks');
 
 export interface ChunkPlan {

@@ -4,7 +4,20 @@ import { readdir, rm, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { FONTS, FormatId } from '@reel/core';
-import { CHUNK_DIR, DATA_DIR, JOBS_DIR, ensureFonts, renderJob, setupAnalysis, setupSamples, type Preset } from '@reel/render';
+import {
+  cacheBudgetBytes,
+  cacheUsage,
+  CACHE_DIRS,
+  DATA_DIR,
+  JOBS_DIR,
+  OUT_DIR,
+  ensureFonts,
+  pruneCaches,
+  renderJob,
+  setupAnalysis,
+  setupSamples,
+  type Preset,
+} from '@reel/render';
 import { serveApp } from '@reel/server';
 import { dim, green, mb, red, rel, renderPrinter, secs } from '@reel/server/term';
 
@@ -25,13 +38,18 @@ Usage:
                               samples   CC0 audio samples → assets/samples/ (SHA-256 checked)
                               analysis  beat-tracking sidecar (uv sync in sidecar/, ~720 MB) and the
                                         Beat This! final0 model → assets/models/ (81 MB, SHA-256 checked)
-  reelgen clean [--cache]   delete job temp files (data/jobs); --cache also empties the chunk cache
+  reelgen clean [--cache] [--outputs <days>]
+                            delete temp files (data/jobs, data/checks) and prune the caches (rendered
+                            chunks, preview audio/bundles, style stills) to the REEL_CACHE_MB budget
+                            (default 2048), least recently used first
+                              --cache    empty every cache instead
+                              --outputs  also delete output folders in out/ untouched for <days> days
   reelgen --help
 
 render options:
   --quality   override the spec's quality preset
   --formats   comma-separated subset/override of the spec's formats
-  --workers   parallel browsers (default 4)
+  --workers   parallel browsers (default 8)
   --no-cache  re-render every chunk (fresh results still refresh the cache)
   --out       output root (default out/); files go to <out>/<job-id>/
 `;
@@ -99,15 +117,57 @@ async function dirSize(path: string): Promise<number> {
   }
 }
 
+async function newestMtime(path: string): Promise<number> {
+  let t = (await stat(path)).mtimeMs;
+  for (const e of await readdir(path, { recursive: true, withFileTypes: true })) {
+    if (e.isFile()) t = Math.max(t, (await stat(join(e.parentPath, e.name))).mtimeMs);
+  }
+  return t;
+}
+
 async function clean(args: string[]): Promise<void> {
-  const { values } = parseArgs({ args, options: { cache: { type: 'boolean', default: false } } });
-  const targets = [JOBS_DIR, join(DATA_DIR, 'fixture-out'), ...(values.cache ? [CHUNK_DIR] : [])];
-  for (const dir of targets) {
+  const { values } = parseArgs({
+    args,
+    options: { cache: { type: 'boolean', default: false }, outputs: { type: 'string' } },
+  });
+  const days = values.outputs === undefined ? undefined : Number(values.outputs);
+  if (days !== undefined && !(Number.isFinite(days) && days >= 0)) {
+    throw new UsageError(`--outputs needs a number of days (got "${values.outputs}")`);
+  }
+  for (const dir of [JOBS_DIR, join(DATA_DIR, 'checks'), join(DATA_DIR, 'fixture-out')]) {
     const bytes = await dirSize(dir);
     await rm(dir, { recursive: true, force: true });
-    console.log(`removed ${rel(dir)} (${mb(bytes)})`);
+    if (bytes) console.log(`removed ${rel(dir)} (${mb(bytes)})`);
   }
-  if (!values.cache) console.log(dim(`chunk cache kept: ${rel(CHUNK_DIR)} (${mb(await dirSize(CHUNK_DIR))}); use --cache to empty it`));
+  if (values.cache) {
+    for (const dir of CACHE_DIRS) {
+      const bytes = await dirSize(dir);
+      await rm(dir, { recursive: true, force: true });
+      console.log(`removed ${rel(dir)} (${mb(bytes)})`);
+    }
+  } else {
+    const p = await pruneCaches({ minAgeMs: 0 });
+    console.log(
+      `cache ${mb(p.left)} of ${mb(cacheBudgetBytes())} budget (REEL_CACHE_MB)` +
+        (p.removed ? ` · pruned ${p.removed} least recently used entries (${mb(p.freed)})` : ''),
+    );
+    for (const [dir, bytes] of Object.entries((await cacheUsage()).byDir)) console.log(dim(`  ${rel(dir).padEnd(22)} ${mb(bytes)}`));
+    console.log(dim('use --cache to empty every cache'));
+  }
+  if (days !== undefined) {
+    const cutoff = Date.now() - days * 86_400_000;
+    let n = 0;
+    let freed = 0;
+    for (const e of await readdir(OUT_DIR, { withFileTypes: true }).catch(() => [])) {
+      if (!e.isDirectory()) continue;
+      const dir = join(OUT_DIR, e.name);
+      if ((await newestMtime(dir)) > cutoff) continue;
+      freed += await dirSize(dir);
+      await rm(dir, { recursive: true, force: true });
+      n++;
+    }
+    console.log(`removed ${n} output folder(s) in ${rel(OUT_DIR)} older than ${days} day(s) (${mb(freed)})`);
+  }
 }
 
 const SETUP_TARGETS = ['fonts', 'samples', 'analysis'] as const;

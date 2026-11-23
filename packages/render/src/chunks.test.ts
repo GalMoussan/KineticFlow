@@ -4,15 +4,19 @@ import { format } from '@reel/core';
 import { chunkKey, chunkWindow, planChunks, type KeyInput } from './chunks.ts';
 import { captureTimes, resolveQuality } from './encode.ts';
 
-test('chunk plan: fixed 10 s chunks at the output fps, last one shorter', () => {
+test('chunk plan: fixed 4 s chunks at the output fps, last one shorter', () => {
   assert.deepEqual(planChunks(780, 30), [
-    { index: 0, f0: 0, f1: 300 },
-    { index: 1, f0: 300, f1: 600 },
-    { index: 2, f0: 600, f1: 780 },
+    { index: 0, f0: 0, f1: 120 },
+    { index: 1, f0: 120, f1: 240 },
+    { index: 2, f0: 240, f1: 360 },
+    { index: 3, f0: 360, f1: 480 },
+    { index: 4, f0: 480, f1: 600 },
+    { index: 5, f0: 600, f1: 720 },
+    { index: 6, f0: 720, f1: 780 },
   ]);
-  assert.deepEqual(planChunks(1560, 60).map((c) => [c.f0, c.f1]), [[0, 600], [600, 1200], [1200, 1560]]);
-  assert.deepEqual(planChunks(600, 30).map((c) => [c.f0, c.f1]), [[0, 300], [300, 600]]);
-  assert.deepEqual(planChunks(180, 30), [{ index: 0, f0: 0, f1: 180 }]);
+  assert.deepEqual(planChunks(600, 60).map((c) => [c.f0, c.f1]), [[0, 240], [240, 480], [480, 600]]);
+  assert.deepEqual(planChunks(240, 30).map((c) => [c.f0, c.f1]), [[0, 120], [120, 240]]);
+  assert.deepEqual(planChunks(90, 30), [{ index: 0, f0: 0, f1: 90 }]);
 });
 
 test('chunk plan covers every frame exactly once', () => {

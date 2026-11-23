@@ -315,8 +315,10 @@ every format.
   allowed). Any off-host request is aborted.
 - **Inputs:** `window.REEL` is injected via `addInitScript`, so no wrapper HTML files. `Math.random` is seeded per frame
   (kept from OpenKatana).
-- **Pool:** 4 browsers (`chrome-headless-shell`), each rendering one chunk in order. Chunk = 300 frames at 30 fps
-  (10 s), with fixed boundaries. M0: one page survives ≥ 780 frames when frames are streamed.
+- **Pool:** 8 browsers (`chrome-headless-shell`), each rendering one chunk in order. Chunk = 4 s (120 frames at
+  30 fps), with fixed boundaries. M0: one page survives ≥ 780 frames when frames are streamed. M5: throughput
+  scales with concurrent tabs up to ~8, so short chunks over more workers win: dilemma 9:16 final takes 424 s at
+  10 s × 4 workers, 345 s at 4 s × 4, **196 s at 4 s × 8**, 249 s at 2 s × 12.
 - **GPU** is on: `--use-angle=metal --enable-gpu-rasterization --ignore-gpu-blocklist` (M0a: Metal WebGL2 on M1 Pro).
 - **Determinism**, replacing OpenKatana's forward/reverse hash check (M0a: on GPU, render order leaves ≤ 2/255
   residue):
@@ -378,9 +380,17 @@ every format.
   `tmix=frames=S, select='eq(mod(n,S),S-1)', setpts=N/(fps*TB)`. Verified in M0b: exact frame counts and visible
   directional blur (`spikes/capture/out/motion-blur-sheet.png`).
 - **Supersampling:** capture `clip.scale = 2`, then `scale=W:H:flags=lanczos`.
-- **Measured cost (M0):** final ≈ 12–15× the wall time of standard (35–44 s per video-second on one worker).
-  - Full 26 s flat reel at final on 4 workers: **201 s**. Heavy styles: ~4–6 min [INFERENCE].
-  - A "fast final" with 4 sub-frames saves 32 %.
+- **Measured cost (M5, 8 workers, 4 s chunks):** dilemma 26 s, two formats, cold.
+
+  | Preset | Wall time | Output 9:16 |
+  |---|---|---|
+  | standard | 25 s (was 33 s at 10 s × 4) | 30 fps, 780 frames |
+  | final | 9:16 196 s + 1:1 125 s | 60 fps, 1560 frames, 23 MB |
+
+  - Neon at final: see M5 row.
+  - Motion blur is visible as directional blur on the fast camera moves (`out/dev/final-motion-strip.png`); very
+    fast moves show 6 discrete copies.
+  - A "fast final" with 4 sub-frames would save ~32 % (M0); not added.
   - Final is opt-in per export, and its chunks are cached.
 
 ### 8.4 Cache and cleanup
@@ -390,9 +400,17 @@ every format.
   affect pixels in that window: block geometry, text, colours, timings, camera keys, kicks.
   - This replaces the `globalLayout` flag: a world-canvas style includes neighbour geometry only where it can be on
     screen.
-  - It makes a date-only edit re-render only the chunks that show the date.
-- Chunk MP4s are small. Disk per job ≈ final MP4s + chunk cache (tens of MB). `reelgen clean` prunes the cache by
-  LRU/age.
+  - It makes a date-only edit re-render only the chunks that show the date (M5: 3 of 7 per format, 8 s).
+- **Disk:** no frame files; a job leaves only its chunks in the cache (dilemma, both formats: standard 21 MB,
+  final 36 MB) and an empty `data/jobs/`.
+- **LRU budget (`packages/render/src/cache.ts`):** the chunk cache, preview audio, preview bundles and style stills
+  share one budget, `REEL_CACHE_MB` (default 2048).
+  - Cache hits `touch` the file, so mtime is recency.
+  - Every job prunes the least recently used entries at its end. The job's own chunks and anything used in the
+    last 10 minutes (open preview sessions) are never pruned.
+  - `reelgen serve` prunes at start.
+  - `reelgen clean` deletes temp dirs and prunes; `--cache` empties every cache; `--outputs <days>` deletes `out/`
+    folders untouched for that many days.
 
 ### 8.5 Terminal UX
 `reelgen serve` (UI + worker) and `reelgen render job.json` (headless) print the spec's structured lines: spec, audio,
@@ -466,7 +484,7 @@ New:
 | M2 | ✅ **Done** (2026-11-23). Trait host + resolver; kinetic-quote, swiss-title-reveal and neon-psychedelic as recipes over 29 traits; per-section styles and palettes; blend; override | `dev/matrix.ts`: 3 styles × 5 test specs (event he/en, mixed he/en + niqqud, list, stats) × 4 formats, 15/15 with no QA failure. `examples/m2/`: mixed-sections, 3 blends and 2 overrides render with QA passing. Date-only edit still re-renders only chunk 2 |
 | M3 | ✅ **Done** (2026-11-23). DSP engine + CC0 sampler + 4 presets; SFX from page sound cues; own-track source with beat analysis sidecar; envelopes + `audio-reactive` trait + `bass-pulse` style | `examples/m3/track-he.json`: 27/27 landings on detected beats (0 ms at the cue sheet; re-detected on the delivered MP4: max 20 ms, mean 4 ms, all within 1 frame). Node == Chromium SHA-256 for all presets and SFX. Matrix 20/20 (4 styles × 5 specs × 4 formats) |
 | M4 | ✅ **Done** (2026-11-24). `reelgen serve` → local studio: paste-and-split (Gemini/Claude or offline rules), logo background removal + palette extraction, brand kits, font upload, style grid from your own content, mixer, live preview with music + SFX, check, render queue with SSE | `apps/web/e2e/happy-path.ts` passes against the real server in 36 s: pasted Hebrew text + two dropped logos → split → style/palette/music → preview plays with audio → check → draft 9:16 MP4 plays; no files touched. Preview text edit 1.3 s, palette edit 3 ms |
-| M5 | Quality presets (60 fps, motion blur, 2× SS), cache, cleanup, multi-format | Final preset renders; disk after a job < 100 MB excluding outputs |
+| M5 | ✅ **Done** (2026-11-24). Final preset end to end (60 fps, 6-sample motion blur, 2× SS); 4 s chunks over 8 workers; one LRU budget for all caches (`REEL_CACHE_MB`, pruned after every job and at `serve` start); `reelgen clean [--cache] [--outputs <days>]`; calibrated render-time estimates in the UI | Dilemma final, both formats: 60 fps, 1560 frames, all QA gates pass. Cold 9:16 final 196 s (was 424 s), neon 239 s; standard both formats 25 s (was 33 s). Disk left by a job, excluding outputs: 36 MB final, 21 MB standard, `data/jobs/` empty. Date-only edit re-renders 3 of 7 chunks. Web e2e still passes (36 s) |
 | M6 | **R1 catalog**: styles #1–#25 | Each passes QA on the test-spec set in its formats |
 | M7 | Catalog to 54, ≥10 music presets, ACE-Step add-on (`reelgen setup music-ai`) | Same QA bar |
 | M8 (opt.) | A4 flier, alpha (ProRes 4444) / GIF outputs | |
@@ -484,7 +502,7 @@ New:
 | A style under-reports its `fingerprint`, so a stale chunk is reused | Fingerprint covers geometry of every block that can be on screen in the window; `--no-cache` escape hatch; M2: spot-check that re-rendering a cached chunk's first frame matches its stored hash |
 | troika: niqqud mirrored, worker/CDN hangs, no variable axes (confirmed M0c) | Patched build + `useWorker:false` + cmap preflight + static instances; Canvas2D fallback. Re-verify the patch on every troika upgrade, or upstream it |
 | Morphs between different scripts or letter counts look blobby (M0d) | Compat rule limits `morph-from-previous`; crossfade fallback |
-| Final-quality render time | Measured 201 s for a flat 26 s reel on 4 workers (M0a); heavy styles about 4–6 min [INFERENCE]. Cache, opt-in final, "fast final" with 4 sub-frames |
+| Final-quality render time | M5: 26 s reel, one format, 8 workers: 196 s flat, 239 s neon. Cache, opt-in final; "fast final" with 4 sub-frames (−32 %) if needed |
 | ACE-Step install size and quality | Optional add-on; output goes through the same beat analysis |
 
 ## 14. Open items for you

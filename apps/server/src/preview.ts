@@ -21,6 +21,7 @@ import {
   resolveQuality,
   SAMPLE_RATE,
   specFontIds,
+  touch,
   type Bundle,
   type MusicStage,
 } from '@reel/render';
@@ -59,7 +60,8 @@ export class Lru<K, V> {
 }
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
-const exists = (p: string) => access(p).then(() => true, () => false);
+/** Cache hit check that also marks the entry as recently used for the LRU (`pruneCaches`). */
+const exists = (p: string) => access(p).then(async () => (await touch(p), true), () => false);
 
 interface MusicEntry {
   key: string;

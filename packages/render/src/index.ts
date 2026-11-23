@@ -24,7 +24,8 @@ import { buildBundle, specFontIds, type Bundle } from './bundle.ts';
 import { resolveFonts } from './fonts.ts';
 import type { Browser } from 'playwright';
 import { launchBrowser, ReelTab } from './capture.ts';
-import { chunkKey, chunkPath, chunkWindow, planChunks, renderChunks, type ChunkPlan, type ChunkTask } from './chunks.ts';
+import { cacheBudgetBytes, pruneCaches, touch } from './cache.ts';
+import { chunkKey, chunkPath, chunkWindow, planChunks, renderChunks, WORKERS, type ChunkPlan, type ChunkTask } from './chunks.ts';
 import { resolveQuality, type Preset, type QualitySettings } from './encode.ts';
 import {
   gateAudio,
@@ -51,8 +52,9 @@ import { exec, REPO, sha256, writeAtomic } from './util.ts';
 
 export { ensureFonts, findFontFile, FONT_DIR, missingChars, readFont, resolveFonts } from './fonts.ts';
 export type { FontInfo, SpecFont } from './fonts.ts';
-export { CHUNK_DIR } from './chunks.ts';
 export { checkSamples, setupSamples, nodeSampleBank, SetupError, SAMPLE_DIR } from './samples.ts';
+export { cacheBudgetBytes, cacheUsage, CACHE_DIRS, DEFAULT_CACHE_MB, pruneCaches, touch } from './cache.ts';
+export type { CacheUsage, PruneResult } from './cache.ts';
 export { setupAnalysis, analyzeTrack, ANALYSIS_DIR, MODEL_PATH } from './analysis.ts';
 export { prepareMusic, finishAudio, mixStems, stereoSha, SAMPLE_RATE } from './audio.ts';
 export type { MusicInfo, MusicStage, AudioResult } from './audio.ts';
@@ -129,6 +131,8 @@ export type RenderEvent =
   | { type: 'chunk-done'; format: FormatId; index: number; ms: number }
   | { type: 'rendered'; rendered: number; cached: number; ms: number }
   | { type: 'export'; exported: Exported; ms: number }
+  /** LRU pruning of all caches after the job (`REEL_CACHE_MB` budget). */
+  | { type: 'cache'; freed: number; removed: number; left: number; budget: number }
   | { type: 'done'; receipt: string; outDir: string; ms: number };
 
 /** A gate at level `fail`: the job stops; `qa.json` has been written. */
@@ -404,7 +408,7 @@ export async function renderJobWith(
     );
     const byTask = new Map(tasks.map((task) => [task, plans.find((p) => p.input.format.id === task.format)!.chunks[task.chunk.index]!]));
     await renderChunks(tasks, {
-      workers: opts.workers ?? 4,
+      workers: opts.workers ?? WORKERS,
       origin: ctx.origin,
       entry: bundle.entry,
       quality: q,
@@ -526,6 +530,8 @@ export async function renderJobWith(
     const receiptPath = join(outDir, 'receipt.json');
     await writeAtomic(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
     await rm(jobDir, { recursive: true, force: true });
+    const pruned = await pruneCaches({ keep: plans.flatMap((p) => p.chunks.map((c) => chunkPath(c.key))) });
+    emit({ type: 'cache', freed: pruned.freed, removed: pruned.removed, left: pruned.left, budget: cacheBudgetBytes() });
     emit({ type: 'done', receipt: receiptPath, outDir, ms: timings.total });
     return receipt;
   } finally {
@@ -577,6 +583,7 @@ async function preflight(ctx: Ctx, browser: Browser, input: ReelInput): Promise<
         look: { palette: input.palette, fonts: input.fonts, params: input.params },
       });
       const cached = ctx.cache && (await stat(chunkPath(key)).then((s) => s.size > 0, () => false));
+      if (cached) await touch(chunkPath(key));
       chunks.push({ ...c, key, cached });
     }
     const soundCues = await tab.soundCues();
