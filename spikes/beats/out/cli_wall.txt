@@ -1,0 +1,9 @@
+cpu audio/reel11.wav run1 wall=2.0s :: decode 0.095s  beats[final0/cpu] 1.258s  envelopes 0.163s  (audio 26.00s)
+cpu audio/reel11.wav run2 wall=1.96s :: decode 0.088s  beats[final0/cpu] 1.261s  envelopes 0.161s  (audio 26.00s)
+cpu audio/it_had_to_be_you_1924.oga run1 wall=6.09s :: decode 0.878s  beats[final0/cpu] 3.492s  envelopes 1.216s  (audio 179.55s)
+cpu audio/it_had_to_be_you_1924.oga run2 wall=6.4s :: decode 0.372s  beats[final0/cpu] 4.319s  envelopes 1.218s  (audio 179.55s)
+mps audio/reel11.wav run1 wall=2.19s :: decode 0.088s  beats[final0/mps] 1.443s  envelopes 0.171s  (audio 26.00s)
+mps audio/reel11.wav run2 wall=2.15s :: decode 0.087s  beats[final0/mps] 1.414s  envelopes 0.188s  (audio 26.00s)
+mps audio/it_had_to_be_you_1924.oga run1 wall=4.71s :: decode 0.380s  beats[final0/mps] 2.058s  envelopes 1.657s  (audio 179.55s)
+mps audio/it_had_to_be_you_1924.oga run2 wall=4.24s :: decode 0.393s  beats[final0/mps] 2.014s  envelopes 1.315s  (audio 179.55s)
+import torch+beat_this 0.67 s

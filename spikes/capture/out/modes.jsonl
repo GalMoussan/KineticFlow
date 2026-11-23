@@ -1,0 +1,12 @@
+{"html":"reel12a.html","mode":"shell-nogpu","shot":"pw-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":493,"renderMsPerCapture":14.3,"shotMsPerCapture":45.5,"loopFps":16.58,"totalMs":2906,"avgKB":44}
+{"html":"reel12a.html","mode":"shell","shot":"pw-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":250,"renderMsPerCapture":13,"shotMsPerCapture":107.1,"loopFps":8.29,"totalMs":5076,"avgKB":38}
+{"html":"reel12a.html","mode":"shell","shot":"cdp-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":201,"renderMsPerCapture":20,"shotMsPerCapture":42,"loopFps":16.01,"totalMs":2700,"avgKB":72}
+{"html":"reel12a.html","mode":"shell","shot":"cdp-jpeg","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":184,"renderMsPerCapture":22.6,"shotMsPerCapture":27.7,"loopFps":19.71,"totalMs":2213,"avgKB":57}
+{"html":"reel9a.html","mode":"shell-nogpu","shot":"pw-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":265,"renderMsPerCapture":40.3,"shotMsPerCapture":495,"loopFps":1.87,"totalMs":21697,"avgKB":2474}
+{"html":"reel9a.html","mode":"shell","shot":"pw-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":244,"renderMsPerCapture":12.6,"shotMsPerCapture":525.7,"loopFps":1.86,"totalMs":21796,"avgKB":2323}
+{"html":"reel9a.html","mode":"shell","shot":"cdp-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":263,"renderMsPerCapture":10.6,"shotMsPerCapture":90.4,"loopFps":9.85,"totalMs":4325,"avgKB":2795}
+{"html":"reel9a.html","mode":"shell","shot":"cdp-jpeg","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":259,"renderMsPerCapture":17.3,"shotMsPerCapture":33.1,"loopFps":19.66,"totalMs":2293,"avgKB":320}
+{"html":"webgl.html","mode":"shell-nogpu","shot":"pw-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":275,"renderMsPerCapture":23.4,"shotMsPerCapture":291.2,"loopFps":3.17,"totalMs":12876,"avgKB":847}
+{"html":"webgl.html","mode":"shell","shot":"pw-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":209,"renderMsPerCapture":10,"shotMsPerCapture":285.8,"loopFps":3.38,"totalMs":12059,"avgKB":865}
+{"html":"webgl.html","mode":"shell","shot":"cdp-png","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":210,"renderMsPerCapture":26.7,"shotMsPerCapture":56.8,"loopFps":11.9,"totalMs":3570,"avgKB":1323}
+{"html":"webgl.html","mode":"shell","shot":"cdp-jpeg","dpr":1,"sub":1,"frames":40,"captures":40,"startupMs":208,"renderMsPerCapture":21.1,"shotMsPerCapture":29.2,"loopFps":19.68,"totalMs":2240,"avgKB":116}

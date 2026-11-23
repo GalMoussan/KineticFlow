@@ -1,0 +1,607 @@
+{
+ "pure": {
+  "niqqud": {
+   "dir": "rtl",
+   "levels": "11111111111111",
+   "visual": "עוֹלָם שָׁלוֹם",
+   "tree": "R1[שָׁלוֹם ␣ עוֹלָם]"
+  },
+  "niqqud2": {
+   "dir": "rtl",
+   "levels": "1111111111111111",
+   "visual": "שַׂר בְּרֵאשִׁית",
+   "tree": "R1[בְּרֵאשִׁית ␣ שַׂר]"
+  },
+  "geresh": {
+   "dir": "rtl",
+   "levels": "111111111111111",
+   "visual": "וג׳אם דילמה קפה",
+   "tree": "R1[קפה ␣ דילמה ␣ וג׳אם]"
+  },
+  "finals": {
+   "dir": "rtl",
+   "levels": "11111111111111111111111",
+   "visual": "החלום לגן בדרך הקיץ סוף",
+   "tree": "R1[סוף ␣ הקיץ ␣ בדרך ␣ לגן ␣ החלום]"
+  },
+  "mixed": {
+   "dir": "rtl",
+   "levels": "1111111111122222222222222222222222222222222",
+   "visual": "Beit HaChan · 19:30 · 01.12.2026 · החאן בית",
+   "tree": "R1[בית ␣ החאן ␣ · ␣ L2[Beit ␣ HaChan ␣ · ␣ 19 : 30 ␣ · ␣ 01.12.2026]]"
+  },
+  "mirror": {
+   "dir": "rtl",
+   "levels": "1111111112221",
+   "visual": "]A/B[ )?שאלה(",
+   "tree": "R1[( שאלה ? ) ␣ [ L2[A / B] ]]"
+  },
+  "english": {
+   "dir": "ltr",
+   "levels": "000000000000000000",
+   "visual": "Let's talk tonight",
+   "tree": "L0[Let's ␣ talk ␣ tonight]"
+  },
+  "nested": {
+   "dir": "ltr",
+   "levels": "000000001111111112222200000000",
+   "visual": "Meet at 19:30 החאן בית tonight",
+   "tree": "L0[Meet ␣ at ␣ R1[בית ␣ החאן ␣ L2[19 : 30]] ␣ tonight]"
+  },
+  "numparen": {
+   "dir": "rtl",
+   "levels": "11111122222111111111222",
+   "visual": "45₪ והמחיר )19:30( השעה",
+   "tree": "R1[השעה ␣ ( L2[19 : 30] ) ␣ והמחיר ␣ L2[45 ₪]]"
+  },
+  "emphasis": {
+   "dir": "rtl",
+   "levels": "111111111111111",
+   "visual": "זה על נדבר הערב",
+   "tree": "R1[הערב ␣ נדבר ␣ על ␣ זה]"
+  }
+ },
+ "usPerLine": 15.130261449999999,
+ "results": [
+  {
+   "line": "niqqud",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 5.22,
+     "bboxShift": 2
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 5.22,
+     "bboxShift": 2
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 5.22,
+     "bboxShift": 2
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "niqqud",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 1.03,
+     "bboxShift": 0
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 1.03,
+     "bboxShift": 0
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 1.03,
+     "bboxShift": 0
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "niqqud2",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0.76,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "niqqud2",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 0.75,
+     "bboxShift": 0
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 0.75,
+     "bboxShift": 0
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 0.75,
+     "bboxShift": 0
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0.75,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "geresh",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 35.76,
+     "bboxShift": 4
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 35.76,
+     "bboxShift": 4
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 35.76,
+     "bboxShift": 4
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0.38,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "geresh",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 23.44,
+     "bboxShift": 2
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 23.44,
+     "bboxShift": 2
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 23.44,
+     "bboxShift": 2
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0.38,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "finals",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 66.38,
+     "bboxShift": 14
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 66.38,
+     "bboxShift": 14
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 66.38,
+     "bboxShift": 14
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "finals",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 58.27,
+     "bboxShift": 8
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 58.27,
+     "bboxShift": 8
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 58.27,
+     "bboxShift": 8
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "mixed",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 32,
+     "diffPctInk": 72.51,
+     "bboxShift": 10
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 47.01,
+     "bboxShift": 7
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 47.01,
+     "bboxShift": 7
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "mixed",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 12,
+     "diffPctInk": 71.27,
+     "bboxShift": 2
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 1.22,
+     "bboxShift": 0
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 1.22,
+     "bboxShift": 0
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "mirror",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 2,
+     "diffPctInk": 38.85,
+     "bboxShift": 1
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 20.84,
+     "bboxShift": 1
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 20.84,
+     "bboxShift": 1
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "mirror",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 2,
+     "diffPctInk": 34.28,
+     "bboxShift": 3
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 14.02,
+     "bboxShift": 3
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 14.02,
+     "bboxShift": 3
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0.17,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "english",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 46.77,
+     "bboxShift": 6
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 46.77,
+     "bboxShift": 6
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 46.77,
+     "bboxShift": 6
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "english",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 15.69,
+     "bboxShift": 2
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 15.69,
+     "bboxShift": 2
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 15.69,
+     "bboxShift": 2
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0.15,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "nested",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 14,
+     "diffPctInk": 56.3,
+     "bboxShift": 2
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 16.05,
+     "bboxShift": 2
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 16.05,
+     "bboxShift": 2
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "nested",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 6,
+     "diffPctInk": 51.73,
+     "bboxShift": 0
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 0.93,
+     "bboxShift": 0
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 0.93,
+     "bboxShift": 0
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0.33,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "numparen",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 6,
+     "diffPctInk": 45.84,
+     "bboxShift": 1
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 8.97,
+     "bboxShift": 2
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 8.97,
+     "bboxShift": 2
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "numparen",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 4,
+     "diffPctInk": 47.8,
+     "bboxShift": 1
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 8.48,
+     "bboxShift": 2
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 8.48,
+     "bboxShift": 2
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "emphasis",
+   "gran": "grapheme",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 50.56,
+     "bboxShift": 13
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 50.56,
+     "bboxShift": 13
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 50.56,
+     "bboxShift": 13
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  },
+  {
+   "line": "emphasis",
+   "gran": "word",
+   "nativeVsBidiMismatches": 0,
+   "strategies": {
+    "ib": {
+     "orderErrors": 0,
+     "diffPctInk": 8.82,
+     "bboxShift": 4
+    },
+    "iso": {
+     "orderErrors": 0,
+     "diffPctInk": 8.82,
+     "bboxShift": 4
+    },
+    "visual": {
+     "orderErrors": 0,
+     "diffPctInk": 8.82,
+     "bboxShift": 4
+    },
+    "abs": {
+     "orderErrors": 0,
+     "diffPctInk": 0,
+     "bboxShift": 0
+    }
+   }
+  }
+ ]
+}

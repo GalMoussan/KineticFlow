@@ -1,0 +1,67 @@
+[
+ {
+  "word": "שָׁלוֹם",
+  "glyphs": 7,
+  "nodeFullUs": 110.7,
+  "nodeShapeOnlyUs": 8,
+  "deterministic": true,
+  "sameStructure400_900": true,
+  "lerpVsReshapeMaxErrPx650": 0.2,
+  "widthPx400_650_900": "445.4/469.4/493.6",
+  "chromeFullUs": 95.7,
+  "chromeCssStyleLayoutUs": 132.3,
+  "nodeEqualsChrome": true
+ },
+ {
+  "word": "קפה",
+  "glyphs": 3,
+  "nodeFullUs": 52.2,
+  "nodeShapeOnlyUs": 2.3,
+  "deterministic": true,
+  "sameStructure400_900": true,
+  "lerpVsReshapeMaxErrPx650": 0.1,
+  "widthPx400_650_900": "371.0/385.4/399.4",
+  "chromeFullUs": 50.3,
+  "chromeCssStyleLayoutUs": 27,
+  "nodeEqualsChrome": true
+ },
+ {
+  "word": "דילמה",
+  "glyphs": 5,
+  "nodeFullUs": 70.6,
+  "nodeShapeOnlyUs": 2.9,
+  "deterministic": true,
+  "sameStructure400_900": true,
+  "lerpVsReshapeMaxErrPx650": 0,
+  "widthPx400_650_900": "529.2/558.0/586.8",
+  "chromeFullUs": 68.3,
+  "chromeCssStyleLayoutUs": 25.3,
+  "nodeEqualsChrome": true
+ },
+ {
+  "word": "Talk",
+  "glyphs": 4,
+  "nodeFullUs": 58.8,
+  "nodeShapeOnlyUs": 2.6,
+  "deterministic": true,
+  "sameStructure400_900": true,
+  "lerpVsReshapeMaxErrPx650": 0,
+  "widthPx400_650_900": "358.4/390.8/423.2",
+  "chromeFullUs": 55.3,
+  "chromeCssStyleLayoutUs": 32.3,
+  "nodeEqualsChrome": true
+ },
+ {
+  "word": "בְּרֵאשִׁית",
+  "glyphs": 11,
+  "nodeFullUs": 203.6,
+  "nodeShapeOnlyUs": 6,
+  "deterministic": true,
+  "sameStructure400_900": true,
+  "lerpVsReshapeMaxErrPx650": 0.2,
+  "widthPx400_650_900": "674.4/712.6/751.0",
+  "chromeFullUs": 179.7,
+  "chromeCssStyleLayoutUs": 40,
+  "nodeEqualsChrome": true
+ }
+]

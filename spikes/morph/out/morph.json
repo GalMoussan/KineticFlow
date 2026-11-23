@@ -1,0 +1,1151 @@
+{
+ "rows": [
+  {
+   "pair": "word-kafe-dilema",
+   "strategy": "flubber.interpolate",
+   "prepMs": 1.498,
+   "setupMs": 0.623,
+   "frameUs": 28.4,
+   "pathChars": 7422,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 418.24,
+   "endPopPct": 418.3,
+   "endsOffPct": 0
+  },
+  {
+   "pair": "word-kafe-dilema",
+   "strategy": "flubber.interpolateAll",
+   "error": "flubber.all() expects two arrays of equal length as arguments. Each element in both arrays should be an array of [x, y] points or an SVG path string (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d)."
+  },
+  {
+   "pair": "word-kafe-dilema",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 1.498,
+   "setupMs": 16.066,
+   "frameUs": 430,
+   "pathChars": 92602,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 37,
+   "selfXMax": 12,
+   "maxStepPct": 2.49,
+   "endPopPct": 0.61,
+   "endsOffPct": 0.7
+  },
+  {
+   "pair": "word-kafe-dilema",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 1.498,
+   "setupMs": 5.078,
+   "frameUs": 336.4,
+   "pathChars": 73753,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 27,
+   "selfXMax": 7,
+   "maxStepPct": 3.19,
+   "endPopPct": 1.17,
+   "endsOffPct": 0.7
+  },
+  {
+   "pair": "word-kafe-dilema",
+   "strategy": "own.collapse",
+   "prepMs": 1.498,
+   "setupMs": 0.545,
+   "frameUs": 102.7,
+   "pathChars": 15437,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 19,
+   "selfXMax": 2,
+   "maxStepPct": 4.45,
+   "endPopPct": 1.16,
+   "endsOffPct": 0.08
+  },
+  {
+   "pair": "word-kafe-dilema",
+   "strategy": "own.split",
+   "prepMs": 1.498,
+   "setupMs": 0.945,
+   "frameUs": 183.8,
+   "pathChars": 26127,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 33,
+   "selfXMax": 4,
+   "maxStepPct": 3.3,
+   "endPopPct": 1.01,
+   "endsOffPct": 0.08
+  },
+  {
+   "pair": "word-kafe-dilema",
+   "strategy": "own.union",
+   "prepMs": 1.498,
+   "setupMs": 0.26,
+   "frameUs": 102.6,
+   "pathChars": 15318,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 19,
+   "selfXMax": 2,
+   "maxStepPct": 3.62,
+   "endPopPct": 1.16,
+   "endsOffPct": 0.08
+  },
+  {
+   "pair": "word-shalom-talk",
+   "strategy": "flubber.interpolate",
+   "prepMs": 1.509,
+   "setupMs": 1.182,
+   "frameUs": 43,
+   "pathChars": 10723,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 144.68,
+   "endPopPct": 147.5,
+   "endsOffPct": 0
+  },
+  {
+   "pair": "word-shalom-talk",
+   "strategy": "flubber.interpolateAll",
+   "error": "flubber.all() expects two arrays of equal length as arguments. Each element in both arrays should be an array of [x, y] points or an SVG path string (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d)."
+  },
+  {
+   "pair": "word-shalom-talk",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 1.509,
+   "setupMs": 25.751,
+   "frameUs": 434.5,
+   "pathChars": 97517,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 19,
+   "selfXMax": 13,
+   "maxStepPct": 1.91,
+   "endPopPct": 1.07,
+   "endsOffPct": 1.29
+  },
+  {
+   "pair": "word-shalom-talk",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 1.509,
+   "setupMs": 7.386,
+   "frameUs": 362.2,
+   "pathChars": 80933,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 32,
+   "selfXMax": 7,
+   "maxStepPct": 1.57,
+   "endPopPct": 0.34,
+   "endsOffPct": 1.3
+  },
+  {
+   "pair": "word-shalom-talk",
+   "strategy": "own.collapse",
+   "prepMs": 1.509,
+   "setupMs": 0.763,
+   "frameUs": 123.3,
+   "pathChars": 16743,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 23,
+   "selfXMax": 3,
+   "maxStepPct": 1.6,
+   "endPopPct": 0.25,
+   "endsOffPct": 0.06
+  },
+  {
+   "pair": "word-shalom-talk",
+   "strategy": "own.split",
+   "prepMs": 1.509,
+   "setupMs": 1.273,
+   "frameUs": 214.2,
+   "pathChars": 29496,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 24,
+   "selfXMax": 3,
+   "maxStepPct": 3.44,
+   "endPopPct": 0.4,
+   "endsOffPct": 0.06
+  },
+  {
+   "pair": "word-shalom-talk",
+   "strategy": "own.union",
+   "prepMs": 1.509,
+   "setupMs": 0.54,
+   "frameUs": 121.3,
+   "pathChars": 16863,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 25,
+   "selfXMax": 2,
+   "maxStepPct": 1.66,
+   "endPopPct": 0.2,
+   "endsOffPct": 0.06
+  },
+  {
+   "pair": "letter-mem-samekh-noto",
+   "strategy": "flubber.interpolate",
+   "prepMs": 1.041,
+   "setupMs": 0.886,
+   "frameUs": 64.2,
+   "pathChars": 13675,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 19,
+   "selfXMax": 6,
+   "maxStepPct": 68.25,
+   "endPopPct": 70.11,
+   "endsOffPct": 0
+  },
+  {
+   "pair": "letter-mem-samekh-noto",
+   "strategy": "flubber.interpolateAll",
+   "error": "flubber.all() expects two arrays of equal length as arguments. Each element in both arrays should be an array of [x, y] points or an SVG path string (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d)."
+  },
+  {
+   "pair": "letter-mem-samekh-noto",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 1.041,
+   "setupMs": 38.397,
+   "frameUs": 103.4,
+   "pathChars": 21992,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 30,
+   "selfXMax": 2,
+   "maxStepPct": 3.74,
+   "endPopPct": 0.54,
+   "endsOffPct": 0.32
+  },
+  {
+   "pair": "letter-mem-samekh-noto",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 1.041,
+   "setupMs": 1.164,
+   "frameUs": 121.2,
+   "pathChars": 25972,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 28,
+   "selfXMax": 10,
+   "maxStepPct": 2.32,
+   "endPopPct": 0.96,
+   "endsOffPct": 0.32
+  },
+  {
+   "pair": "letter-mem-samekh-noto",
+   "strategy": "own.collapse",
+   "prepMs": 1.041,
+   "setupMs": 0.374,
+   "frameUs": 41.5,
+   "pathChars": 5032,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 18,
+   "selfXMax": 4,
+   "maxStepPct": 1.89,
+   "endPopPct": 1.33,
+   "endsOffPct": 0.14
+  },
+  {
+   "pair": "letter-mem-samekh-noto",
+   "strategy": "own.split",
+   "prepMs": 1.041,
+   "setupMs": 0.302,
+   "frameUs": 40.3,
+   "pathChars": 5032,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 18,
+   "selfXMax": 4,
+   "maxStepPct": 1.89,
+   "endPopPct": 1.33,
+   "endsOffPct": 0.14
+  },
+  {
+   "pair": "letter-mem-samekh-noto",
+   "strategy": "own.union",
+   "prepMs": 1.041,
+   "setupMs": 0.111,
+   "frameUs": 37,
+   "pathChars": 4970,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 0.59,
+   "endPopPct": 0.32,
+   "endsOffPct": 0.14
+  },
+  {
+   "pair": "letter-mem-samekh-rubik",
+   "strategy": "flubber.interpolate",
+   "prepMs": 0.692,
+   "setupMs": 0.496,
+   "frameUs": 34.2,
+   "pathChars": 7037,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 49.33,
+   "endPopPct": 49.27,
+   "endsOffPct": 0
+  },
+  {
+   "pair": "letter-mem-samekh-rubik",
+   "strategy": "flubber.interpolateAll",
+   "prepMs": 0.692,
+   "setupMs": 0.387,
+   "frameUs": 78.3,
+   "pathChars": 15898,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.17,
+   "endPopPct": 0.04,
+   "endsOffPct": 0.05
+  },
+  {
+   "pair": "letter-mem-samekh-rubik",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 0.692,
+   "setupMs": 0.423,
+   "frameUs": 77.7,
+   "pathChars": 15898,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.17,
+   "endPopPct": 0.04,
+   "endsOffPct": 0.05
+  },
+  {
+   "pair": "letter-mem-samekh-rubik",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 0.692,
+   "setupMs": 0.616,
+   "frameUs": 77,
+   "pathChars": 15898,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.17,
+   "endPopPct": 0.04,
+   "endsOffPct": 0.05
+  },
+  {
+   "pair": "letter-mem-samekh-rubik",
+   "strategy": "own.collapse",
+   "prepMs": 0.692,
+   "setupMs": 0.101,
+   "frameUs": 35.3,
+   "pathChars": 4324,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.3,
+   "endPopPct": 0.11,
+   "endsOffPct": 0.04
+  },
+  {
+   "pair": "letter-mem-samekh-rubik",
+   "strategy": "own.split",
+   "prepMs": 0.692,
+   "setupMs": 0.099,
+   "frameUs": 34.2,
+   "pathChars": 4324,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.3,
+   "endPopPct": 0.11,
+   "endsOffPct": 0.04
+  },
+  {
+   "pair": "letter-mem-samekh-rubik",
+   "strategy": "own.union",
+   "prepMs": 0.692,
+   "setupMs": 0.087,
+   "frameUs": 31.7,
+   "pathChars": 4323,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.26,
+   "endPopPct": 0.14,
+   "endsOffPct": 0.04
+  },
+  {
+   "pair": "letter-B-8",
+   "strategy": "flubber.interpolate",
+   "prepMs": 1.16,
+   "setupMs": 0.643,
+   "frameUs": 40.8,
+   "pathChars": 8906,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 42.54,
+   "endPopPct": 42.59,
+   "endsOffPct": 0
+  },
+  {
+   "pair": "letter-B-8",
+   "strategy": "flubber.interpolateAll",
+   "prepMs": 1.16,
+   "setupMs": 0.767,
+   "frameUs": 130.7,
+   "pathChars": 28228,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 6.5,
+   "endPopPct": 0.61,
+   "endsOffPct": 0.24
+  },
+  {
+   "pair": "letter-B-8",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 1.16,
+   "setupMs": 0.802,
+   "frameUs": 128.2,
+   "pathChars": 28228,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 6.5,
+   "endPopPct": 0.61,
+   "endsOffPct": 0.24
+  },
+  {
+   "pair": "letter-B-8",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 1.16,
+   "setupMs": 0.822,
+   "frameUs": 112.2,
+   "pathChars": 23803,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 0.45,
+   "endPopPct": 0.04,
+   "endsOffPct": 0.31
+  },
+  {
+   "pair": "letter-B-8",
+   "strategy": "own.collapse",
+   "prepMs": 1.16,
+   "setupMs": 0.277,
+   "frameUs": 49.9,
+   "pathChars": 5763,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 0.4,
+   "endPopPct": 0.06,
+   "endsOffPct": 0.19
+  },
+  {
+   "pair": "letter-B-8",
+   "strategy": "own.split",
+   "prepMs": 1.16,
+   "setupMs": 0.155,
+   "frameUs": 48,
+   "pathChars": 5763,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 0.4,
+   "endPopPct": 0.06,
+   "endsOffPct": 0.19
+  },
+  {
+   "pair": "letter-B-8",
+   "strategy": "own.union",
+   "prepMs": 1.16,
+   "setupMs": 0.179,
+   "frameUs": 51,
+   "pathChars": 5763,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 0.46,
+   "endPopPct": 0.06,
+   "endsOffPct": 0.19
+  },
+  {
+   "pair": "circle-shin",
+   "strategy": "flubber.interpolate",
+   "prepMs": 0.731,
+   "setupMs": 0.069,
+   "frameUs": 69,
+   "pathChars": 14965,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.86,
+   "endPopPct": 0.22,
+   "endsOffPct": 23.11
+  },
+  {
+   "pair": "circle-shin",
+   "strategy": "flubber.interpolateAll",
+   "error": "flubber.all() expects two arrays of equal length as arguments. Each element in both arrays should be an array of [x, y] points or an SVG path string (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d)."
+  },
+  {
+   "pair": "circle-shin",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 0.731,
+   "setupMs": 13.98,
+   "frameUs": 97.8,
+   "pathChars": 20741,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 16,
+   "selfXMax": 10,
+   "maxStepPct": 4.75,
+   "endPopPct": 0.22,
+   "endsOffPct": 1.26
+  },
+  {
+   "pair": "circle-shin",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 0.731,
+   "setupMs": 0.814,
+   "frameUs": 121.2,
+   "pathChars": 20662,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.83,
+   "endPopPct": 0.16,
+   "endsOffPct": 1.26
+  },
+  {
+   "pair": "circle-shin",
+   "strategy": "own.collapse",
+   "prepMs": 0.731,
+   "setupMs": 0.222,
+   "frameUs": 62.3,
+   "pathChars": 4626,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.78,
+   "endPopPct": 0.22,
+   "endsOffPct": 0.11
+  },
+  {
+   "pair": "circle-shin",
+   "strategy": "own.split",
+   "prepMs": 0.731,
+   "setupMs": 0.295,
+   "frameUs": 59.2,
+   "pathChars": 6474,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 2.21,
+   "endPopPct": 0.28,
+   "endsOffPct": 0.11
+  },
+  {
+   "pair": "circle-shin",
+   "strategy": "own.union",
+   "prepMs": 0.731,
+   "setupMs": 0.285,
+   "frameUs": 42.5,
+   "pathChars": 5155,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 3,
+   "selfXMax": 1,
+   "maxStepPct": 2.43,
+   "endPopPct": 0.29,
+   "endsOffPct": 0.11
+  },
+  {
+   "pair": "square-mem",
+   "strategy": "flubber.interpolate",
+   "prepMs": 0.325,
+   "setupMs": 0.059,
+   "frameUs": 51.9,
+   "pathChars": 11582,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.35,
+   "endPopPct": 0.02,
+   "endsOffPct": 87.23
+  },
+  {
+   "pair": "square-mem",
+   "strategy": "flubber.interpolateAll",
+   "error": "flubber.all() expects two arrays of equal length as arguments. Each element in both arrays should be an array of [x, y] points or an SVG path string (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d)."
+  },
+  {
+   "pair": "square-mem",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 0.325,
+   "setupMs": 14.236,
+   "frameUs": 91.8,
+   "pathChars": 20844,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 6.72,
+   "endPopPct": 0.04,
+   "endsOffPct": 0.03
+  },
+  {
+   "pair": "square-mem",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 0.325,
+   "setupMs": 0.565,
+   "frameUs": 92.8,
+   "pathChars": 19870,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 2.96,
+   "endPopPct": 0.05,
+   "endsOffPct": 0.03
+  },
+  {
+   "pair": "square-mem",
+   "strategy": "own.collapse",
+   "prepMs": 0.325,
+   "setupMs": 0.094,
+   "frameUs": 24.2,
+   "pathChars": 3194,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 4.31,
+   "endPopPct": 0.41,
+   "endsOffPct": 0.02
+  },
+  {
+   "pair": "square-mem",
+   "strategy": "own.split",
+   "prepMs": 0.325,
+   "setupMs": 0.094,
+   "frameUs": 22,
+   "pathChars": 3194,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 4.31,
+   "endPopPct": 0.41,
+   "endsOffPct": 0.02
+  },
+  {
+   "pair": "square-mem",
+   "strategy": "own.union",
+   "prepMs": 0.325,
+   "setupMs": 0.043,
+   "frameUs": 21,
+   "pathChars": 3194,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 4.34,
+   "endPopPct": 0.42,
+   "endsOffPct": 0.02
+  },
+  {
+   "pair": "circle-B",
+   "strategy": "flubber.interpolate",
+   "prepMs": 0.522,
+   "setupMs": 0.059,
+   "frameUs": 57.2,
+   "pathChars": 12732,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 0.33,
+   "endPopPct": 0.06,
+   "endsOffPct": 66.77
+  },
+  {
+   "pair": "circle-B",
+   "strategy": "flubber.interpolateAll",
+   "error": "flubber.all() expects two arrays of equal length as arguments. Each element in both arrays should be an array of [x, y] points or an SVG path string (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d)."
+  },
+  {
+   "pair": "circle-B",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 0.522,
+   "setupMs": 13.489,
+   "frameUs": 109.1,
+   "pathChars": 23873,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 3.52,
+   "endPopPct": 0.17,
+   "endsOffPct": 0.13
+  },
+  {
+   "pair": "circle-B",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 0.522,
+   "setupMs": 0.6,
+   "frameUs": 108.5,
+   "pathChars": 23931,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 1.91,
+   "endPopPct": 0.07,
+   "endsOffPct": 0.08
+  },
+  {
+   "pair": "circle-B",
+   "strategy": "own.collapse",
+   "prepMs": 0.522,
+   "setupMs": 0.117,
+   "frameUs": 34.5,
+   "pathChars": 3817,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 2.72,
+   "endPopPct": 0.13,
+   "endsOffPct": 0.06
+  },
+  {
+   "pair": "circle-B",
+   "strategy": "own.split",
+   "prepMs": 0.522,
+   "setupMs": 0.114,
+   "frameUs": 30.8,
+   "pathChars": 3817,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 2.72,
+   "endPopPct": 0.13,
+   "endsOffPct": 0.06
+  },
+  {
+   "pair": "circle-B",
+   "strategy": "own.union",
+   "prepMs": 0.522,
+   "setupMs": 0.087,
+   "frameUs": 33.1,
+   "pathChars": 3817,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 2.72,
+   "endPopPct": 0.11,
+   "endsOffPct": 0.06
+  },
+  {
+   "pair": "square-kuf",
+   "strategy": "flubber.interpolate",
+   "prepMs": 0.062,
+   "setupMs": 0.05,
+   "frameUs": 54.5,
+   "pathChars": 11661,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 4.7,
+   "endPopPct": 0.17,
+   "endsOffPct": 38.31
+  },
+  {
+   "pair": "square-kuf",
+   "strategy": "flubber.interpolateAll",
+   "error": "flubber.all() expects two arrays of equal length as arguments. Each element in both arrays should be an array of [x, y] points or an SVG path string (https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d)."
+  },
+  {
+   "pair": "square-kuf",
+   "strategy": "flubber.separate/combine",
+   "prepMs": 0.062,
+   "setupMs": 46.566,
+   "frameUs": 92.9,
+   "pathChars": 20254,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 7.85,
+   "endPopPct": 0.45,
+   "endsOffPct": 0.05
+  },
+  {
+   "pair": "square-kuf",
+   "strategy": "flubber.ownPairs",
+   "prepMs": 0.062,
+   "setupMs": 1.263,
+   "frameUs": 117.9,
+   "pathChars": 25292,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 4.26,
+   "endPopPct": 0.07,
+   "endsOffPct": 0.04
+  },
+  {
+   "pair": "square-kuf",
+   "strategy": "own.collapse",
+   "prepMs": 0.062,
+   "setupMs": 0.154,
+   "frameUs": 34.1,
+   "pathChars": 4142,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 4.3,
+   "endPopPct": 0.05,
+   "endsOffPct": 0
+  },
+  {
+   "pair": "square-kuf",
+   "strategy": "own.split",
+   "prepMs": 0.062,
+   "setupMs": 0.297,
+   "frameUs": 61.7,
+   "pathChars": 8173,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 3.79,
+   "endPopPct": 0.09,
+   "endsOffPct": 0
+  },
+  {
+   "pair": "square-kuf",
+   "strategy": "own.union",
+   "prepMs": 0.062,
+   "setupMs": 0.12,
+   "frameUs": 31.3,
+   "pathChars": 4142,
+   "seekOrderIdentical": true,
+   "rebuildIdentical": true,
+   "selfXFrames": 0,
+   "selfXMax": 0,
+   "maxStepPct": 4.3,
+   "endPopPct": 0.06,
+   "endsOffPct": 0
+  }
+ ],
+ "browserPerf": {
+  "word-kafe-dilema/flubber.interpolate": {
+   "setupMs": 13.800000011920929,
+   "frameUs": 26.266666650772095
+  },
+  "word-kafe-dilema/flubber.separate/combine": {
+   "setupMs": 14.600000023841858,
+   "frameUs": 406.3333333333333
+  },
+  "word-kafe-dilema/flubber.ownPairs": {
+   "setupMs": 5.400000035762787,
+   "frameUs": 302.0666666428248
+  },
+  "word-kafe-dilema/own.collapse": {
+   "setupMs": 1.399999976158142,
+   "frameUs": 93.80000003178914
+  },
+  "word-kafe-dilema/own.split": {
+   "setupMs": 1.899999976158142,
+   "frameUs": 164.60000002384186
+  },
+  "word-kafe-dilema/own.union": {
+   "setupMs": 1.199999988079071,
+   "frameUs": 96.60000002384186
+  },
+  "word-shalom-talk/flubber.interpolate": {
+   "setupMs": 8.899999976158142,
+   "frameUs": 40.40000001589457
+  },
+  "word-shalom-talk/flubber.separate/combine": {
+   "setupMs": 22.599999964237213,
+   "frameUs": 397.1333333651225
+  },
+  "word-shalom-talk/flubber.ownPairs": {
+   "setupMs": 8,
+   "frameUs": 331.73333330949146
+  },
+  "word-shalom-talk/own.collapse": {
+   "setupMs": 1.800000011920929,
+   "frameUs": 107.13333332538605
+  },
+  "word-shalom-talk/own.split": {
+   "setupMs": 2.400000035762787,
+   "frameUs": 192.26666669050852
+  },
+  "word-shalom-talk/own.union": {
+   "setupMs": 1.600000023841858,
+   "frameUs": 106.80000003178914
+  },
+  "letter-mem-samekh-noto/flubber.interpolate": {
+   "setupMs": 85.40000003576279,
+   "frameUs": 55
+  },
+  "letter-mem-samekh-noto/flubber.separate/combine": {
+   "setupMs": 32.59999996423721,
+   "frameUs": 93.79999999205272
+  },
+  "letter-mem-samekh-noto/flubber.ownPairs": {
+   "setupMs": 3,
+   "frameUs": 109.66666666666667
+  },
+  "letter-mem-samekh-noto/own.collapse": {
+   "setupMs": 0.800000011920929,
+   "frameUs": 34.93333331743876
+  },
+  "letter-mem-samekh-noto/own.split": {
+   "setupMs": 0.800000011920929,
+   "frameUs": 34.46666665871938
+  },
+  "letter-mem-samekh-noto/own.union": {
+   "setupMs": 0.6000000238418579,
+   "frameUs": 33.46666665871938
+  },
+  "letter-mem-samekh-rubik/flubber.interpolate": {
+   "setupMs": 29.19999998807907,
+   "frameUs": 28.799999992052715
+  },
+  "letter-mem-samekh-rubik/flubber.interpolateAll": {
+   "setupMs": 1.399999976158142,
+   "frameUs": 65.60000002384186
+  },
+  "letter-mem-samekh-rubik/flubber.separate/combine": {
+   "setupMs": 1.399999976158142,
+   "frameUs": 65.79999999205272
+  },
+  "letter-mem-samekh-rubik/flubber.ownPairs": {
+   "setupMs": 1.5,
+   "frameUs": 67.46666665871938
+  },
+  "letter-mem-samekh-rubik/own.collapse": {
+   "setupMs": 0.6000000238418579,
+   "frameUs": 28.799999992052715
+  },
+  "letter-mem-samekh-rubik/own.split": {
+   "setupMs": 0.5,
+   "frameUs": 28.733333309491474
+  },
+  "letter-mem-samekh-rubik/own.union": {
+   "setupMs": 0.5,
+   "frameUs": 28.93333335717519
+  },
+  "letter-B-8/flubber.interpolate": {
+   "setupMs": 56.80000001192093,
+   "frameUs": 36.666666666666664
+  },
+  "letter-B-8/flubber.interpolateAll": {
+   "setupMs": 2.800000011920929,
+   "frameUs": 114.40000001589458
+  },
+  "letter-B-8/flubber.separate/combine": {
+   "setupMs": 1.600000023841858,
+   "frameUs": 117.53333334128062
+  },
+  "letter-B-8/flubber.ownPairs": {
+   "setupMs": 1.5999999642372131,
+   "frameUs": 97.7333333492279
+  },
+  "letter-B-8/own.collapse": {
+   "setupMs": 1,
+   "frameUs": 41
+  },
+  "letter-B-8/own.split": {
+   "setupMs": 1,
+   "frameUs": 40.73333330949148
+  },
+  "letter-B-8/own.union": {
+   "setupMs": 0.9000000357627869,
+   "frameUs": 40.733333349227905
+  },
+  "circle-shin/flubber.interpolate": {
+   "setupMs": 0.5,
+   "frameUs": 60.40000001589457
+  },
+  "circle-shin/flubber.separate/combine": {
+   "setupMs": 11,
+   "frameUs": 86.86666667461395
+  },
+  "circle-shin/flubber.ownPairs": {
+   "setupMs": 1.2000000476837158,
+   "frameUs": 84.06666668256123
+  },
+  "circle-shin/own.collapse": {
+   "setupMs": 0.6000000238418579,
+   "frameUs": 33
+  },
+  "circle-shin/own.split": {
+   "setupMs": 0.699999988079071,
+   "frameUs": 46.20000000794729
+  },
+  "circle-shin/own.union": {
+   "setupMs": 0.6000000238418579,
+   "frameUs": 36.866666634877525
+  },
+  "square-mem/flubber.interpolate": {
+   "setupMs": 0.19999998807907104,
+   "frameUs": 42.73333330949148
+  },
+  "square-mem/flubber.separate/combine": {
+   "setupMs": 11.5,
+   "frameUs": 80.93333335717519
+  },
+  "square-mem/flubber.ownPairs": {
+   "setupMs": 0.699999988079071,
+   "frameUs": 81
+  },
+  "square-mem/own.collapse": {
+   "setupMs": 0.30000001192092896,
+   "frameUs": 19.53333334128062
+  },
+  "square-mem/own.split": {
+   "setupMs": 0.2999999523162842,
+   "frameUs": 19.266666690508526
+  },
+  "square-mem/own.union": {
+   "setupMs": 0.19999998807907104,
+   "frameUs": 19.53333334128062
+  },
+  "circle-B/flubber.interpolate": {
+   "setupMs": 0.3999999761581421,
+   "frameUs": 51.13333332538605
+  },
+  "circle-B/flubber.separate/combine": {
+   "setupMs": 10.799999952316284,
+   "frameUs": 97.20000000794728
+  },
+  "circle-B/flubber.ownPairs": {
+   "setupMs": 0.8999999761581421,
+   "frameUs": 98.66666666666667
+  },
+  "circle-B/own.collapse": {
+   "setupMs": 0.40000003576278687,
+   "frameUs": 29.200000007947285
+  },
+  "circle-B/own.split": {
+   "setupMs": 0.40000003576278687,
+   "frameUs": 26.86666663487752
+  },
+  "circle-B/own.union": {
+   "setupMs": 0.40000003576278687,
+   "frameUs": 27
+  },
+  "square-kuf/flubber.interpolate": {
+   "setupMs": 0.10000002384185791,
+   "frameUs": 46.866666634877525
+  },
+  "square-kuf/flubber.separate/combine": {
+   "setupMs": 36.69999998807907,
+   "frameUs": 81.86666667461395
+  },
+  "square-kuf/flubber.ownPairs": {
+   "setupMs": 1.199999988079071,
+   "frameUs": 102.46666665871938
+  },
+  "square-kuf/own.collapse": {
+   "setupMs": 0.19999998807907104,
+   "frameUs": 28.133333325386047
+  },
+  "square-kuf/own.split": {
+   "setupMs": 0.3999999761581421,
+   "frameUs": 55.53333334128062
+  },
+  "square-kuf/own.union": {
+   "setupMs": 0.19999998807907104,
+   "frameUs": 28.46666665871938
+  }
+ },
+ "sheets": {
+  "word-kafe-dilema": "spikes/morph/out/sheet-word-kafe-dilema.png",
+  "word-shalom-talk": "spikes/morph/out/sheet-word-shalom-talk.png",
+  "letter-mem-samekh-noto": "spikes/morph/out/sheet-letter-mem-samekh-noto.png",
+  "letter-mem-samekh-rubik": "spikes/morph/out/sheet-letter-mem-samekh-rubik.png",
+  "letter-B-8": "spikes/morph/out/sheet-letter-B-8.png",
+  "circle-shin": "spikes/morph/out/sheet-circle-shin.png",
+  "square-mem": "spikes/morph/out/sheet-square-mem.png",
+  "circle-B": "spikes/morph/out/sheet-circle-B.png",
+  "square-kuf": "spikes/morph/out/sheet-square-kuf.png"
+ },
+ "crossRun": {
+  "node": {
+   "same": 56,
+   "compared": 56
+  },
+  "chrome": {
+   "same": 56,
+   "compared": 56
+  }
+ },
+ "keys": 56,
+ "nodeVsChromeIdentical": 43,
+ "differ": [
+  "word-kafe-dilema/flubber.interpolate",
+  "word-kafe-dilema/flubber.ownPairs",
+  "word-shalom-talk/flubber.interpolate",
+  "letter-mem-samekh-noto/flubber.interpolate",
+  "letter-mem-samekh-rubik/flubber.interpolate",
+  "letter-B-8/flubber.interpolate",
+  "circle-shin/flubber.interpolate",
+  "circle-shin/flubber.separate/combine",
+  "circle-shin/flubber.ownPairs",
+  "circle-B/flubber.interpolate",
+  "circle-B/flubber.separate/combine",
+  "circle-B/flubber.ownPairs",
+  "square-kuf/flubber.interpolate"
+ ],
+ "mathDiffer": [
+  "sin",
+  "cos",
+  "atan2",
+  "exp",
+  "log"
+ ],
+ "chromeVersion": "159.0.8154.6"
+}

@@ -1,0 +1,21 @@
+html, body { margin: 0; padding: 0; background: #1B2A4A; overflow: hidden; }
+#stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #1B2A4A; font-family: "Rubik", sans-serif; }
+.layer { position: absolute; inset: 0; overflow: hidden; display: none; }
+.content { position: absolute; inset: 0; }
+.abs { position: absolute; }
+.circle { position: absolute; border-radius: 50%; box-sizing: border-box; }
+.mask { position: absolute; overflow: hidden; line-height: 1; white-space: nowrap; padding: 0.14em 0.08em 0.24em; font-weight: 900; }
+.inner { display: inline-block; position: relative; white-space: nowrap; }
+.ch { display: inline-block; }
+.sp { display: inline-block; width: 0.26em; }
+.ltr { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+.tl-o { color: transparent; -webkit-text-stroke: 0.02em var(--stroke, #F5EBDD); }
+.tl-f { position: absolute; inset: 0; white-space: nowrap; }
+.hl { position: absolute; top: 0.04em; height: 1.0em; width: 0.11em; }
+.col { display: inline-block; overflow: hidden; height: 1.1em; vertical-align: top; }
+.strip { display: block; }
+.strip span { display: block; height: 1.1em; line-height: 1.1; text-align: center; }
+.box { display: inline-block; position: relative; overflow: hidden; vertical-align: top; margin: 0 0.025em; padding: 0.05em 0.03em 0.1em; border-radius: 0.06em; }
+.cover { position: absolute; inset: 0; border-radius: 0.06em; }
+.badge { display: inline-flex; align-items: center; gap: 56px; background: #FEF2E2; border-radius: 48px; padding: 34px 58px; }
+.badge img { display: block; }

@@ -1,0 +1,17 @@
+{
+  "name": "@reel/spikes",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@types/pngjs": "^6.0.5",
+    "bidi-js": "^1.1.0",
+    "esbuild": "^0.25.12",
+    "flubber": "^0.4.2",
+    "harfbuzzjs": "^0.4.15",
+    "playwright": "^1.65.1",
+    "pngjs": "^7.0.0",
+    "polygon-clipping": "^0.15.7",
+    "three": "^0.180.0",
+    "troika-three-text": "^0.52.5"
+  }
+}

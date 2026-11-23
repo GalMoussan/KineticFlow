@@ -180,10 +180,31 @@ the server rejects invalid specs.
 ### 5.4 Render layers
 
 - **DOM** is the default: crisp text and native Hebrew shaping.
-- **Canvas2D** for particles and textures.
-- **WebGL** for `†` traits.
-- **Glyph outlines** come from **harfbuzzjs**, which shapes Hebrew with niqqud correctly. **flubber** interpolates paths
-  for morphs.
+  - **Unit splitting (M0c):**
+    1. Lay out the *unsplit* line.
+    2. Measure each grapheme/word with `Range.getBoundingClientRect`.
+    3. Absolutely position one span per unit, carrying its own bidi-js level/`dir` and anchored at its start edge.
+    
+    This measured ≤ 0.84 % / 0 px off the unsplit text. **Never** use naive `inline-block` units: they lose kerning
+    (up to 13.9 px) and reverse numbers/Latin inside Hebrew (`03:91`).
+  - Traits that must reflow per frame (`axis: weight-wave`) use nested `unicode-bidi:isolate` spans with kerning
+    compensation.
+  - Sequential reveals use logical order; spatial sweeps use measured x.
+- **Canvas2D** for particles and textures. Requires `fontKerning = 'normal'`.
+- **WebGL** for `†` traits. Units are laid out in the DOM, then painted at the measured positions with troika-three-text
+  (one `Text` per unit in a `BatchedText`, ~0.9 ms/frame for 35 units). Troika needs:
+  - a **bundle-time patch** (`spikes/text/troika-patch.ts`). Stock troika mirrors niqqud marks in RTL runs, up to
+    65 px off.
+  - `useWorker: false`, because the worker hangs under our CSP.
+  - a cmap preflight, because a missing glyph makes it fetch a CDN fallback and hang.
+  - **static per-weight font instances**, because it ignores variable axes.
+  
+  The no-patch fallback is a Canvas2D texture per unit (≤ 9.4 % / ≤ 1 px).
+- **`axis` traits are DOM-only** (troika ignores variable axes). In WebGL, weight changes come from harfbuzz outlines.
+- **Glyph outlines** come from **harfbuzzjs**, which shapes Hebrew with niqqud correctly (M0d: niqqud within 0.77 px
+  of Chromium; `setVariations` for weight).
+- **Morphs** use our own contour matcher after a nonzero boolean union (`polygon-clipping`); flubber failed (M0d).
+  `morph-from-previous` is limited to same-script pairs of similar length; otherwise it falls back to a crossfade.
 - Path text places glyphs from harfbuzz advances, not SVG `textPath`, which is unreliable for RTL.
 
 ---
@@ -260,8 +281,11 @@ every format.
 
 1. **Grid source:**
    - Generated music: `beat = 60/bpm`, `T0 = 0.5 s`.
-   - Own track or AI music: beats/downbeats from Beat This! (handles tempo drift), plus per-frame band envelopes
-     (`sub, bass, mid, high, onset`) at the output fps.
+   - Own track or AI music: beats/downbeats from Beat This! (`final0` model; handles tempo drift), plus per-frame band
+     envelopes (`sub, bass, mid, high, onset`) at the output fps.
+     - M0f measured beat F 0.989–1.000 and downbeat F 1.000 on the three dilemaCafe reels, within ±1 frame at 60 fps.
+     - Trust downbeats only when `meter_confidence ≥ 0.8`; otherwise use beats alone.
+     - Trim phantom beats at the edges (the model keeps beating about 1 s into a held final chord).
 2. **Section budget** (as in the spec): `max(minHold, words·perWord + entry + exit)` beats → snapped to downbeats →
    holds scaled to fit `duration`, never entries. End card ≥ 2.5 s.
 3. **Lyrics:**
@@ -274,6 +298,10 @@ every format.
    - the page (`window.REEL.cues`)
    - the audio graph (cue → SFX/stinger; generated music arranges around section cues)
    - the QA gates (hold times)
+6. **Numeric rule (M0d):** `Math.sin/cos/atan2/exp/log` give bitwise-different results in Node and Chromium, while
+   `+ − × ÷ sqrt pow hypot` match. Therefore:
+   - the timing engine (which runs in both the UI and the server) uses only the bit-exact operations;
+   - all eased and per-frame values are computed **in the page only**, never precomputed in Node.
 
 ---
 
@@ -284,21 +312,43 @@ every format.
   allowed). Any off-host request is aborted.
 - **Inputs:** `window.REEL` is injected via `addInitScript`, so no wrapper HTML files. `Math.random` is seeded per frame
   (kept from OpenKatana).
-- **Pool:** `min(chunks, 4)` Chromium pages. Chunk = 300 frames at 30 fps (10 s). The page reloads between chunks,
-  which avoids the observed 780-frame crash.
-- **GPU** is on. The flags are an M0 spike: `--use-angle=metal`, `--enable-gpu-rasterization`, `--ignore-gpu-blocklist`.
-- **Determinism:** 5 frames rendered forward then reverse; hashes must match. Kept from OpenKatana.
-- **Frame flow:** per frame (or sub-frame) → `reelPage.seek(t)` → double rAF → `Page.captureScreenshot` → bytes piped
-  to that chunk's ffmpeg stdin. **No frame files on disk.**
-- **Encode per chunk:** libx264, CRF 14, `preset slow`, `yuv420p`, BT.709 tagged, closed GOP. Chunks join with
-  `concat -c copy`.
+- **Pool:** 4 browsers (`chrome-headless-shell`), each rendering one chunk in order. Chunk = 300 frames at 30 fps
+  (10 s), with fixed boundaries. M0: one page survives ≥ 780 frames when frames are streamed.
+- **GPU** is on: `--use-angle=metal --enable-gpu-rasterization --ignore-gpu-blocklist` (M0a: Metal WebGL2 on M1 Pro).
+- **Determinism**, replacing OpenKatana's forward/reverse hash check (M0a: on GPU, render order leaves ≤ 2/255
+  residue):
+  - **(a)** 3 sampled frames re-rendered in chunk order in a fresh browser must hash identically;
+  - **(b)** a reverse-order check with tolerance max Δ ≤ 2/255.
+- **Frame flow:** per frame (or sub-frame) → `reelPage.seek(t)` → double rAF → CDP `Page.captureScreenshot`
+  (`optimizeForSpeed`, `clip.scale` = supersample factor; CDP ignores `deviceScaleFactor` otherwise) → piped into that
+  chunk's ffmpeg stdin. JPEG q95 is the default intermediate; PNG is opt-in. **No frame files on disk.**
+  `page.screenshot` is 5–16× slower and must not be used.
+- **Encode per chunk:**
+  - draft: `h264_videotoolbox`
+  - standard: x264 `medium` CRF 18
+  - final: x264 `slow` CRF 14
+  
+  All use `yuv420p`, BT.709 tags and a closed GOP. Chunks join with `concat -c copy`. Pin the Chromium build and
+  include it in the cache key.
+- **Measured (M0):** a full 26 s reel at standard takes **16 s** (flat) and **42 s** (neon) on 4 workers. OpenKatana
+  took ~100–450 s for the same reels and wrote 3.6 GB of frames.
 
 ### 8.2 Audio
-`packages/audio` builds the graph from `{music, sfx, cues}`. The renderer runs it once in an `OfflineAudioContext` inside
-Chromium. Seeded noise buffers keep it deterministic. ffmpeg then:
-- encodes AAC 256k,
-- loudness-normalises to −14 LUFS integrated, peak ≤ −1 dBTP (`loudnorm`, two-pass),
-- writes the `-no-music` copy (SFX only, or silent if the user chooses).
+`packages/audio` builds the graph from `{music, sfx, cues}`.
+
+- **Preview** plays the plain single graph in a real-time `AudioContext`.
+- **Render** uses **stem passes** (M0e). A single graph is *not* bit-deterministic: Chromium sums overlapping inputs
+  in a varying order, leaving drift of about −133 dBFS. Instead:
+  - each instrument group renders alone in its own `OfflineAudioContext`
+  - stems are summed in JS in a fixed order
+  - each bus effect (reverb send, master compressor/limiter) runs as its own pass with one buffer input
+  
+  Measured: 1 hash across 8 renders, 4 launches and 2 Chromium builds, in about 2 s for 26 s.
+- ffmpeg then:
+  - encodes AAC 256k,
+  - loudness-normalises to −14 LUFS integrated, peak ≤ −1 dBTP (`loudnorm`, two-pass),
+  - writes the `-no-music` copy (SFX only, or silent if the user chooses).
+- QA gate: render the audio twice and require identical hashes (about 2 s).
 
 ### 8.3 Quality presets
 
@@ -309,10 +359,13 @@ Chromium. Seeded noise buffers keep it deterministic. ffmpeg then:
 | final | 60 | 6 sub-frames, 180° shutter | 2× | hero export |
 
 - **Motion blur:** sub-frames at `t = (f + (s+0.5)/S·shutter − shutter/2)/fps` stream to ffmpeg at `fps·S`, then
-  `tmix=frames=S, framestep=S` averages each group.
-- **Supersampling:** `deviceScaleFactor = 2`, then `scale=W:H:flags=lanczos`.
-- **Cost:** final ≈ 2 (fps) × 6 (sub-frames) × ~3 (4× pixels) ≈ 36× the capture work of standard. [INFERENCE; M0
-  measures it.] Final is opt-in per export and its chunks are cached.
+  `tmix=frames=S, select='eq(mod(n,S),S-1)', setpts=N/(fps*TB)`. Verified in M0b: exact frame counts and visible
+  directional blur (`spikes/capture/out/motion-blur-sheet.png`).
+- **Supersampling:** capture `clip.scale = 2`, then `scale=W:H:flags=lanczos`.
+- **Measured cost (M0):** final ≈ 12–15× the wall time of standard (35–44 s per video-second on one worker).
+  - Full 26 s flat reel at final on 4 workers: **201 s**. Heavy styles: ~4–6 min [INFERENCE].
+  - A "fast final" with 4 sub-frames saves 32 %.
+  - Final is opt-in per export, and its chunks are cached.
 
 ### 8.4 Cache and cleanup
 - **Chunk key:** `sha256(runtime + traits + style bundle hashes, fonts/assets hashes, resolved inputs that affect the
@@ -350,7 +403,8 @@ length = frames/fps, container (`ffprobe`), WCAG contrast ≥ 3:1.
 
 New:
 - loudness −14 LUFS ±1
-- font glyph coverage: every character in the spec exists in the chosen font, so no tofu boxes
+- font glyph coverage: every character in the spec exists in the chosen font (a hard **fail**). Otherwise tofu
+  appears in the DOM, and troika hangs fetching a CDN fallback (M0c).
 - trait compatibility check
 
 ---
@@ -360,10 +414,19 @@ New:
 - **Fonts:** `reelgen setup fonts` downloads the curated OFL set from the `google/fonts` GitHub repo into `assets/fonts/`.
   A committed manifest lists files, SHA-256, axes and scripts.
   - Uploads are checked for Hebrew coverage (cmap) and axes.
+  - Setup also builds **static instances** per weight in use (fonttools `varLib.instancer` via `uvx`) for the WebGL
+    layer, which ignores variable axes (M0c).
   - **Limitation:** most Hebrew variable fonts only have `wght`; `wdth` exists in Noto Sans Hebrew and Open Sans.
     `width-breath` therefore filters its font list.
 - **Samples:** `reelgen setup samples` downloads CC0 one-shot packs (drums, plucks, keys, bass, risers, impacts). The
   manifest records each pack's licence.
+- **Analysis sidecar** (`sidecar/`, uv, Python 3.12, about 720 MB venv):
+  - Beat This! `final0` (81 MB) is downloaded by `reelgen setup` and checked against its SHA-256, because the library
+    otherwise fetches it at runtime.
+  - It runs on CPU: about 2 s per 26 s clip and 6 s per 3 min track. MPS is only worth it for long tracks.
+  - The CLI and JSON contract come from `spikes/beats/analyze.py`.
+  - Beats are cached by audio SHA-256 + model version; envelopes additionally by fps/offset/duration.
+  - The output is byte-deterministic.
 - **LLM:** `apps/server/llm/{gemini,claude}.ts` behind one interface:
   - `splitContent`
   - `suggestEmphasis`
@@ -379,7 +442,7 @@ New:
 
 | M | Deliverable | Accept when |
 |---|---|---|
-| M0 | **Spikes** (½–1 day each): (a) headless GPU + WebGL capture on M1 and its fps; (b) the `tmix` motion-blur pipe; (c) grapheme + bidi splitting with niqqud in DOM and troika; (d) harfbuzzjs Hebrew outlines → flubber morph; (e) `OfflineAudioContext` determinism (same hash twice); (f) Beat This! via `uv` on M1 CPU | Each spike has a recorded number or pass/fail. Plan is adjusted |
+| M0 | ✅ **Spikes done** (2026-11-23). Results in `spikes/results/`: `capture.md` (a+b), `text.md` (c), `morph.md` (d), `audio.md` (e), `beats.md` (f) | Every spike PASS or PASS WITH CAVEATS; plan adjusted in §5.4, §7, §8, §10, §11, §13 |
 | M1 | `core` + `timing` + `runtime` + `render` + `cli`. `kinetic-quote` ported as one monolithic style | `reelgen render examples/dilemma.json` reproduces the spec §13 (9:16 + 1:1, 26.000 s, AAC, QA pass) with no manual steps. Date-only edit re-renders only affected chunks |
 | M2 | Trait system + channels + compat. All three ✅ engines decomposed into traits; per-section styles; blend | The 3 styles render the test-spec set in all formats. One trait-override and one blend example render |
 | M3 | Audio: sequencer + 4 presets + SFX map + own-track analysis (sidecar) + audio-reactive envelopes | Own MP3 → text lands on detected downbeats (±1 frame); preview and render audio hashes match |
@@ -395,11 +458,14 @@ New:
 
 | Risk | Mitigation |
 |---|---|
-| Headless Chromium on macOS may not use the GPU for WebGL, falling back to SwiftShader, which is very slow | M0a. Fallback: headed Chromium in an offscreen window (real GPU), still deterministic via `seek` |
+| ~~Headless Chromium on macOS may not use the GPU~~ | **Retired (M0a):** `chrome-headless-shell` + GPU flags gives ANGLE Metal |
+| GPU raster leaves ≤ 2/255 order-dependent residue | Fixed chunk boundaries and order; two-part determinism gate (§8.1) |
+| Web Audio single-graph mixing is not bit-deterministic | Stem-pass render (§8.2) |
 | Arbitrary trait combinations can look bad even when valid | Curated presets are the default path; the mixer shows a live preview; compat rules grow from QA findings |
 | Partial cache invalidation for global-layout styles | `globalLayout` flag (§8.4); correctness over cache hits |
-| troika niqqud mark positioning is unverified | M0c. Fallback: DOM text with CSS 3D transforms for niqqud-heavy content |
-| Final-quality render time | Cache, opt-in final, 4-page pool; M0 measures it |
+| troika: niqqud mirrored, worker/CDN hangs, no variable axes (confirmed M0c) | Patched build + `useWorker:false` + cmap preflight + static instances; Canvas2D fallback. Re-verify the patch on every troika upgrade, or upstream it |
+| Morphs between different scripts or letter counts look blobby (M0d) | Compat rule limits `morph-from-previous`; crossfade fallback |
+| Final-quality render time | Measured 201 s for a flat 26 s reel on 4 workers (M0a); heavy styles about 4–6 min [INFERENCE]. Cache, opt-in final, "fast final" with 4 sub-frames |
 | ACE-Step install size and quality | Optional add-on; output goes through the same beat analysis |
 
 ## 14. Open items for you

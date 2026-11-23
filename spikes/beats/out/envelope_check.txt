@@ -1,0 +1,2 @@
+reel12 @30fps  onset peak - kick frame: {-1: 6, 0: 38}  bass max rise - kick frame: {0: 44}  sub max rise - kick frame: {0: 44}
+reel12 @60fps  onset peak - kick frame: {-1: 6, 0: 38}  bass max rise - kick frame: {0: 44}  sub max rise - kick frame: {0: 37, 1: 7}

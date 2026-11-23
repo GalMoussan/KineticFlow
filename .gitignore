@@ -7,3 +7,6 @@ assets/samples/*
 sidecar/.venv/
 .env
 .DS_Store
+spikes/**/out/*.mp4
+spikes/**/out/*.mp3
+spikes/**/out/*.wav

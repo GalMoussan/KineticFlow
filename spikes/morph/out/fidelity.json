@@ -1,0 +1,836 @@
+{
+ "summary": {
+  "initMs": 11.4,
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+  "cases": 18,
+  "wordIouMin": 94.97,
+  "wordIouMean": 97.3,
+  "xorBeyond1pxMax": 0,
+  "markIouMin": 90.91,
+  "markXorBeyond1pxMax": 0,
+  "markMaxOffsetPx": 0.765,
+  "maxWidthDiffPx": 0.18
+ },
+ "rows": [
+  {
+   "case": "שָׁלוֹם noto@400",
+   "iou": 96.7,
+   "domInkPx": 20638,
+   "hbInkPx": 19958,
+   "xorPx": 682,
+   "xorBeyond1px": 0,
+   "domWidth": 445.48,
+   "hbWidth": 445.4,
+   "diff": "spikes/morph/out/fid-noto-400-shalom.png",
+   "markIou": 90.91,
+   "markPx": "693/630",
+   "markXorBeyond1px": 0,
+   "markComponents": 3,
+   "markMaxOffsetPx": 0.765,
+   "markOffsets": [
+    {
+     "dom": [
+      623.76,
+      88.84
+     ],
+     "hb": [
+      623.79,
+      89.04
+     ],
+     "dist": 0.205,
+     "domPx": 110,
+     "hbPx": 100
+    },
+    {
+     "dom": [
+      877.87,
+      88.87
+     ],
+     "hb": [
+      877.92,
+      89.15
+     ],
+     "dist": 0.284,
+     "domPx": 109,
+     "hbPx": 99
+    },
+    {
+     "dom": [
+      826.57,
+      251.49
+     ],
+     "hb": [
+      826.83,
+      252.21
+     ],
+     "dist": 0.765,
+     "domPx": 474,
+     "hbPx": 431
+    }
+   ]
+  },
+  {
+   "case": "קפה noto@400",
+   "iou": 96.38,
+   "domInkPx": 16012,
+   "hbInkPx": 15436,
+   "xorPx": 580,
+   "xorBeyond1px": 0,
+   "domWidth": 371.03,
+   "hbWidth": 371,
+   "diff": "spikes/morph/out/fid-noto-400-kafe.png"
+  },
+  {
+   "case": "דילמה noto@400",
+   "iou": 98.26,
+   "domInkPx": 19795,
+   "hbInkPx": 19454,
+   "xorPx": 345,
+   "xorBeyond1px": 0,
+   "domWidth": 529.19,
+   "hbWidth": 529.2,
+   "diff": "spikes/morph/out/fid-noto-400-dilema.png"
+  },
+  {
+   "case": "Talk noto@400",
+   "iou": 96.76,
+   "domInkPx": 17000,
+   "hbInkPx": 16452,
+   "xorPx": 550,
+   "xorBeyond1px": 0,
+   "domWidth": 358.33,
+   "hbWidth": 358.4,
+   "diff": "spikes/morph/out/fid-noto-400-talk.png"
+  },
+  {
+   "case": "בְּרֵאשִׁית noto@400",
+   "iou": 97.82,
+   "domInkPx": 27564,
+   "hbInkPx": 26972,
+   "xorPx": 602,
+   "xorBeyond1px": 0,
+   "domWidth": 674.25,
+   "hbWidth": 674.4,
+   "diff": "spikes/morph/out/fid-noto-400-bereshit.png",
+   "markIou": 91.23,
+   "markPx": "774/708",
+   "markXorBeyond1px": 0,
+   "markComponents": 7,
+   "markMaxOffsetPx": 0.375,
+   "markOffsets": [
+    {
+     "dom": [
+      541.46,
+      88.96
+     ],
+     "hb": [
+      541.47,
+      89.06
+     ],
+     "dist": 0.096,
+     "domPx": 109,
+     "hbPx": 102
+    },
+    {
+     "dom": [
+      826.94,
+      167.31
+     ],
+     "hb": [
+      826.93,
+      167.69
+     ],
+     "dist": 0.375,
+     "domPx": 109,
+     "hbPx": 102
+    },
+    {
+     "dom": [
+      490.33,
+      246.81
+     ],
+     "hb": [
+      490.45,
+      247.01
+     ],
+     "dist": 0.233,
+     "domPx": 110,
+     "hbPx": 103
+    },
+    {
+     "dom": [
+      755.59,
+      246.71
+     ],
+     "hb": [
+      755.52,
+      247.05
+     ],
+     "dist": 0.348,
+     "domPx": 113,
+     "hbPx": 101
+    },
+    {
+     "dom": [
+      776.37,
+      246.74
+     ],
+     "hb": [
+      776.18,
+      247.01
+     ],
+     "dist": 0.326,
+     "domPx": 112,
+     "hbPx": 99
+    },
+    {
+     "dom": [
+      839.82,
+      246.76
+     ],
+     "hb": [
+      839.93,
+      247.09
+     ],
+     "dist": 0.348,
+     "domPx": 112,
+     "hbPx": 101
+    },
+    {
+     "dom": [
+      839.9,
+      265.97
+     ],
+     "hb": [
+      839.97,
+      266.13
+     ],
+     "dist": 0.173,
+     "domPx": 109,
+     "hbPx": 100
+    }
+   ]
+  },
+  {
+   "case": "שָׁלוֹם noto@650",
+   "iou": 97.78,
+   "domInkPx": 30323,
+   "hbInkPx": 29672,
+   "xorPx": 673,
+   "xorBeyond1px": 0,
+   "domWidth": 469.55,
+   "hbWidth": 469.4,
+   "diff": "spikes/morph/out/fid-noto-650-shalom.png",
+   "markIou": 93.77,
+   "markPx": "954/912",
+   "markXorBeyond1px": 0,
+   "markComponents": 3,
+   "markMaxOffsetPx": 0.437,
+   "markOffsets": [
+    {
+     "dom": [
+      605.8,
+      86.5
+     ],
+     "hb": [
+      605.88,
+      86.78
+     ],
+     "dist": 0.292,
+     "domPx": 148,
+     "hbPx": 137
+    },
+    {
+     "dom": [
+      874.09,
+      86.67
+     ],
+     "hb": [
+      874.22,
+      86.88
+     ],
+     "dist": 0.241,
+     "domPx": 147,
+     "hbPx": 137
+    },
+    {
+     "dom": [
+      822.03,
+      252.75
+     ],
+     "hb": [
+      822.46,
+      252.81
+     ],
+     "dist": 0.437,
+     "domPx": 659,
+     "hbPx": 638
+    }
+   ]
+  },
+  {
+   "case": "קפה noto@650",
+   "iou": 96.88,
+   "domInkPx": 23622,
+   "hbInkPx": 23051,
+   "xorPx": 739,
+   "xorBeyond1px": 0,
+   "domWidth": 385.22,
+   "hbWidth": 385.4,
+   "diff": "spikes/morph/out/fid-noto-650-kafe.png"
+  },
+  {
+   "case": "דילמה noto@650",
+   "iou": 97.72,
+   "domInkPx": 29602,
+   "hbInkPx": 28926,
+   "xorPx": 676,
+   "xorBeyond1px": 0,
+   "domWidth": 558,
+   "hbWidth": 558,
+   "diff": "spikes/morph/out/fid-noto-650-dilema.png"
+  },
+  {
+   "case": "Talk noto@650",
+   "iou": 96.75,
+   "domInkPx": 25783,
+   "hbInkPx": 25088,
+   "xorPx": 841,
+   "xorBeyond1px": 0,
+   "domWidth": 390.77,
+   "hbWidth": 390.8,
+   "diff": "spikes/morph/out/fid-noto-650-talk.png"
+  },
+  {
+   "case": "בְּרֵאשִׁית noto@650",
+   "iou": 97.52,
+   "domInkPx": 41082,
+   "hbInkPx": 40071,
+   "xorPx": 1017,
+   "xorBeyond1px": 0,
+   "domWidth": 712.63,
+   "hbWidth": 712.6,
+   "diff": "spikes/morph/out/fid-noto-650-bereshit.png",
+   "markIou": 92.17,
+   "markPx": "1033/954",
+   "markXorBeyond1px": 0,
+   "markComponents": 7,
+   "markMaxOffsetPx": 0.395,
+   "markOffsets": [
+    {
+     "dom": [
+      521.11,
+      86.64
+     ],
+     "hb": [
+      521.22,
+      86.88
+     ],
+     "dist": 0.262,
+     "domPx": 148,
+     "hbPx": 137
+    },
+    {
+     "dom": [
+      820.92,
+      166.77
+     ],
+     "hb": [
+      820.93,
+      166.94
+     ],
+     "dist": 0.176,
+     "domPx": 145,
+     "hbPx": 137
+    },
+    {
+     "dom": [
+      469.31,
+      247.54
+     ],
+     "hb": [
+      469.21,
+      247.83
+     ],
+     "dist": 0.305,
+     "domPx": 149,
+     "hbPx": 136
+    },
+    {
+     "dom": [
+      745,
+      247.57
+     ],
+     "hb": [
+      744.95,
+      247.78
+     ],
+     "dist": 0.213,
+     "domPx": 148,
+     "hbPx": 137
+    },
+    {
+     "dom": [
+      768.41,
+      247.5
+     ],
+     "hb": [
+      768.31,
+      247.88
+     ],
+     "dist": 0.395,
+     "domPx": 150,
+     "hbPx": 135
+    },
+    {
+     "dom": [
+      839.8,
+      247.5
+     ],
+     "hb": [
+      839.88,
+      247.78
+     ],
+     "dist": 0.292,
+     "domPx": 148,
+     "hbPx": 137
+    },
+    {
+     "dom": [
+      839.86,
+      267.69
+     ],
+     "hb": [
+      839.81,
+      267.84
+     ],
+     "dist": 0.157,
+     "domPx": 145,
+     "hbPx": 135
+    }
+   ]
+  },
+  {
+   "case": "שָׁלוֹם noto@900",
+   "iou": 98.19,
+   "domInkPx": 39627,
+   "hbInkPx": 38912,
+   "xorPx": 717,
+   "xorBeyond1px": 0,
+   "domWidth": 493.61,
+   "hbWidth": 493.6,
+   "diff": "spikes/morph/out/fid-noto-900-shalom.png",
+   "markIou": 93.92,
+   "markPx": "1234/1159",
+   "markXorBeyond1px": 0,
+   "markComponents": 3,
+   "markMaxOffsetPx": 0.631,
+   "markOffsets": [
+    {
+     "dom": [
+      587.96,
+      84.25
+     ],
+     "hb": [
+      587.9,
+      84.46
+     ],
+     "dist": 0.216,
+     "domPx": 187,
+     "hbPx": 173
+    },
+    {
+     "dom": [
+      870.21,
+      84.21
+     ],
+     "hb": [
+      870.27,
+      84.5
+     ],
+     "dist": 0.292,
+     "domPx": 189,
+     "hbPx": 173
+    },
+    {
+     "dom": [
+      818,
+      253.41
+     ],
+     "hb": [
+      818,
+      254.04
+     ],
+     "dist": 0.631,
+     "domPx": 858,
+     "hbPx": 813
+    }
+   ]
+  },
+  {
+   "case": "קפה noto@900",
+   "iou": 98.3,
+   "domInkPx": 31136,
+   "hbInkPx": 30767,
+   "xorPx": 531,
+   "xorBeyond1px": 0,
+   "domWidth": 399.41,
+   "hbWidth": 399.4,
+   "diff": "spikes/morph/out/fid-noto-900-kafe.png"
+  },
+  {
+   "case": "דילמה noto@900",
+   "iou": 98.42,
+   "domInkPx": 39359,
+   "hbInkPx": 38743,
+   "xorPx": 620,
+   "xorBeyond1px": 0,
+   "domWidth": 586.81,
+   "hbWidth": 586.8,
+   "diff": "spikes/morph/out/fid-noto-900-dilema.png"
+  },
+  {
+   "case": "Talk noto@900",
+   "iou": 97.81,
+   "domInkPx": 34041,
+   "hbInkPx": 33294,
+   "xorPx": 747,
+   "xorBeyond1px": 0,
+   "domWidth": 423.2,
+   "hbWidth": 423.2,
+   "diff": "spikes/morph/out/fid-noto-900-talk.png"
+  },
+  {
+   "case": "בְּרֵאשִׁית noto@900",
+   "iou": 98.01,
+   "domInkPx": 54275,
+   "hbInkPx": 53198,
+   "xorPx": 1081,
+   "xorBeyond1px": 0,
+   "domWidth": 751,
+   "hbWidth": 751,
+   "diff": "spikes/morph/out/fid-noto-900-bereshit.png",
+   "markIou": 92,
+   "markPx": "1312/1209",
+   "markXorBeyond1px": 0,
+   "markComponents": 7,
+   "markMaxOffsetPx": 0.376,
+   "markOffsets": [
+    {
+     "dom": [
+      500.78,
+      84.13
+     ],
+     "hb": [
+      500.73,
+      84.5
+     ],
+     "dist": 0.373,
+     "domPx": 187,
+     "hbPx": 173
+    },
+    {
+     "dom": [
+      814.79,
+      166.04
+     ],
+     "hb": [
+      814.66,
+      166.25
+     ],
+     "dist": 0.245,
+     "domPx": 186,
+     "hbPx": 173
+    },
+    {
+     "dom": [
+      448.29,
+      248.2
+     ],
+     "hb": [
+      448.27,
+      248.5
+     ],
+     "dist": 0.297,
+     "domPx": 189,
+     "hbPx": 173
+    },
+    {
+     "dom": [
+      734.46,
+      248.23
+     ],
+     "hb": [
+      734.5,
+      248.5
+     ],
+     "dist": 0.269,
+     "domPx": 188,
+     "hbPx": 172
+    },
+    {
+     "dom": [
+      760.54,
+      248.23
+     ],
+     "hb": [
+      760.5,
+      248.5
+     ],
+     "dist": 0.269,
+     "domPx": 188,
+     "hbPx": 172
+    },
+    {
+     "dom": [
+      839.79,
+      248.2
+     ],
+     "hb": [
+      839.73,
+      248.5
+     ],
+     "dist": 0.311,
+     "domPx": 187,
+     "hbPx": 173
+    },
+    {
+     "dom": [
+      839.76,
+      269.13
+     ],
+     "hb": [
+      839.73,
+      269.5
+     ],
+     "dist": 0.376,
+     "domPx": 187,
+     "hbPx": 173
+    }
+   ]
+  },
+  {
+   "case": "שָׁלוֹם rubik@400",
+   "iou": 96.06,
+   "domInkPx": 20264,
+   "hbInkPx": 19477,
+   "xorPx": 799,
+   "xorBeyond1px": 0,
+   "domWidth": 419.83,
+   "hbWidth": 419.8,
+   "diff": "spikes/morph/out/fid-rubik-400-shalom.png",
+   "markIou": 92.51,
+   "markPx": "1375/1274",
+   "markXorBeyond1px": 0,
+   "markComponents": 3,
+   "markMaxOffsetPx": 0.493,
+   "markOffsets": [
+    {
+     "dom": [
+      627.61,
+      82.38
+     ],
+     "hb": [
+      627.69,
+      82.44
+     ],
+     "dist": 0.106,
+     "domPx": 238,
+     "hbPx": 228
+    },
+    {
+     "dom": [
+      876.24,
+      83.66
+     ],
+     "hb": [
+      876,
+      84
+     ],
+     "dist": 0.417,
+     "domPx": 231,
+     "hbPx": 213
+    },
+    {
+     "dom": [
+      828.87,
+      243.83
+     ],
+     "hb": [
+      829.18,
+      244.21
+     ],
+     "dist": 0.493,
+     "domPx": 906,
+     "hbPx": 833
+    }
+   ]
+  },
+  {
+   "case": "בְּרֵאשִׁית rubik@700",
+   "iou": 96.98,
+   "domInkPx": 44643,
+   "hbInkPx": 43323,
+   "xorPx": 1348,
+   "xorBeyond1px": 0,
+   "domWidth": 702.53,
+   "hbWidth": 702.6,
+   "diff": "spikes/morph/out/fid-rubik-700-bereshit.png",
+   "markIou": 93.68,
+   "markPx": "2584/2440",
+   "markXorBeyond1px": 0,
+   "markComponents": 7,
+   "markMaxOffsetPx": 0.607,
+   "markOffsets": [
+    {
+     "dom": [
+      516.5,
+      85.23
+     ],
+     "hb": [
+      516.5,
+      85.84
+     ],
+     "dist": 0.607,
+     "domPx": 354,
+     "hbPx": 328
+    },
+    {
+     "dom": [
+      821.95,
+      159
+     ],
+     "hb": [
+      821.54,
+      159.11
+     ],
+     "dist": 0.419,
+     "domPx": 347,
+     "hbPx": 328
+    },
+    {
+     "dom": [
+      471.43,
+      241.93
+     ],
+     "hb": [
+      471.4,
+      242.04
+     ],
+     "dist": 0.116,
+     "domPx": 369,
+     "hbPx": 362
+    },
+    {
+     "dom": [
+      743.03,
+      241.93
+     ],
+     "hb": [
+      742.65,
+      241.96
+     ],
+     "dist": 0.374,
+     "domPx": 382,
+     "hbPx": 360
+    },
+    {
+     "dom": [
+      770.43,
+      241.93
+     ],
+     "hb": [
+      770.4,
+      242.04
+     ],
+     "dist": 0.116,
+     "domPx": 369,
+     "hbPx": 362
+    },
+    {
+     "dom": [
+      842.03,
+      241.93
+     ],
+     "hb": [
+      842,
+      242
+     ],
+     "dist": 0.07,
+     "domPx": 382,
+     "hbPx": 351
+    },
+    {
+     "dom": [
+      842.05,
+      264.91
+     ],
+     "hb": [
+      841.95,
+      264.95
+     ],
+     "dist": 0.103,
+     "domPx": 381,
+     "hbPx": 349
+    }
+   ]
+  },
+  {
+   "case": "שָׁלוֹם frank@400",
+   "iou": 94.97,
+   "domInkPx": 16227,
+   "hbInkPx": 15425,
+   "xorPx": 816,
+   "xorBeyond1px": 0,
+   "domWidth": 380.81,
+   "hbWidth": 380.8,
+   "diff": "spikes/morph/out/fid-frank-400-shalom.png",
+   "markIou": 91.71,
+   "markPx": "1060/974",
+   "markXorBeyond1px": 0,
+   "markComponents": 3,
+   "markMaxOffsetPx": 0.535,
+   "markOffsets": [
+    {
+     "dom": [
+      651.11,
+      81.9
+     ],
+     "hb": [
+      651.26,
+      82.13
+     ],
+     "dist": 0.277,
+     "domPx": 182,
+     "hbPx": 168
+    },
+    {
+     "dom": [
+      880.62,
+      81.82
+     ],
+     "hb": [
+      880.53,
+      82.11
+     ],
+     "dist": 0.31,
+     "domPx": 181,
+     "hbPx": 167
+    },
+    {
+     "dom": [
+      829.79,
+      239.11
+     ],
+     "hb": [
+      829.77,
+      239.65
+     ],
+     "dist": 0.535,
+     "domPx": 697,
+     "hbPx": 639
+    }
+   ]
+  }
+ ]
+}
