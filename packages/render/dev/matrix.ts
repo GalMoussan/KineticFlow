@@ -1,7 +1,9 @@
 /**
- * M2 acceptance matrix: every test spec × every style × every format the style supports.
- * Usage: node packages/render/dev/matrix.ts [--styles a,b] [--specs x,y] [--quality draft|standard]
- * Writes out/matrix/report.md and out/matrix/sheet-<style>.png (9:16 frames at every section hold, one row per spec).
+ * Acceptance matrix: every test spec × every style × every format the style supports.
+ * Usage: node packages/render/dev/matrix.ts [--styles a,b] [--specs x,y] [--quality draft|standard] [--workers N]
+ *        [--name report]
+ * Writes out/matrix/<name>.md (default report.md) and out/matrix/sheet-<style>.png (9:16 frames at every section
+ * hold, one row per spec). Use a small --workers and your own --name when several matrices run at once.
  */
 import { mkdir, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -14,7 +16,13 @@ import { QaError, renderJob, type Receipt } from '../src/index.ts';
 
 const root = resolve(new URL('../../..', import.meta.url).pathname);
 const { values } = parseArgs({
-  options: { styles: { type: 'string' }, specs: { type: 'string' }, quality: { type: 'string', default: 'draft' } },
+  options: {
+    styles: { type: 'string' },
+    specs: { type: 'string' },
+    quality: { type: 'string', default: 'draft' },
+    workers: { type: 'string' },
+    name: { type: 'string', default: 'report' },
+  },
 });
 const styles = values.styles?.split(',') ?? Object.keys(RECIPES);
 const setDir = join(root, 'examples/test-set');
@@ -56,7 +64,11 @@ for (const style of styles) {
     try {
       const sheet = buildCueSheet({ spec: JobSpec.parse(raw), choreography: recipe.choreography, bpm: raw.music.bpm, fps: 30 });
       row.holds = sheet.sections.map((s) => s.timing.holdEnd - 1 / 30);
-      const receipt = await renderJob(path, { quality: values.quality as 'draft', outDir: join(outRoot, 'jobs') }, () => undefined);
+      const receipt = await renderJob(
+        path,
+        { quality: values.quality as 'draft', outDir: join(outRoot, 'jobs'), ...(values.workers ? { workers: Number(values.workers) } : {}) },
+        () => undefined,
+      );
       row.receipt = receipt;
       row.warns = receipt.qa.filter((g) => g.level === 'warn' && g.gate !== 'contrast').map((g) => `${g.gate} ${g.format ?? ''}`);
       row.ok = true;
@@ -100,6 +112,6 @@ const md = [
       `| ${r.style} | ${r.spec} | ${r.ok ? '✅' : '❌'} | ${formatsOf(r)} | ${r.seconds} | ${(r.error ?? r.fails.join('<br>')).replaceAll('|', '/')} | ${r.warns.join(', ')} |`,
   ),
 ].join('\n');
-await writeFile(join(outRoot, 'report.md'), md + '\n');
-console.log(`\n${rows.filter((r) => r.ok).length}/${rows.length} passed · out/matrix/report.md`);
+await writeFile(join(outRoot, `${values.name}.md`), md + '\n');
+console.log(`\n${rows.filter((r) => r.ok).length}/${rows.length} passed · out/matrix/${values.name}.md`);
 process.exitCode = rows.every((r) => r.ok) ? 0 : 1;
