@@ -3,7 +3,7 @@
  * from `REEL.scenes`, units from the cue sheet's items, runs the traits' hooks in axis order every frame and commits
  * all channels in one pass. Every frame is a pure function of t. Guide: `packages/traits/README.md`.
  */
-import type { ResolvedPalette, TextBox, TraitAxis } from '@reel/core';
+import type { ResolvedPalette, SoundCue, TextBox, TraitAxis } from '@reel/core';
 import { decodeImages, defineReelPage, loadFonts, splitMeasured } from '@reel/runtime';
 import type {
   AnyTrait,
@@ -24,6 +24,7 @@ import type {
   View,
 } from '../contract.ts';
 import { commitLayer, commitStage, commitUnit, drawn, resetChannels, resetPart } from './commit.ts';
+import { finishCues } from '../lib/sound.ts';
 
 /** Bump when host behaviour changes pixels for the same inputs (it is part of every fingerprint). */
 const HOST_VERSION = 'traits-host@1';
@@ -126,6 +127,8 @@ export function runHost(traits: readonly AnyTrait[]): void {
   };
 
   const beats = REEL.cues.beats;
+  /** Beats come from track analysis (own or AI track), not from `t0 + n · 60/bpm`. */
+  const DETECTED = REEL.spec.music.source === 'track' || REEL.spec.music.source === 'ai';
   const beatPulse: Host['beatPulse'] = (t, decay = 10) => {
     let lo = 0;
     let hi = beats.length - 1;
@@ -248,6 +251,21 @@ export function runHost(traits: readonly AnyTrait[]): void {
       return img;
     },
     beatPulse,
+    pan(u, t = u.at) {
+      const s = u.section as SectionState;
+      const L = s.layer as LayerState;
+      const v = L.ctx.camera.trait.view(L.ctx.camera.c, Number.isFinite(t) ? t : s.timing.holdStart);
+      const ink = u.inkBox;
+      const gx = u.box.x + (ink ? u.textAt.x + ink.x + ink.w / 2 : u.box.w / 2);
+      const gy = u.box.y + (ink ? u.textAt.y + ink.y + ink.h / 2 : u.box.h / 2);
+      const pr = (s.place.rot * Math.PI) / 180;
+      const lx = s.place.x + gx * Math.cos(pr) - gy * Math.sin(pr);
+      const ly = s.place.y + gx * Math.sin(pr) + gy * Math.cos(pr);
+      const vr = (-v.r * Math.PI) / 180;
+      const x = host.safe.cx + v.s * ((lx - v.x) * Math.cos(vr) - (ly - v.y) * Math.sin(vr));
+      const p = ((x - W / 2) / (W / 2)) * 0.7;
+      return p < -0.7 ? -0.7 : p > 0.7 ? 0.7 : p;
+    },
   };
   const { cx: CX, cy: CY } = host.safe;
   const IDENTITY: View = { x: CX, y: CY, r: 0, s: 1 };
@@ -435,6 +453,39 @@ export function runHost(traits: readonly AnyTrait[]): void {
     for (const s of sections) buildSection(s);
     for (const axis of AXES) await each(axis, (t, c) => t.mount?.(c as never));
     for (const L of layers) commitLayer(L, stageCh, IDENTITY, false);
+    sounds = collectSounds();
+  }
+
+  // ── sound cues (once, after mount) ──
+  let sounds: SoundCue[] | null = null;
+
+  /** Every instance's `sounds`, plus the host's landing sounds for sections whose reveal has none; thinned. */
+  function collectSounds(): SoundCue[] {
+    const raw: SoundCue[] = [];
+    for (const axis of AXES) {
+      for (const i of instancesOf(axis)) {
+        const own = (i.c as Partial<SectionCtx<unknown>>).section?.id;
+        for (const c of i.trait.sounds?.(i.c as never) ?? []) raw.push(c.section === undefined && own ? { ...c, section: own } : c);
+      }
+    }
+    for (const s of sections) {
+      if (s.ctx.reveal.trait.sounds) continue;
+      for (const u of s.units) {
+        if (u.item < 0 || !Number.isFinite(u.at)) continue;
+        const pan = host.pan(u);
+        raw.push(
+          u.hit
+            ? { t: u.hit.t, kind: 'impact', weight: Math.min(1, 0.35 + u.hit.amp / 40), pan, section: s.id }
+            : { t: u.at, kind: 'pop', weight: u.emphasis ? 0.55 : 0.35, pan, section: s.id },
+        );
+      }
+    }
+    return finishCues(raw, REEL.cues.duration);
+  }
+
+  function soundCues(): SoundCue[] {
+    if (!sounds) throw new Error('reelPage.soundCues(): call it after ready()');
+    return sounds.map((c) => ({ ...c }));
   }
 
   function buildSection(s: SectionState): void {
@@ -674,10 +725,11 @@ export function runHost(traits: readonly AnyTrait[]): void {
       palette: PAL,
       fonts: REEL.fonts,
       dir: host.dir,
-      beats: { t0: REEL.cues.t0, bpm: REEL.cues.bpm ?? null },
+      // a generated grid is fully given by t0 + bpm; a detected one (own/AI track) drifts, so it is keyed whole
+      beats: { t0: REEL.cues.t0, bpm: REEL.cues.bpm ?? null, ...(DETECTED ? { grid: REEL.cues.beats } : {}) },
       layers: layersOut,
     };
   }
 
-  defineReelPage({ width: W, height: H, ready: setup, seek, boxes, fingerprint });
+  defineReelPage({ width: W, height: H, ready: setup, seek, boxes, fingerprint, soundCues });
 }

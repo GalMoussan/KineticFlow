@@ -1,0 +1,64 @@
+{
+  "id": "m3-track-he",
+  "language": "he",
+  "contentType": "event",
+  "brief": "Dilemma café over a 1924 foxtrot (public domain): every word lands on the band's beat.",
+  "sections": [
+    {
+      "role": "title",
+      "text": "קפה דילמה וג׳אם"
+    },
+    {
+      "role": "tagline",
+      "text": "הנושאים הכי *מעניינים* ו*חמים* היום!"
+    },
+    {
+      "role": "body",
+      "text": "בואו, נשב, נדבר ונשתה *קפה*"
+    },
+    {
+      "role": "teaser",
+      "text": "יהיו *הפתעות*"
+    },
+    {
+      "role": "datetime",
+      "date": "2026-12-01",
+      "time": "19:30"
+    },
+    {
+      "role": "location",
+      "place": "בית החאן",
+      "city": "קרית שמונה"
+    },
+    {
+      "role": "cta",
+      "text": "בואו *לדבר!*"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "kinetic-quote",
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "track",
+    "file": "it-had-to-be-you",
+    "offset": 7.24
+  },
+  "duration": 26,
+  "formats": [
+    "9:16"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}

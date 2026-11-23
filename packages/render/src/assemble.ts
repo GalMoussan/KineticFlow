@@ -1,4 +1,7 @@
-/** Chunks → one MP4 per format: concat `-c copy`, AAC mux, `+faststart`, a no-music copy and a thumbnail. */
+/**
+ * Chunks → one MP4 per format: concat `-c copy`, AAC mux, `+faststart`, a no-music copy (the SFX stem alone, or no
+ * audio) and a thumbnail.
+ */
 import { stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { formatSlug, type FormatId } from '@reel/core';
@@ -19,6 +22,8 @@ export async function assemble(o: {
   outDir: string;
   workDir: string;
   noMusic: boolean;
+  /** Audio of the no-music copy (the SFX stem); without it that copy has no audio stream. */
+  noMusicAac?: string;
   /** Thumbnail time (the end card's holdStart). */
   thumbAt: number;
 }): Promise<Exported> {
@@ -34,15 +39,16 @@ export async function assemble(o: {
     await ffmpeg([...concat, '-i', o.aac, '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy', '-movflags', '+faststart', video]);
     await ffmpeg(['-y', '-v', 'error', '-ss', o.thumbAt.toFixed(3), '-i', video, '-frames:v', '1', '-q:v', '2', thumbnail]);
   };
-  const silent = `${base}-no-music.mp4`;
+  const noMusic = `${base}-no-music.mp4`;
+  const noMusicAudio = o.noMusicAac ? ['-i', o.noMusicAac, '-map', '0:v:0', '-map', '1:a:0'] : ['-map', '0:v:0'];
   await Promise.all([
     withMusic(),
-    o.noMusic ? ffmpeg([...concat, '-map', '0:v:0', '-c', 'copy', '-movflags', '+faststart', silent]) : null,
+    o.noMusic ? ffmpeg([...concat, ...noMusicAudio, '-c', 'copy', '-movflags', '+faststart', noMusic]) : null,
   ]);
   return {
     format: o.format,
     video: await size(video),
     thumbnail: await size(thumbnail),
-    ...(o.noMusic ? { noMusic: await size(silent) } : {}),
+    ...(o.noMusic ? { noMusic: await size(noMusic) } : {}),
   };
 }

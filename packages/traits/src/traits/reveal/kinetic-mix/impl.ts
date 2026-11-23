@@ -1,5 +1,7 @@
+import type { SoundCue } from '@reel/core';
 import { clamp01, lerp } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
+import { digitParts, endcardStinger } from '../../../lib/sound.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'mask' | 'slide' | 'drop' | 'scale' | 'letters' | 'slot';
@@ -65,5 +67,24 @@ export default defineReveal({
           break;
       }
     }
+  },
+  /** Landings pop (drops louder and lower, pitch rising through the section); slot digits tick as they settle. */
+  sounds({ host, section, params }) {
+    const out: SoundCue[] = endcardStinger(section);
+    let k = 0;
+    for (const u of section.units) {
+      if (!u.revealed || !Number.isFinite(u.at)) continue;
+      const { anim } = u.data.reveal as { anim: Anim };
+      const pan = host.pan(u);
+      if (anim === 'slot') {
+        const st = u.at - params.lead;
+        // the back-ease of each part first reaches its line ≈ 0.3 s after its start
+        digitParts(u).forEach((p, j) => out.push({ t: st + p.index * 0.06 + 0.3, kind: 'tick', weight: 0.45, pitch: j * 2, pan }));
+        continue;
+      }
+      const weight = anim === 'drop' ? 0.7 : anim === 'scale' || anim === 'letters' ? 0.55 : 0.4;
+      out.push({ t: u.at, kind: 'pop', weight, pitch: anim === 'drop' ? -3 : Math.min(7, 2 * k++), pan });
+    }
+    return out;
   },
 });

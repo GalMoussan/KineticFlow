@@ -15,10 +15,13 @@ src/
   host/commit.ts    channel reset + the single DOM commit
   host/host.css     base stylesheet (always bundled first)
   lib/deco.ts       shared decorations: logoBadge, pinSVG/PIN_METRICS, quoteSVG
+  lib/sound.ts      sound-cue helpers (endcardStinger, digitParts, sizeWeight) and the host's merge/thinning pass
+  lib/reactive.ts   page-side band envelopes (smoothed tables, beat-grid fallback, fingerprint slices)
   traits/<axis>/<id>/meta.ts    Node-safe metadata (no DOM, no runtime imports)
   traits/<axis>/<id>/impl.ts    browser implementation: `export default define<Axis>({ meta, …hooks })`
   traits/<axis>/<id>/style.css  optional; bundled only when the trait is used
 dev/stills.ts       contact sheets, safe-area/overlap check, fingerprint diff, determinism for any spec
+dev/sounds.ts       every style's `soundCues()` for a spec: counts per kind, densest second, cue list
 ```
 
 ## 1. Rules that never bend
@@ -162,6 +165,7 @@ Setup (once, inside `reelPage.ready()`):
 8. Host builds the DOM (units sorted by `z`, then creation order), splits parts, then applies `section.place`
    (`translate(x, y) rotate(rot)`) to each section group.
 9. `mount(c)` of every trait in axis order: the DOM exists (`unit.el/inner/parts`, `layer.under/back/over`).
+10. `sounds(c)` of every trait in axis order, once (§7a); the host adds landing sounds for reveals without one.
 
 Every frame (`seek(t)`). A trait instance is **evaluated** when its layer's window contains t (§6); every section of
 that layer is then live.
@@ -276,6 +280,37 @@ Your duty as a trait author:
 `node packages/traits/dev/stills.ts --spec <spec> [--date YYYY-MM-DD]` prints which windows change for a date-only
 edit, plus contact sheets, safe-area/overlap checks and both determinism checks.
 
+## 7a. Sound duty
+
+`reelPage.soundCues()` (PLAN.md §8.2, M3) turns what the page animates into an SFX stem: every style must be
+sonically designed. A trait reports the sounds of what **it** animates from `sounds(c): SoundCue[]` (`@reel/core`
+`sound.ts`: `t`, `kind`, `weight` 0..1, `until` for whoosh/riser/swipe, `pan`, `pitch`, `section`). The host calls it
+once after `mount` (parts, odometer columns and camera keys exist), defaults `section` to the instance's section,
+then rounds, merges same-kind cues closer than 30 ms and thins to at most 6 attacks in any 1 s window, keeping
+stinger > impact > whoosh > riser > shimmer > swipe > pop > tick, then louder, then earlier. The result is sorted by t.
+
+- **Landings belong to the reveal.** A reveal with `sounds` voices its own units; for a reveal without one the host
+  voices every content unit (`u.hit` → impact with weight from `amp`, else pop).
+- **Time the attack to the pixels:** the moment a thing lands (back-ease first crossing, odometer digit settling,
+  flash peak), not when its animation starts. Lengths (`until`) follow the motion (a whoosh spans the camera move).
+- **Pan** from where it happens: `host.pan(u, t)` is a unit's ink centre on screen at t through the camera
+  (−0.7 … 0.7); screen-wide events (wipes, cuts) pan by direction or stay centred.
+- **Keep it musical:** one cue per gesture (one swipe per sweep, ≤ 4 ticks per scramble), weights below 0.6 for
+  detail sounds, `pitch` rising through a section's pops or a number's digits. The end card gets `endcardStinger`.
+- Cues are a pure function of `REEL` (no frame state). They are not part of fingerprints: they never change pixels.
+
+`node packages/traits/dev/sounds.ts [--spec …] [--styles a,b]` prints each style's cues per kind.
+
+### Audio-reactive traits
+
+`REEL.cues.envelopes` holds per-frame 0..1 band energies (`sub bass mid high onset`) of the music stem, from
+`@reel/audio` `computeEnvelopes` (frame i covers `[i/fps, (i+1)/fps)`, no look-ahead). Read them only through
+`lib/reactive.ts`: `reactive(cues, decay)` gives smoothed tables (instant attack, exponential release), synthesised
+from the beat grid when the job has no envelopes; `level(r, band, t)` reads one. Envelopes enter cache keys **only**
+through the trait that reads them: return `slice(r, bands, t0, t1)` of exactly the bands you use from
+`fingerprint()` (see `rhythm/audio-reactive`). A rhythm that exposes the bass as `pulse(c, t)` makes every
+pulse-driven material and background follow the music with no envelope code of their own.
+
 ## 8. CSS and decorations
 
 - `host/host.css` is always first in `engine.css`; each used trait's `style.css` follows in axis order. Scope
@@ -335,3 +370,4 @@ Then render the shared test set (`examples/test-set/*.json`) with QA passing in 
 | slam / drop / pop / scramble / slot | reveal; `glyph` for scramble/slot; declare `u.hit` for impacts |
 | exits (whip, zoom, fall) | reveal, ending by `section.timing.out` when `section.next && section.next.layer !== section.layer` |
 | camera shake on hits | camera trait summing `u.hit` of the layer's units into `host.stageCh.shake*` (report the hits in the window from `fingerprint()`) |
+| scale / weight / glow following the music (bass-pulse, equalizer-type) | `rhythm: audio-reactive` (channels from the band envelopes, §7a); `section.pulse(t)` = smoothed bass for materials and backgrounds (`background: pulse-glow`). Variable-font weight changes only on unsplit units, centred with `host.metrics` per weight step |

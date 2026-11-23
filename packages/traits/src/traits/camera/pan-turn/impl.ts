@@ -1,3 +1,4 @@
+import type { SoundCue } from '@reel/core';
 import { clamp01, smooth } from '@reel/runtime';
 import { defineCamera, type Layer, type Section, type View } from '../../../contract.ts';
 import { meta } from './meta.ts';
@@ -76,5 +77,31 @@ export default defineCamera({
       if (i > 0 && overlaps(keys[i - 1]!.leave, k.arrive)) active.add(i).add(i - 1);
     });
     return [...active].sort((a, b) => a - b).map((i) => keys[i]);
+  },
+  /**
+   * A whoosh across every camera move (from one key's leave to the next one's arrival): louder for 90° turns and
+   * zooms, panned towards where the new key appears in the old view.
+   */
+  sounds({ host, layer }) {
+    const { keys } = keysOf.get(layer)!;
+    const out: SoundCue[] = [];
+    for (let i = 1; i < keys.length; i++) {
+      const [p, k] = [keys[i - 1]!, keys[i]!];
+      if (k.arrive - p.leave < 0.05) continue;
+      const a = (-p.r * Math.PI) / 180;
+      const sx = ((k.x - p.x) * Math.cos(a) - (k.y - p.y) * Math.sin(a)) * p.s;
+      const turn = Math.abs(k.r - p.r) > 45 ? 0.2 : 0;
+      const zoom = Math.min(0.15, Math.abs(Math.log(k.s / p.s)) * 0.2);
+      const s = k.section >= 0 ? host.sections[k.section] : undefined;
+      out.push({
+        t: p.leave,
+        until: k.arrive,
+        kind: 'whoosh',
+        weight: 0.45 + turn + zoom,
+        pan: Math.max(-0.6, Math.min(0.6, sx / host.W)),
+        ...(s ? { section: s.id } : {}),
+      });
+    }
+    return out;
   },
 });

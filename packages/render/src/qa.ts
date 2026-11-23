@@ -1,7 +1,7 @@
 /** QA gates (PLAN.md §10): each returns pass/warn/fail with a readable detail; `fail` fails the job. */
 import { open } from 'node:fs/promises';
 import { PNG } from 'pngjs';
-import { contrast, type CueSheet, type FormatId, type JobSpec, type ReelInput, type ResolvedPalette, type TextBox } from '@reel/core';
+import { contrast, type CueSheet, type FormatId, type JobSpec, type ReelInput, type ResolvedPalette, type SoundCue, type TextBox } from '@reel/core';
 import { launchBrowser, ReelTab } from './capture.ts';
 import { exec, sha256 } from './util.ts';
 
@@ -294,6 +294,109 @@ export function gateLoudness(l: { i: number; tp: number }): GateResult {
     gate: 'loudness',
     level: ok ? 'pass' : 'warn',
     detail: `${l.i.toFixed(1)} LUFS integrated · true peak ${l.tp.toFixed(1)} dBTP${ok ? '' : ' (target −14 ± 1 LUFS, ≤ −1 dBTP)'}`,
+  };
+}
+
+/**
+ * Own-track sync: every `land` cue within ±1 frame of a detected beat or half-beat (the midpoint of two consecutive
+ * detected beats). `beats` are the sidecar's beats in video time, before any phantom-beat trimming.
+ */
+export function gateAudioSync(sheet: CueSheet, beats: number[]): GateResult {
+  const slots = [...beats, ...beats.slice(1).map((b, i) => (beats[i]! + b) / 2)];
+  const lands = sheet.cues.filter((c) => c.type === 'land');
+  const offsets = lands.map((c) => {
+    const nearest = slots.reduce((best, s) => (Math.abs(s - c.t) < Math.abs(best - c.t) ? s : best), Infinity);
+    return { section: c.section, unit: c.unit, t: c.t, beat: nearest, ms: Math.round((c.t - nearest) * 1e6) / 1e3 };
+  });
+  const frameMs = 1000 / sheet.fps;
+  const off = offsets.filter((o) => !(Math.abs(o.ms) <= frameMs + 1e-6));
+  const abs = offsets.map((o) => Math.abs(o.ms));
+  const max = abs.length ? Math.max(...abs) : 0;
+  const mean = abs.length ? abs.reduce((a, b) => a + b, 0) / abs.length : 0;
+  return {
+    gate: 'audio-sync',
+    level: off.length || !lands.length ? 'fail' : 'pass',
+    detail: !lands.length
+      ? 'no land cues'
+      : off.length
+        ? `${off.length} of ${lands.length} landing(s) more than 1 frame (${frameMs.toFixed(1)} ms) from a detected beat: ` +
+          off.slice(0, 4).map((o) => `${o.section}#${o.unit} @${o.t.toFixed(3)} s (${o.ms} ms)`).join('; ')
+        : `${lands.length} landings on detected beats/half-beats · |offset| max ${max.toFixed(1)} ms, mean ${mean.toFixed(2)} ms (≤ ${frameMs.toFixed(1)} ms)`,
+    data: { maxMs: max, meanMs: mean, offsets },
+  };
+}
+
+/** BS.1770 K-weighting at 48 kHz: high shelf then RLB high-pass. */
+const K_STAGES = [
+  { b: [1.53512485958697, -2.69169618940638, 1.19839281085285], a: [-1.69065929318241, 0.73248077421585] },
+  { b: [1, -2, 1], a: [-1.99004745483398, 0.99007225036621] },
+] as const;
+const BLOCK = 4800; // 100 ms at 48 kHz
+const SHORT_TERM_BLOCKS = 30; // 3 s
+
+/** K-weighted energy (L² + R²) per 100 ms block. */
+function kBlocks(x: { l: Float32Array; r: Float32Array }): Float64Array {
+  const n = Math.floor(x.l.length / BLOCK);
+  const out = new Float64Array(n);
+  for (const ch of [x.l, x.r]) {
+    const s = K_STAGES.map(() => [0, 0, 0, 0]); // x1 x2 y1 y2 per stage
+    for (let i = 0; i < n * BLOCK; i++) {
+      let v = ch[i]!;
+      K_STAGES.forEach(({ b, a }, k) => {
+        const z = s[k]!;
+        const y = b[0] * v + b[1] * z[0]! + b[2] * z[1]! - a[0] * z[2]! - a[1] * z[3]!;
+        z[1] = z[0]!;
+        z[0] = v;
+        z[3] = z[2]!;
+        z[2] = y;
+        v = y;
+      });
+      out[Math.floor(i / BLOCK)]! += v * v;
+    }
+  }
+  return out;
+}
+
+/** Short-term loudness (LUFS-S, 3 s window) ending at each 100 ms block boundary. */
+export function shortTermLoudness(x: { l: Float32Array; r: Float32Array }): number[] {
+  const blocks = kBlocks(x);
+  const out: number[] = [];
+  let sum = 0;
+  for (let k = 0; k < blocks.length; k++) {
+    sum += blocks[k]!;
+    if (k >= SHORT_TERM_BLOCKS) sum -= blocks[k - SHORT_TERM_BLOCKS]!;
+    const n = Math.min(k + 1, SHORT_TERM_BLOCKS) * BLOCK;
+    out.push(-0.691 + 10 * Math.log10(Math.max(sum / n, 1e-12)));
+  }
+  return out;
+}
+
+/**
+ * SFX level against the music: at each sound's peak (the loudest SFX short-term value from its attack to 0.5 s after
+ * it ends), the SFX stem must not be more than 6 dB louder (LUFS-S) than the music stem. Both stems as mixed.
+ */
+export function gateSfx(music: { l: Float32Array; r: Float32Array }, sfx: { l: Float32Array; r: Float32Array }, cues: SoundCue[]): GateResult {
+  const m = shortTermLoudness(music);
+  const s = shortTermLoudness(sfx);
+  const rows = cues.map((c) => {
+    const k0 = Math.min(s.length - 1, Math.floor(c.t * 10));
+    const k1 = Math.min(s.length - 1, Math.ceil(((c.until ?? c.t) + 0.5) * 10));
+    let k = k0;
+    for (let j = k0; j <= k1; j++) if (s[j]! > s[k]!) k = j;
+    return { t: c.t, kind: c.kind, sfx: r2(s[k]!), music: r2(m[k]!), over: r2(s[k]! - m[k]!) };
+  });
+  const loud = rows.filter((r) => r.over > 6);
+  const worst = rows.reduce<(typeof rows)[number] | null>((w, r) => (!w || r.over > w.over ? r : w), null);
+  return {
+    gate: 'sfx',
+    level: loud.length ? 'warn' : 'pass',
+    detail: !worst
+      ? 'no sound effects'
+      : loud.length
+        ? `${loud.length} of ${rows.length} sound(s) more than 6 dB over the music (LUFS-S): ` +
+          loud.slice(0, 4).map((r) => `${r.kind} @${r.t.toFixed(2)} s +${r.over} dB`).join('; ')
+        : `${rows.length} sounds · loudest vs music ${worst.over >= 0 ? '+' : ''}${worst.over} dB LUFS-S (${worst.kind} @${worst.t.toFixed(2)} s; limit +6 dB)`,
+    data: rows,
   };
 }
 

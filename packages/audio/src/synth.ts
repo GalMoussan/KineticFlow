@@ -4,7 +4,10 @@
  *
  * Determinism: notes are summed in document order into one Float64 buffer, so the output depends only on the
  * document. Noise comes from a seeded mulberry32 + Box–Muller generator (numpy's PCG64 stream is not reproduced).
+ * All trigonometry and exponentials go through `dmath`, so Node and the browser produce identical samples.
  */
+import { PI, cos, exp, mtof, sin } from './dmath.ts';
+import { gaussian } from './rng.ts';
 
 export const WAVEFORMS = ['sine', 'triangle', 'bell', 'noise'] as const;
 export type Waveform = (typeof WAVEFORMS)[number];
@@ -71,38 +74,6 @@ function number(value: unknown, where: string, low: number, high: number, intege
   return value;
 }
 
-/** Seeded uniform [0, 1) generator (mulberry32). */
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Seeded standard-normal generator (Box–Muller over mulberry32, both outputs used). */
-function gaussian(seed: number): () => number {
-  const uniform = mulberry32(seed);
-  let spare = 0;
-  let hasSpare = false;
-  return () => {
-    if (hasSpare) {
-      hasSpare = false;
-      return spare;
-    }
-    const u = 1 - uniform(); // (0, 1]
-    const v = uniform();
-    const r = Math.sqrt(-2 * Math.log(u));
-    const th = 2 * Math.PI * v;
-    spare = r * Math.sin(th);
-    hasSpare = true;
-    return r * Math.cos(th);
-  };
-}
-
 const TABLE = 4096;
 const triangleTables = new Map<number, Float64Array>();
 
@@ -111,11 +82,11 @@ function triangleTable(maxH: number): Float64Array {
   let table = triangleTables.get(maxH);
   if (table) return table;
   table = new Float64Array(TABLE + 1);
-  const k = 8 / (Math.PI * Math.PI);
+  const k = 8 / (PI * PI);
   for (let i = 0; i < TABLE; i++) {
-    const phase = (2 * Math.PI * i) / TABLE;
+    const phase = (2 * PI * i) / TABLE;
     let s = 0;
-    for (let h = 1; h <= maxH; h += 2) s += ((((h - 1) >> 1) & 1 ? -1 : 1) * Math.sin(h * phase)) / (h * h);
+    for (let h = 1; h <= maxH; h += 2) s += ((((h - 1) >> 1) & 1 ? -1 : 1) * sin(h * phase)) / (h * h);
     table[i] = s * k;
   }
   table[TABLE] = table[0]!;
@@ -155,7 +126,7 @@ function prepare(document: unknown): { duration: number; sr: number; seed: numbe
     if (attack + release > length) throw new ScoreError('Attack and release exceed note duration');
     const kind = event.waveform ?? 'sine';
     if (!(WAVEFORMS as readonly unknown[]).includes(kind)) throw new ScoreError('Unsupported oscillator');
-    const freq = 440 * 2 ** ((midi - 69) / 12);
+    const freq = mtof(midi);
     if (kind !== 'noise' && freq * (kind === 'bell' ? 2 : 1) >= sr / 2) throw new ScoreError('Note exceeds oscillator Nyquist limit');
     prepared.push({ at, length, freq, gain, pan, attack, release, kind: kind as Waveform });
   }
@@ -169,7 +140,7 @@ export function synthesize(document: ScoreDocument): SynthResult {
   const mix = new Float64Array(frames * 2);
   const normal = gaussian(seed);
   let signal = new Float64Array(0);
-  const TWO_PI = 2 * Math.PI;
+  const TWO_PI = 2 * PI;
 
   for (const { at, length, freq, gain, pan, attack, release, kind } of notes) {
     const start = Math.round(at * sr);
@@ -180,7 +151,7 @@ export function synthesize(document: ScoreDocument): SynthResult {
     // Oscillator.
     if (kind === 'sine') {
       const w = (TWO_PI * freq) / sr;
-      for (let i = 0; i < n; i++) signal[i] = Math.sin(w * i);
+      for (let i = 0; i < n; i++) signal[i] = sin(w * i);
     } else if (kind === 'triangle') {
       const table = triangleTable(Math.min(63, Math.floor((sr / 2 - 1e-9) / freq)));
       const step = freq / sr; // cycles per sample
@@ -196,7 +167,7 @@ export function synthesize(document: ScoreDocument): SynthResult {
       const decay = -5 / (length * sr);
       for (let i = 0; i < n; i++) {
         const p = w * i;
-        signal[i] = (Math.sin(p) + 0.35 * Math.sin(2 * p)) * Math.exp(decay * i);
+        signal[i] = (sin(p) + 0.35 * sin(2 * p)) * exp(decay * i);
       }
     } else {
       for (let i = 0; i < n; i++) signal[i] = normal() * 0.25;
@@ -209,9 +180,9 @@ export function synthesize(document: ScoreDocument): SynthResult {
     for (let j = 0, i = n - r; j < r; j++, i++) signal[i]! *= r > 1 ? 1 - j / (r - 1) : 1;
 
     // Equal-power pan, summed in note order.
-    const angle = ((pan + 1) * Math.PI) / 4;
-    const gl = gain * Math.cos(angle);
-    const gr = gain * Math.sin(angle);
+    const angle = ((pan + 1) * PI) / 4;
+    const gl = gain * cos(angle);
+    const gr = gain * sin(angle);
     for (let i = 0, o = start * 2; i < n; i++, o += 2) {
       const s = signal[i]!;
       mix[o]! += s * gl;

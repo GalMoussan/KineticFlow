@@ -1,3 +1,4 @@
+import type { SoundCue } from '@reel/core';
 import { clamp01 } from '@reel/runtime';
 import { defineMaterial } from '../../../contract.ts';
 import { meta } from './meta.ts';
@@ -56,5 +57,11 @@ export default defineMaterial({
       u.ch.rot += params.tilt;
       u.ch.sx *= q;
     }
+  },
+  /** A marker stroke across each swipe as it draws. */
+  sounds({ host, section }) {
+    return section.units
+      .filter((u) => u.deco === 'swipe' && u.data.material)
+      .map((u): SoundCue => ({ t: u.at, until: u.at + 0.38, kind: 'swipe', weight: 0.5, pan: host.pan(u) }));
   },
 });

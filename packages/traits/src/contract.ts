@@ -12,6 +12,7 @@ import type {
   ResolvedStyle,
   SectionRole,
   SectionTiming,
+  SoundCue,
   TraitAxis,
   TraitMeta,
 } from '@reel/core';
@@ -353,6 +354,11 @@ export interface Host {
   freeze(canvas: HTMLCanvasElement): Promise<HTMLImageElement>;
   /** Beat pulse from the cue sheet's beat grid: 1 on each beat, decaying as exp(−decay · age). */
   beatPulse(t: number, decay?: number): number;
+  /**
+   * Stereo position −1 (left) … 1 (right) of a unit as seen on screen at t (default: its landing `at`): its ink
+   * centre through the section placement and the layer's camera at t, scaled so nothing is hard-panned.
+   */
+  pan(u: Unit, t?: number): number;
 }
 
 export interface LayerCtx<P> {
@@ -393,6 +399,12 @@ interface Hooks<C> {
    * are off screen (their stage-level effects still count). JSON-serialisable.
    */
   fingerprint?(c: C, t0: number, t1: number): unknown;
+  /**
+   * Sound effects for what this instance animates (README §7a), called once after every `mount`. `section` defaults
+   * to the instance's section. Landing sounds belong to the reveal: when a section's reveal has no `sounds`, the host
+   * voices its content units itself (`hit` → impact, else pop).
+   */
+  sounds?(c: C): SoundCue[];
 }
 
 export interface RhythmTrait<M extends TraitMeta = TraitMeta> extends Hooks<SectionCtx<ParamsOf<M>>> {

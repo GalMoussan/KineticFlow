@@ -1,210 +1,183 @@
 /**
- * Mellow lo-fi jazz score, ported from OpenKatana's `make_score11.py` (Dilemma Cafe reel #11) and driven by the
- * cue sheet instead of hard-coded times.
+ * lofi-jazz (80–110 bpm): a mellow swung groove in D major, I–vi–ii–V (Dmaj9 · Bm9 · Em9 · A13).
  *
- * I-vi-ii-V in D major (Dmaj9 - Bm9 - Em9 - A13) on an electric-piano voice (sine + triangle + faint bell tine),
- * round sine bass, soft kick, brushed-noise snare, swung hats, vinyl crackle, a bell pluck on every landing (two-note
- * pluck on emphasis), soft whooshes under camera moves, the kick dropping out under the teaser, and a resolving
- * Dmaj9 chord at the end. Bars count from the first downbeat `t0`, so the arrangement follows any bpm.
+ * - Drums: dampened kick, tape snare, brush taps, tight hats swung at 58 % (ride in the body/date sections, shaker
+ *   under the location), all through a dark, saturated drum bus. The first bar is hats and brushes only; the kick
+ *   drops out under the teaser and the snare turns into a cross-stick.
+ * - FM electric piano comping (long chord on 1, a push on the swung "and" of 2, a soft re-touch on 4) with chorus.
+ * - Upright-ish walking bass: Karplus–Strong string + a sine sub, root → chord tone → fifth → chromatic approach.
+ * - A vibraphone-like mallet pluck on every word landing; emphasised words get a second note a fifth up and a low
+ *   e-piano tine. Opening/closing decorations land like emphasised words.
+ * - A brush swish across each camera move, vinyl crackle and tape hiss, a reversed-ride pickup into the first
+ *   downbeat, and a resolving Dmaj9 (V → I) that fades by the end of the video.
  */
 import type { CueSheet } from '@reel/core';
-import { mulberry32, type NoteEvent, type ScoreDocument, type Waveform } from '../synth.ts';
+import { mulberry32 } from '../rng.ts';
+import type { MusicEvent } from '../voices.ts';
+import { kick, plan, type Preset, type PresetMusic } from './plan.ts';
 
-export interface PresetMusic {
-  bpm: number;
-  seed: number;
-}
-
-/** Swung 8th offbeat position (fraction of a beat). */
 const SWING = 0.58;
-/** Bass root, e-piano voicing. */
+type Quality = 'maj' | 'min' | 'dom';
 const CHORDS = {
-  Dmaj9: [38, [54, 57, 61, 64]],
-  Bm9: [35, [57, 61, 62, 66]],
-  Em9: [40, [55, 59, 62, 66]],
-  A13: [33, [55, 61, 66, 71]],
-} as const satisfies Record<string, readonly [number, readonly number[]]>;
+  Dmaj9: { root: 38, q: 'maj', voicing: [54, 57, 61, 64] },
+  Bm9: { root: 35, q: 'min', voicing: [57, 61, 62, 66] },
+  Em9: { root: 40, q: 'min', voicing: [55, 59, 62, 66] },
+  A13: { root: 33, q: 'dom', voicing: [55, 61, 66, 71] },
+} as const satisfies Record<string, { root: number; q: Quality; voicing: readonly number[] }>;
 type Chord = keyof typeof CHORDS;
 const PROG: readonly Chord[] = ['Dmaj9', 'Bm9', 'Em9', 'A13'];
-/** Absorbs float error in grid arithmetic (`(t - T0) / BAR` for t on the grid). */
-const EPS = 1e-9;
+const THIRD: Record<Quality, number> = { maj: 4, min: 3, dom: 4 };
 
-const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
-
-export function lofiJazz(sheet: CueSheet, music: PresetMusic, sampleRate = 48000): ScoreDocument {
-  const DUR = sheet.duration;
-  const BEAT = 60 / music.bpm;
-  const T0 = sheet.t0;
-  const BAR = BEAT * 4;
-
-  // Word landings: the opening/closing decorations (quote marks) land as emphasised words, like the reference.
-  const emphasis = new Set(sheet.cues.filter((c) => c.type === 'emphasis').map((c) => `${c.section}#${c.unit}`));
-  const words: Array<[number, boolean]> = [];
-  for (const c of sheet.cues) {
-    if (c.type === 'land') words.push([c.t, emphasis.has(`${c.section}#${c.unit}`)]);
-    else if (c.type === 'intro' || c.type === 'outro') words.push([c.t, true]);
-  }
-  const moves = sheet.cues.filter((c) => c.type === 'camera-move').map((c) => [c.t, c.until ?? c.t] as const);
-  const teaser = sheet.sections.find((s) => s.role === 'teaser');
-  const surprise = teaser ? ([teaser.timing.firstLand, teaser.timing.out] as const) : null;
-  const lands = sheet.cues.filter((c) => c.type === 'land');
-  const outro = sheet.cues.find((c) => c.type === 'outro');
-  let END: number;
-  if (outro) END = outro.t;
-  else {
-    const after = (lands.at(-1)?.t ?? T0) + BEAT;
-    END = sheet.beats.find((b) => b >= after - EPS) ?? T0 + Math.ceil((after - T0) / BEAT - EPS) * BEAT;
-  }
-  /** The bar sounding just before END plays the V chord. */
-  const lastBar = Math.ceil((END - T0) / BAR - EPS) - 1;
-
-  const notes: NoteEvent[] = [];
-  const add = (at: number, dur: number, waveform: Waveform, gain: number, midi: number, attack: number, release: number, pan = 0) => {
-    notes.push({ at: round4(at), duration: round4(dur), waveform, gain, midi, attack, release, pan });
-  };
-
+function arrange(sheet: CueSheet, music: PresetMusic) {
+  const p = plan(sheet, music);
+  const { beat, bar, t0, end } = p;
+  const rnd = mulberry32(music.seed);
+  const human = (amount: number) => (rnd() * 2 - 1) * amount;
+  const ev: MusicEvent[] = [];
+  /** The bar sounding just before `end` plays the V chord. */
+  const lastBar = p.bars - 1;
   const chordAt = (t: number): Chord => {
-    if (t >= END) return 'Dmaj9';
-    const bar = Math.floor((t - T0) / BAR + EPS);
-    if (bar === lastBar) return 'A13';
-    return PROG[Math.max(bar, 0) % 4]!;
+    if (t >= end - 1e-9) return 'Dmaj9';
+    const b = p.barAt(t);
+    if (b === lastBar && b > 0) return 'A13';
+    return PROG[Math.max(b, 0) % 4]!;
   };
 
-  const epiano = (at: number, dur: number, midis: readonly number[], gain: number, release: number) => {
+  const epiano = (t: number, dur: number, midis: readonly number[], vel: number, gain: number) => {
     midis.forEach((m, j) => {
-      const pan = (j - (midis.length - 1) / 2) * 0.28;
-      const roll = j * 0.012;
-      add(at + roll, dur, 'sine', gain, m, 0.012, release, pan);
-      add(at + roll, dur, 'triangle', gain * 0.22, m, 0.015, release * 0.8, pan);
-      add(at + roll, Math.min(dur, 0.5), 'bell', gain * 0.16, m + 12, 0.002, 0.45, pan);
+      ev.push({ v: 'epiano', bus: 'keys', t: t + j * 0.012, dur, midi: m, vel: Math.min(1, vel + human(0.06)), gain, pan: (j - (midis.length - 1) / 2) * 0.3 });
     });
   };
 
-  const intro = () => {
-    // Pickup chord before the opening decoration lands: a single soft e-piano swell.
-    const at = Math.max(0.02, T0 - 0.48);
-    if (T0 - at > 0.05) epiano(at, T0 - at, CHORDS.Dmaj9[1], 0.022, 0.2);
-  };
+  // Pickup: a reversed ride swelling into the first downbeat.
+  if (t0 > 0.15) ev.push({ v: 'sample', bus: 'drums', id: 'lofi-ride', t: 0, len: t0, reverse: true, gain: 0.25, pan: 0.2 });
 
-  const keysAndBass = () => {
-    for (let bar = 0; T0 + bar * BAR < END; bar++) {
-      const t0 = T0 + bar * BAR;
-      const [root, voicing] = CHORDS[chordAt(t0)];
-      // Comping: long chord on 1, short push on the "and" of 2, soft re-touch on 4.
-      for (const [b, length, g] of [[0, 1.6, 0.05], [1 + SWING, 0.7, 0.036], [3, 0.8, 0.028]] as const) {
-        const at = t0 + b * BEAT;
-        if (at >= END) break;
-        const dur = Math.min(length * BEAT, END - at + 0.05);
-        epiano(at, dur, voicing, g, Math.min(0.5, dur * 0.6));
-      }
-      // Round bass: root on 1, fifth pickup on the swung "and" of 2, root on 3, octave approach on 4-and.
-      const line = [[0, root, 1.3], [1 + SWING, root + 7, 0.4], [2, root, 1.0], [3 + SWING, root + 12, 0.35]] as const;
-      for (const [b, m, length] of line) {
-        const at = t0 + b * BEAT;
-        if (at >= END) break;
-        add(at, length * BEAT, 'sine', 0.26, m, 0.008, length * BEAT * 0.55);
-        add(at, length * BEAT * 0.6, 'triangle', 0.05, m + 12, 0.006, length * BEAT * 0.4);
-      }
+  // Keys and walking bass, bar by bar.
+  for (let b = 0; t0 + b * bar < end - 1e-9; b++) {
+    const tb = p.at(b * 4);
+    const c = CHORDS[chordAt(tb)];
+    const next = CHORDS[chordAt(p.at((b + 1) * 4))];
+    const dark = p.inTeaser(tb) || p.inTeaser(tb + bar / 2);
+    for (const [pos, len, vel, g] of [
+      [0, 1.6, 0.55, 0.25],
+      [1 + SWING, 0.7, 0.42, 0.19],
+      [3, 0.8, 0.32, 0.15],
+    ] as const) {
+      const t = p.at(b * 4 + pos);
+      if (t >= end - 1e-9) break;
+      epiano(t, Math.min(len * beat, end - t + 0.05), c.voicing, dark ? vel * 0.7 : vel, g);
     }
-  };
-
-  const drums = () => {
-    const beats = Math.floor((END - T0) / BEAT + EPS);
-    for (let b = 0; b < beats; b++) {
-      const t = T0 + b * BEAT;
-      const inBar = b % 4;
-      const quiet = surprise !== null && surprise[0] <= t && t < surprise[1];
-      const first = t < T0 + BAR - EPS; // first bar: brushes + hats only
-      if (!quiet && !first && (inBar === 0 || inBar === 2)) {
-        add(t, 0.24, 'sine', 0.42, 33, 0.003, 0.2); // soft kick body
-        add(t, 0.05, 'sine', 0.12, 45, 0.002, 0.04); // knock
-      }
-      if (!quiet && !first && inBar === 1 && Math.floor(b / 4) % 2 === 1) {
-        add(t + SWING * BEAT, 0.2, 'sine', 0.26, 33, 0.003, 0.17); // ghost kick
-      }
-      if (inBar === 1 || inBar === 3) {
-        const g = quiet ? 0.06 : 0.1;
-        add(t - 0.12, 0.2, 'noise', g * 0.35, 60, 0.15, 0.04, -0.1); // brush sweep
-        add(t, 0.26, 'noise', g, 60, 0.006, 0.24, -0.1); // brushed snare
-      }
-      for (const [off, g] of [[0, 0.03], [SWING, 0.022]] as const) {
-        add(t + off * BEAT, 0.035, 'noise', g * (quiet ? 0.6 : 1), 60, 0.001, 0.03, 0.35); // swung hats
-      }
+    const third = c.root + THIRD[c.q];
+    const approach = next.root + (rnd() < 0.5 ? -1 : 1);
+    const line: [number, number, number][] = [
+      [0, c.root, 0.95],
+      [1, rnd() < 0.5 ? third : c.root + 12, 0.9],
+      [2, c.root + 7, 0.9],
+      [3, approach, 0.75],
+    ];
+    if (b % 2 === 1) line.push([3 + SWING, c.root + 7, 0.35]);
+    for (const [pos, m, len] of line) {
+      const t = p.at(b * 4 + pos);
+      if (t >= end - 1e-9) break;
+      const vel = pos === 0 ? 0.9 : 0.7 + human(0.08);
+      ev.push({ v: 'pluck', bus: 'bass', t, midi: m, dur: len * beat, vel, bright: 0.22, decay: 1.6, gain: 0.55 });
+      ev.push({ v: 'sub', bus: 'bass', t, midi: m, dur: len * beat * 0.85, release: 0.08, gain: 0.16 });
     }
-  };
-
-  const plucks = () => {
-    words.forEach(([t, emph], i) => {
-      const voicing = CHORDS[chordAt(Math.max(t, T0))][1];
-      const m = voicing[i % voicing.length]! + 12;
-      const pan = i % 2 ? -0.35 : 0.35;
-      add(t, 0.7, 'bell', 0.075, m, 0.002, 0.6, pan);
-      if (emph) {
-        add(t + 0.03, 0.8, 'bell', 0.05, m + 7 <= 84 ? m + 7 : m - 5, 0.002, 0.7, -pan);
-        add(t, 0.35, 'sine', 0.06, m - 12, 0.004, 0.3);
-      }
-    });
-  };
-
-  const whooshes = () => {
-    for (const [a, b] of moves) {
-      const length = b - a;
-      add(a, length + 0.1, 'noise', 0.045, 60, length * 0.75, 0.12);
-      add(a + length * 0.5, length * 0.5 + 0.1, 'sine', 0.02, 81, length * 0.4, 0.1);
-    }
-  };
-
-  const crackle = () => {
-    const rnd = mulberry32((music.seed + 0x9e3779b9) >>> 0);
-    for (let t = 0.05; t < DUR - 0.3; t += 0.06 + rnd() * 0.26) {
-      const gain = 0.012 + rnd() * 0.03;
-      add(t, 0.006, 'noise', gain, 60, 0.001, 0.004, -0.6 + rnd() * 1.2);
-    }
-    add(0, DUR, 'noise', 0.006, 60, 0.4, 2.0); // faint tape hiss bed
-  };
-
-  const ending = () => {
-    const [root] = CHORDS.Dmaj9;
-    [50, 54, 57, 61, 64, 69].forEach((m, k) => {
-      const at = END + k * 0.05;
-      add(at, DUR - at, 'sine', 0.045, m, 0.02, 2.4, (k - 2.5) / 4);
-      add(at, DUR - at, 'triangle', 0.01, m, 0.03, 2.2, (k - 2.5) / 4);
-    });
-    [73, 76, 78, 81].forEach((m, k) => add(END + 0.25 + k * 0.18, 1.8, 'bell', 0.04, m, 0.002, 1.6, 0.4 - k * 0.25));
-    add(END, DUR - END, 'sine', 0.3, root, 0.01, 2.5);
-    add(END, 0.3, 'sine', 0.32, 33, 0.003, 0.27); // last soft kick
-    add(END, 0.5, 'noise', 0.05, 60, 0.01, 0.45); // soft brush cymbal
-  };
-
-  intro();
-  keysAndBass();
-  drums();
-  plucks();
-  whooshes();
-  crackle();
-  ending();
-  return { duration: DUR, sample_rate: sampleRate, seed: music.seed % 2 ** 32, notes: clamp(notes, DUR) };
-}
-
-/**
- * Fits notes into [0, DUR]: trims durations, drops notes shorter than the synth minimum (5 ms), rescales
- * attack+release that no longer fit, and sorts by start (stable).
- */
-function clamp(ns: NoteEvent[], DUR: number): NoteEvent[] {
-  const out: NoteEvent[] = [];
-  for (const src of ns) {
-    const n = { ...src };
-    n.at = Math.max(0, n.at);
-    n.duration = round4(Math.min(n.duration, DUR - n.at));
-    if (n.duration < 0.005) continue;
-    const a = n.attack ?? 0;
-    const r = n.release ?? 0;
-    if (a + r > n.duration) {
-      const scale = (n.duration / (a + r)) * 0.98;
-      n.attack = round4(a * scale);
-      n.release = round4(r * scale);
-    }
-    out.push(n);
   }
-  return out.sort((x, y) => x.at - y.at);
+
+  // Drums on the beat grid.
+  const beats = Math.floor((end - t0) / beat + 1e-9);
+  for (let k = 0; k < beats; k++) {
+    const t = p.at(k);
+    const inBar = k % 4;
+    const quiet = p.inTeaser(t);
+    const first = k < 4;
+    const role = p.roleAt(t);
+    if (!quiet && !first && (inBar === 0 || inBar === 2)) kick(ev, t, 'lofi-kick', 0.85 + human(0.05), 0.25, 0.3);
+    if (!quiet && !first && inBar === 1 && Math.floor(k / 4) % 2 === 1) {
+      kick(ev, p.at(k + SWING), 'lofi-kick', 0.5, 0.12, 0.3);
+    }
+    if (inBar === 1 || inBar === 3) {
+      if (first) ev.push({ v: 'sample', bus: 'drums', id: 'lofi-brush', t, gain: 0.5, pan: -0.1 });
+      else if (quiet) ev.push({ v: 'sample', bus: 'drums', id: 'lofi-rim', t, gain: 0.32, pan: -0.1 });
+      else ev.push({ v: 'sample', bus: 'drums', id: 'lofi-snare', t, gain: 0.5 + human(0.04), pan: -0.08 });
+    }
+    // Brush ghost on the swung "and" of 4.
+    if (inBar === 3 && !first) ev.push({ v: 'sample', bus: 'drums', id: 'lofi-brush', t: p.at(k + SWING), gain: 0.22, pan: -0.15 });
+    const ride = role === 'body' || role === 'datetime';
+    for (const [off, g] of [
+      [0, 0.24],
+      [SWING, 0.16],
+    ] as const) {
+      const th = p.at(k + off);
+      if (ride) ev.push({ v: 'sample', bus: 'drums', id: 'lofi-ride', t: th, len: beat * 1.8, gain: g * 0.7 + human(0.02), pan: 0.3 });
+      else ev.push({ v: 'sample', bus: 'drums', id: 'lofi-hat', t: th, choke: 'hat', gain: (quiet ? 0.6 : 1) * (g + human(0.03)), pan: 0.32 });
+    }
+    if (role === 'location') {
+      for (const off of [0.25, 0.75]) ev.push({ v: 'sample', bus: 'drums', id: 'shaker', t: p.at(k + off), gain: 0.12 + human(0.03), pan: -0.4 });
+    }
+    if (role === 'cta' && inBar === 3) {
+      ev.push({ v: 'sample', bus: 'drums', id: 'lofi-hat-open', t: p.at(k + SWING), choke: 'hat', gain: 0.2, pan: 0.32 });
+    }
+  }
+
+  // A mallet pluck on every landing; emphasis adds a fifth above and a low tine.
+  const plucks = [...p.lands.map((l) => ({ t: l.t, emph: l.emph, weight: l.weight })), ...p.accents.map((t) => ({ t, emph: true, weight: 1 }))].sort(
+    (a, b) => a.t - b.t,
+  );
+  plucks.forEach(({ t, emph, weight }, i) => {
+    const v = CHORDS[chordAt(Math.max(t, t0))].voicing;
+    const m = v[i % v.length]! + 12;
+    const pan = i % 2 ? -0.35 : 0.35;
+    ev.push({ v: 'bell', kind: 'mallet', bus: 'lead', t, midi: m, dur: 0.9, vel: 0.55 + 0.4 * weight, gain: 0.6, pan, tag: 'land' });
+    if (emph) {
+      ev.push({ v: 'bell', kind: 'mallet', bus: 'lead', t: t + 0.03, midi: m + 7 <= 88 ? m + 7 : m - 5, dur: 1, vel: 0.7, gain: 0.35, pan: -pan });
+      ev.push({ v: 'epiano', bus: 'keys', t, midi: m - 12, dur: 0.4, vel: 0.8, gain: 0.15 });
+    }
+  });
+
+  // Brush swish across each camera move.
+  p.moves.forEach((m, i) => {
+    const len = Math.max(0.2, m.until - m.t);
+    ev.push({ v: 'noise', bus: 'fx', t: m.t, dur: len + 0.12, color: 'pink', filter: 'bp', f0: 1200, f1: 5200, q: 0.9, a: len * 0.8, curve: 2, r: 0.14, gain: 0.22, pan: i % 2 ? 0.5 : -0.5, panTo: i % 2 ? -0.5 : 0.5, salt: i });
+  });
+
+  // Vinyl: crackle and tape hiss.
+  const crackle = mulberry32((music.seed + 0x9e3779b9) >>> 0);
+  let k = 0;
+  for (let t = 0.05; t < p.dur - 0.3; t += 0.05 + crackle() * 0.24) {
+    ev.push({ v: 'noise', bus: 'fx', t, dur: 0.004, filter: 'hp', f0: 2500, a: 0.0005, r: 0.003, gain: 0.08 + crackle() * 0.22, pan: -0.6 + crackle() * 1.2, salt: 1000 + k++ });
+  }
+  ev.push({ v: 'noise', bus: 'fx', t: 0, dur: p.dur, color: 'pink', filter: 'lp', f0: 5000, a: 0.4, r: 1.5, gain: 0.012, salt: 1 });
+
+  // Ending: V → I, rolled Dmaj9 with a mallet arpeggio, last kick and a ride bell.
+  const tail = p.dur - end;
+  if (tail > 0.05) {
+    epiano(end, tail, [50, 54, 57, 61, 64, 69], 0.5, 0.18);
+    [73, 76, 78, 81].forEach((m, j) => ev.push({ v: 'bell', kind: 'mallet', bus: 'lead', t: end + 0.25 + j * 0.18, midi: m, dur: 1.8, vel: 0.6, gain: 0.3, pan: 0.4 - j * 0.25 }));
+    ev.push({ v: 'pluck', bus: 'bass', t: end, midi: 38, dur: tail, vel: 0.9, bright: 0.22, decay: 3, gain: 0.55 });
+    ev.push({ v: 'sub', bus: 'bass', t: end, midi: 38, dur: tail * 0.8, release: tail * 0.2, gain: 0.18 });
+    kick(ev, end, 'lofi-kick', 0.8, 0.25, 0.3);
+    ev.push({ v: 'sample', bus: 'drums', id: 'lofi-ride', t: end, gain: 0.3, pan: 0.3 });
+  }
+
+  return {
+    duration: p.dur,
+    events: ev,
+    kicks: [],
+    buses: {
+      drums: { gain: 1, lp: 9000, drive: 1.6, comp: { threshold: 0.35, ratio: 3, attack: 0.01, release: 0.12 }, reverb: 0.08 },
+      bass: { gain: 1, lp: 2200, hp: 30, comp: { threshold: 0.3, ratio: 3, attack: 0.005, release: 0.15 } },
+      keys: { gain: 1, hp: 140, lp: 7000, chorus: { rate: 0.35, depth: 0.0025, delay: 0.012, mix: 0.35 }, reverb: 0.22, width: 1.2 },
+      lead: { gain: 1, hp: 300, reverb: 0.35, delay: 0.18 },
+      fx: { gain: 1, hp: 180, lp: 9000, reverb: 0.1 },
+    },
+    reverb: { size: 0.55, damp: 0.55, width: 1, predelay: 0.02, lowCut: 250, highCut: 6500, gain: 1 },
+    delay: { left: beat * 0.75, right: beat * 0.75, feedback: 0.3, damp: 3200, pingPong: true, gain: 1, reverb: 0.2 },
+    glue: { threshold: 0.4, ratio: 2, attack: 0.02, release: 0.2 },
+    fade: p.fade,
+    rmsDb: -20,
+  };
 }
+
+export const lofiJazz: Preset = { bpm: [80, 110], arrange };

@@ -10,6 +10,8 @@ export interface ReelPageImpl {
   seek(t: number): void | Promise<void>;
   boxes: ReelPage['boxes'];
   fingerprint: ReelPage['fingerprint'];
+  /** Called only after `ready()` resolved. */
+  soundCues: ReelPage['soundCues'];
   destroy?(): void;
 }
 
@@ -38,6 +40,7 @@ export function defineReelPage(impl: ReelPageImpl): ReelPage {
     },
     boxes: () => impl.boxes(),
     fingerprint: (t0, t1) => impl.fingerprint(t0, t1),
+    soundCues: () => impl.soundCues(),
     ...(impl.destroy ? { destroy: () => impl.destroy?.() } : {}),
   };
   window.reelPage = page;

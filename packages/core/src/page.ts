@@ -1,6 +1,7 @@
 import type { CueSheet } from './cue.ts';
 import type { Format } from './formats.ts';
 import type { JobSpec } from './spec.ts';
+import type { SoundCue } from './sound.ts';
 import type { TraitAxis } from './style.ts';
 
 /**
@@ -100,6 +101,11 @@ export interface ReelPage {
    * specs with equal fingerprints for a range MUST render identical frames there.
    */
   fingerprint(t0: number, t1: number): unknown;
+  /**
+   * Sound effects for what the page animates (impacts, wipes, camera moves, ticks, flashes), sorted by `t`.
+   * Pure function of `REEL`; valid after `ready()`.
+   */
+  soundCues(): SoundCue[];
   destroy?(): void;
 }
 

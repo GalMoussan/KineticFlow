@@ -85,5 +85,9 @@
           .map((s) => ({ id: s.id, timing: s.timing, items: s.items })),
       };
     },
+    /** One pop per landing: enough to drive the SFX stem through the real pipeline. */
+    soundCues() {
+      return R.cues.cues.filter((c) => c.type === 'land').map((c) => ({ t: c.t, kind: 'pop', weight: c.weight, section: c.section }));
+    },
   };
 })();

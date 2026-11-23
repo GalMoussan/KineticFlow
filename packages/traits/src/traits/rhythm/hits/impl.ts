@@ -1,3 +1,4 @@
+import type { SoundCue } from '@reel/core';
 import { defineRhythm, type Section } from '../../../contract.ts';
 import { meta } from './meta.ts';
 
@@ -57,5 +58,10 @@ export default defineRhythm({
       flashes: flashes.filter((f) => f < t1 && f + FLASH_LEN >= t0),
       owns: (section.prev?.timing.out ?? -Infinity) < t1 && (section.timing.out >= t0 || !section.next),
     };
+  },
+  /** A shimmer on every white flash (emphasis cues), as loud as the flash is bright. */
+  sounds({ section, params }) {
+    if (!params.flash) return [];
+    return cuesOf.get(section)!.flashes.map((t): SoundCue => ({ t, kind: 'shimmer', weight: 0.25 + 0.5 * params.flash }));
   },
 });

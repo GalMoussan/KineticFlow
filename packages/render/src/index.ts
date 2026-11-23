@@ -1,6 +1,7 @@
 /**
- * `renderJob`: spec → cue sheet → bundle → preflight QA → chunk render (cached) → audio → assemble → post QA
- * (PLAN.md §8). Emits typed events for the CLI; returns the receipt that is also written next to the outputs.
+ * `renderJob`: spec → music source → grid → cue sheet (+ envelopes) → bundle → preflight QA (+ the page's sound
+ * cues → SFX stem) → chunk render (cached) ∥ mix/master/loudnorm → assemble → post QA (PLAN.md §8). Emits typed
+ * events for the CLI; returns the receipt that is also written next to the outputs.
  */
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -11,12 +12,14 @@ import {
   type CueSheet,
   type ReelInput,
   type ResolvedPalette,
+  type SoundCue,
+  type SoundKind,
 } from '@reel/core';
+import { renderSfx } from '@reel/audio';
 import { RECIPES, recipe } from '@reel/styles';
 import { formatDiagnostics, resolveStyles, TRAIT_META, usedTraits, type StyleResolution } from '@reel/traits';
-import { buildCueSheet } from '@reel/timing';
 import { assemble, type Exported } from './assemble.ts';
-import { renderAudio, type AudioResult } from './audio.ts';
+import { finishAudio, prepareMusic, SAMPLE_RATE, type AudioResult, type MusicInfo } from './audio.ts';
 import { buildBundle, type Bundle } from './bundle.ts';
 import type { Browser } from 'playwright';
 import { launchBrowser, ReelTab } from './capture.ts';
@@ -24,6 +27,7 @@ import { chunkKey, chunkPath, chunkWindow, planChunks, renderChunks, type ChunkP
 import { resolveQuality, type Preset, type QualitySettings } from './encode.ts';
 import {
   gateAudio,
+  gateAudioSync,
   gateBounds,
   gateContainer,
   gateContrast,
@@ -31,18 +35,24 @@ import {
   gateFidelity,
   gateLoudness,
   gateOverlap,
+  gateSfx,
   gateWeekday,
   probe,
   sampleHolds,
   type GateResult,
   type ProbeSummary,
 } from './qa.ts';
+import { checkSamples, nodeSampleBank } from './samples.ts';
 import { reelInput } from './reel-input.ts';
 import { serveDir } from './server.ts';
 import { exec, REPO, sha256, writeAtomic } from './util.ts';
 
 export { ensureFonts, FONT_DIR } from './fonts.ts';
 export { CHUNK_DIR } from './chunks.ts';
+export { setupSamples, nodeSampleBank, SetupError, SAMPLE_DIR } from './samples.ts';
+export { setupAnalysis, analyzeTrack, ANALYSIS_DIR, MODEL_PATH } from './analysis.ts';
+export { prepareMusic, finishAudio, stereoSha } from './audio.ts';
+export type { MusicInfo, MusicStage, AudioResult } from './audio.ts';
 export type { GateResult, Level, ProbeSummary } from './qa.ts';
 export type { Exported } from './assemble.ts';
 export type { Preset, QualitySettings } from './encode.ts';
@@ -67,17 +77,20 @@ export type RenderEvent =
   | { type: 'spec'; job: string; sections: number; duration: number; bpm: number; fps: number; quality: string; formats: FormatId[] }
   | { type: 'bundle'; hash: string; chromium: string; ms: number }
   | { type: 'qa'; phase: Phase; result: GateResult }
+  /** Music source after steps 1–3 (preset render, or track decode + analysis + grid). */
+  | { type: 'music'; info: MusicInfo }
+  /** SFX stem from the page's sound cues (`enabled: false` when `spec.sfx` is off). */
+  | { type: 'sfx'; enabled: boolean; count: number; byKind: Partial<Record<SoundKind, number>>; ms: number }
   | {
       type: 'audio';
-      /** `lofi-jazz seed 1101` or `none`. */
-      source: string;
       duration: number;
-      /** Score WAV hash (absent for silence). */
+      /** Mastered mix hash (`stereoSha`; absent for silence). */
       sha256?: string;
-      notes?: number;
       lufs?: number;
       tp?: number;
       normalization?: string;
+      /** What the `-no-music` copies carry. */
+      noMusic: 'sfx' | 'silent' | 'off';
       ms: number;
     }
   | { type: 'plan'; format: FormatId; chunks: { index: number; frames: number; cached: boolean }[] }
@@ -126,7 +139,34 @@ export interface Receipt {
   bundle: { hash: string };
   chromium: string;
   ffmpeg: string;
-  audio: { source: string; wavSha256?: string; aacSha256: string; notes?: number; lufs?: number; tp?: number; normalization?: string };
+  audio: {
+    /** `preset lofi-jazz seed 1101`, `track it-had-to-be-you +12.3 s` or `none`. */
+    source: string;
+    /** `stereoSha` of the music stem, the SFX stem and the mastered mix. */
+    music?: string;
+    sfx?: string;
+    mix?: string;
+    wavSha256?: string;
+    aacSha256: string;
+    noMusicAacSha256?: string;
+    notes?: number;
+    lufs?: number;
+    tp?: number;
+    normalization?: string;
+    gainDb?: number;
+    track?: { file: string; path: string; sha256: string; offset: number; fadeOut: number; covered: number };
+    grid?: {
+      bpm: number;
+      beats: number;
+      downbeats: number;
+      meter: number | null;
+      meterConfidence: number | null;
+      downbeatsUsed: boolean;
+      trimmed: { head: number; tail: number };
+      analysis: { cached: boolean; model: string; path: string };
+    };
+    sfxCues?: { count: number; byKind: Partial<Record<SoundKind, number>> };
+  };
   formats: Partial<Record<FormatId, { chunks: ChunkRecord[]; outputs: Exported; probe: ProbeSummary }>>;
   qa: GateResult[];
   timings: Record<string, number>;
@@ -185,12 +225,24 @@ export async function renderJobWith(
   const styleId = styles.job.recipe;
   const rec = recipe(styleId);
   const music = spec.music;
-  if (music.source === 'track' || music.source === 'ai') {
-    throw new SpecError(`music source "${music.source}" arrives in M3; use "preset" or "none" for now`);
-  }
-  const bpm = music.source === 'preset' ? music.bpm : rec.defaults.music.bpm;
+  if (music.source === 'ai') throw new SpecError(`music source "ai" arrives in M7; use "preset", "track" or "none"`);
   const q = resolveQuality(spec.quality);
-  const sheet = buildCueSheet({ spec, choreography: rec.choreography, bpm, fps: q.fps });
+
+  // ── render order 1–3: music source → grid → cue sheet + envelopes ──
+  let t = performance.now();
+  if (music.source === 'preset' || spec.sfx) await checkSamples();
+  const samples = nodeSampleBank();
+  const stage = await prepareMusic({
+    spec,
+    specDir,
+    choreography: rec.choreography,
+    fps: q.fps,
+    samples,
+    defaultBpm: rec.defaults.music.bpm,
+  });
+  timings.music = ms(t);
+  const { sheet } = stage;
+  const bpm = sheet.bpm!;
   emit({
     type: 'spec',
     job: spec.id,
@@ -201,6 +253,7 @@ export async function renderJobWith(
     quality: typeof spec.quality === 'string' ? spec.quality : 'custom',
     formats: spec.formats,
   });
+  emit({ type: 'music', info: stage.info });
 
   const jobDir = join(JOBS_DIR, spec.id);
   const outDir = join(resolve(opts.outDir ?? OUT_DIR), spec.id);
@@ -208,7 +261,7 @@ export async function renderJobWith(
   await mkdir(outDir, { recursive: true });
 
   // ── bundle + browsers ──
-  let t = performance.now();
+  t = performance.now();
   const bundle = await makeBundle({ spec, specDir, outDir: join(jobDir, 'bundle'), traits: usedTraits(styles) });
   const server = await serveDir(bundle.dir);
   const probeBrowser = await launchBrowser();
@@ -224,10 +277,6 @@ export async function renderJobWith(
   };
   timings.bundle = ms(t);
   emit({ type: 'bundle', hash: bundle.hash, chromium: ctx.chromium, ms: timings.bundle });
-
-  // audio is independent of the pixels: start it now, collect it before the chunk render
-  const audioJob = renderAudio({ spec, sheet, workDir: jobDir });
-  audioJob.catch(() => {}); // awaited below
 
   try {
     // ── preflight: inputs, page QA, fingerprints → chunk keys ──
@@ -264,18 +313,26 @@ export async function renderJobWith(
     timings.preflight = ms(t);
     await failOnQa(qa, outDir);
 
-    // ── audio ──
-    const audio = await audioJob;
-    timings.audio = Math.round(audio.ms);
-    emit({
-      type: 'audio',
-      source: music.source === 'preset' ? `${music.preset} seed ${music.seed}` : music.source,
-      duration: audio.samples / audio.sampleRate,
-      ...(audio.wav ? { notes: audio.wav.notes, sha256: audio.wav.sha256 } : {}),
-      ...(audio.loudness ? { lufs: audio.loudness.i, tp: audio.loudness.tp } : {}),
-      ...(audio.normalization ? { normalization: audio.normalization } : {}),
-      ms: audio.ms,
-    });
+    // ── render order 4: the page's sound cues (first format; cues are a pure function of REEL) → SFX stem ──
+    t = performance.now();
+    const cues: SoundCue[] = spec.sfx ? plans[0]!.soundCues : [];
+    const byKind: Partial<Record<SoundKind, number>> = {};
+    for (const c of cues) byKind[c.kind] = (byKind[c.kind] ?? 0) + 1;
+    const sfxStem = spec.sfx
+      ? renderSfx(cues, {
+          duration: sheet.frames / sheet.fps,
+          seed: music.source === 'preset' ? music.seed : 0,
+          samples,
+          sampleRate: SAMPLE_RATE,
+        })
+      : null;
+    timings.sfx = ms(t);
+    emit({ type: 'sfx', enabled: spec.sfx, count: cues.length, byKind, ms: timings.sfx });
+
+    // ── render order 5: mix → master → WAV → loudnorm/AAC, while the chunks render ──
+    const noMusicSfx = spec.sfx && spec.outputs.noMusic && sfxStem !== null;
+    const audioJob = finishAudio({ music: stage.music, sfx: sfxStem, noMusicSfx, frames: sheet.frames, fps: sheet.fps, workDir: jobDir });
+    audioJob.catch(() => {}); // awaited after the chunk render
 
     // ── chunks ──
     t = performance.now();
@@ -305,6 +362,18 @@ export async function renderJobWith(
     timings.render = ms(t);
     emit({ type: 'rendered', rendered: tasks.length, cached: plans.reduce((n, p) => n + p.chunks.length, 0) - tasks.length, ms: timings.render });
 
+    const audio = await audioJob;
+    timings.audio = Math.round(audio.ms);
+    emit({
+      type: 'audio',
+      duration: audio.samples / audio.sampleRate,
+      ...(audio.hashes.mix ? { sha256: audio.hashes.mix } : {}),
+      ...(audio.loudness ? { lufs: audio.loudness.i, tp: audio.loudness.tp } : {}),
+      ...(audio.normalization ? { normalization: audio.normalization } : {}),
+      noMusic: !spec.outputs.noMusic ? 'off' : audio.noMusicAac ? 'sfx' : 'silent',
+      ms: audio.ms,
+    });
+
     // ── assemble + post QA ──
     t = performance.now();
     const endcard = sheet.sections.find((s) => s.role === 'endcard') ?? sheet.sections.at(-1)!;
@@ -327,6 +396,7 @@ export async function renderJobWith(
           outDir,
           workDir: jobDir,
           noMusic: spec.outputs.noMusic,
+          ...(audio.noMusicAac ? { noMusicAac: audio.noMusicAac } : {}),
           thumbAt: endcard.timing.holdStart,
         });
         const took = performance.now() - a0;
@@ -340,7 +410,7 @@ export async function renderJobWith(
           exported.noMusic ? probe(exported.noMusic.path) : null,
         ]);
         const gates = [gateContainer(main, { ...want, audio: true, label: 'mp4' })];
-        if (silent) gates.push(gateContainer(silent, { ...want, audio: false, label: 'no-music' }));
+        if (silent) gates.push(gateContainer(silent, { ...want, audio: audio.noMusicAac !== undefined, label: 'no-music' }));
         return { p, exported, took, main, gates };
       }),
     );
@@ -361,6 +431,8 @@ export async function renderJobWith(
       ),
     );
     if (audio.loudness) postEmit(gateLoudness(audio.loudness));
+    if (stage.detectedBeats) postEmit(gateAudioSync(sheet, stage.detectedBeats));
+    if (stage.music && sfxStem) postEmit(gateSfx(stage.music, sfxStem, cues));
     qa.push(...post);
     timings.assemble = ms(t);
     await failOnQa(qa, outDir);
@@ -379,7 +451,11 @@ export async function renderJobWith(
       bundle: { hash: bundle.hash },
       chromium: ctx.chromium,
       ffmpeg: (await exec('ffmpeg', ['-version'])).stdout.split('\n')[0] ?? '',
-      audio: audioReceipt(music.source, audio, await readFile(audio.aac)),
+      audio: {
+        ...audioReceipt(stage.info, audio, await readFile(audio.aac)),
+        ...(audio.noMusicAac ? { noMusicAacSha256: sha256(await readFile(audio.noMusicAac)) } : {}),
+        ...(spec.sfx ? { sfxCues: { count: cues.length, byKind } } : {}),
+      },
       formats,
       qa,
       timings,
@@ -411,6 +487,8 @@ interface FormatPlan {
   input: ReelInput;
   gates: GateResult[];
   chunks: ChunkRecord[];
+  /** `reelPage.soundCues()` after `ready()`. */
+  soundCues: SoundCue[];
 }
 
 /** One format: page QA at every hold, determinism, then a fingerprint per chunk → cache keys and hits. */
@@ -438,8 +516,9 @@ async function preflight(ctx: Ctx, browser: Browser, input: ReelInput): Promise<
       const cached = ctx.cache && (await stat(chunkPath(key)).then((s) => s.size > 0, () => false));
       chunks.push({ ...c, key, cached });
     }
+    const soundCues = await tab.soundCues();
     await tab.check();
-    return { input, gates, chunks };
+    return { input, gates, chunks, soundCues };
   } finally {
     await tab.close();
   }
@@ -451,12 +530,36 @@ async function failOnQa(qa: GateResult[], outDir: string): Promise<void> {
   if (qa.some((r) => r.level === 'fail')) throw new QaError(qa, qaPath);
 }
 
-function audioReceipt(source: string, a: AudioResult, aac: Buffer): Receipt['audio'] {
+function audioReceipt(info: MusicInfo, a: AudioResult, aac: Buffer): Receipt['audio'] {
+  const source =
+    info.source === 'preset'
+      ? `preset ${info.preset} seed ${info.seed}`
+      : info.source === 'track'
+        ? `track ${info.file} +${info.offset} s`
+        : 'none';
   return {
     source,
+    ...a.hashes,
     aacSha256: sha256(aac),
-    ...(a.wav ? { wavSha256: a.wav.sha256, notes: a.wav.notes } : {}),
+    ...(a.wav ? { wavSha256: a.wav.sha256 } : {}),
+    ...(info.source === 'preset' ? { notes: info.notes } : {}),
     ...(a.loudness ? { lufs: a.loudness.i, tp: a.loudness.tp } : {}),
     ...(a.normalization ? { normalization: a.normalization } : {}),
+    ...(a.gainDb !== undefined ? { gainDb: a.gainDb } : {}),
+    ...(info.source === 'track'
+      ? {
+          track: { file: info.file, path: info.path, sha256: info.sha256, offset: info.offset, fadeOut: info.fadeOut, covered: info.covered },
+          grid: {
+            bpm: info.bpm,
+            beats: info.beats,
+            downbeats: info.downbeats,
+            meter: info.meter,
+            meterConfidence: info.meterConfidence,
+            downbeatsUsed: info.downbeatsUsed,
+            trimmed: info.trimmed,
+            analysis: { cached: info.analysis.cached, model: info.analysis.model, path: info.analysis.path },
+          },
+        }
+      : {}),
   };
 }

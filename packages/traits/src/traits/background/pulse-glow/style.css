@@ -1,0 +1,2 @@
+/* pulse-glow: one full-frame gradient element under the layer (screen space). */
+.pulse-glow { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }

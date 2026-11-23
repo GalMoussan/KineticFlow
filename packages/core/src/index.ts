@@ -8,3 +8,4 @@ export * from './palettes.ts';
 export * from './fonts.ts';
 export * from './cue.ts';
 export * from './page.ts';
+export * from './sound.ts';

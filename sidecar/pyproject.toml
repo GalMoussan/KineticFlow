@@ -1,0 +1,12 @@
+[project]
+name = "reel-sidecar"
+version = "1.0.0"
+description = "Reel Studio analysis sidecar: beats and downbeats of a user track (Beat This! final0)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "beat-this==1.1.0",
+    "numpy>=2.5.5",
+]
+
+[tool.uv]
+package = false

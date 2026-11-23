@@ -1,0 +1,52 @@
+{
+  "id": "bass-pulse",
+  "name": "Bass Pulse",
+  "families": ["audio-reactive", "beat-synced", "high-energy"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "audio-reactive",
+    "camera": "static",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "neon-mix",
+    "motion": "punchy",
+    "axis": "none",
+    "material": "neon-glow",
+    "background": "pulse-glow",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "rhythm.bass": 0.15,
+    "rhythm.kick": 0.014,
+    "material.glow": 0.7,
+    "material.burst": 0.45,
+    "material.split": 0.6,
+    "transition.flash": 0.45
+  },
+  "defaults": {
+    "palette": "outrun",
+    "music": { "preset": "house-128", "bpm": 124 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.15,
+    "minTail": 0.6,
+    "entry": 0.55,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

@@ -3,11 +3,12 @@
  * every hold and a few transitions into contact sheets, checks content boxes against the safe area, prints
  * fingerprints (and which windows a date-only edit changes), and runs the determinism checks.
  *
- *   node packages/traits/dev/stills.ts [--spec path] [--style id] [--date YYYY-MM-DD] [--formats 9:16,1:1] [--name kq]
+ *   node packages/traits/dev/stills.ts [--spec path] [--style id] [--date YYYY-MM-DD] [--formats 9:16,1:1] [--name kq] [--audio]
  *
  * `--style` replaces the spec's style with a catalog style and its default palette (as the M2 matrix does).
- *
- * Writes `out/dev/<name>-<format>.png` (stills left→right, top→bottom in the printed order) and `out/dev/fp-*.json`.
+ * `--audio` builds the cue sheet as the renderer does (`prepareMusic`: music stem, detected grid for tracks, band
+ * envelopes), so audio-reactive traits see real envelopes; with `--style` a preset spec also takes the style's
+ * default music.
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -22,6 +23,8 @@ import { RECIPES, recipe } from '../../styles/src/index.ts';
 import { assertResolved, resolveStyles, TRAIT_META, usedTraits } from '../src/index.ts';
 import { buildBundle, type Bundle } from '../../render/src/bundle.ts';
 import { reelInput } from '../../render/src/reel-input.ts';
+import { prepareMusic } from '../../render/src/audio.ts';
+import { nodeSampleBank } from '../../render/src/samples.ts';
 import { GPU_ARGS } from '../../render/src/capture.ts';
 import type { Browser, CDPSession, Page } from 'playwright';
 import type * as Playwright from 'playwright';
@@ -42,6 +45,7 @@ const { values: args } = parseArgs({
     date: { type: 'string' },
     formats: { type: 'string' },
     name: { type: 'string' },
+    audio: { type: 'boolean' },
   },
 });
 const specPath = resolve(args.spec ?? join(REPO, 'examples/dilemma.json'));
@@ -175,6 +179,10 @@ const fpHash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).di
 await mkdir(OUT, { recursive: true });
 const raw = JSON.parse(await readFile(specPath, 'utf8'));
 if (args.style) Object.assign(raw, { style: args.style, palette: recipe(args.style).defaults.palette });
+if (args.audio && args.style && raw.music?.source !== 'track') {
+  const m = recipe(args.style).defaults.music;
+  raw.music = { source: 'preset', preset: m.preset, bpm: m.bpm, seed: raw.music?.seed ?? 1 };
+}
 const spec = JobSpec.parse(raw);
 const altSpec = JobSpec.parse({
   ...raw,
@@ -186,9 +194,14 @@ const altStyles = resolveStyles(altSpec, RECIPES, TRAIT_META);
 for (const d of styles.diagnostics) console.log(`style ${d.level} [${d.code}]: ${d.message}`);
 const rec = recipe(styles.job.recipe);
 const bpm = spec.music.source === 'preset' ? spec.music.bpm : rec.defaults.music.bpm;
-const cue = (s: JobSpec) => buildCueSheet({ spec: s, choreography: rec.choreography, bpm, fps: 30 });
-const sheet = cue(spec);
-const altSheet = cue(altSpec);
+const samples = args.audio ? nodeSampleBank() : null;
+const cue = async (s: JobSpec): Promise<CueSheet> =>
+  samples
+    ? (await prepareMusic({ spec: s, specDir, choreography: rec.choreography, fps: 30, samples })).sheet
+    : buildCueSheet({ spec: s, choreography: rec.choreography, bpm, fps: 30 });
+const sheet = await cue(spec);
+const altSheet = await cue(altSpec);
+if (args.audio) console.log(`cue sheet from prepareMusic: envelopes ${sheet.envelopes ? 'yes' : 'no'}, bpm ${sheet.bpm ?? '—'}`);
 // one bundle dir per run name, so concurrent runs (other styles) never overwrite each other's bundle
 const bundleDir = join(OUT, `bundle-${NAME}`);
 const bundle: Bundle = await buildBundle({ spec, specDir, outDir: bundleDir, traits: usedTraits(styles) });

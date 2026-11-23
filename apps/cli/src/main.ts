@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** `reelgen`: headless renders, font setup and cache cleanup (PLAN.md §8.5). */
+/** `reelgen`: headless renders, setup of local assets (fonts, samples, analysis) and cache cleanup (PLAN.md §8.5). */
 import { readdir, rm, stat } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -10,7 +10,10 @@ import {
   JOBS_DIR,
   ensureFonts,
   renderJob,
+  setupAnalysis,
+  setupSamples,
   type GateResult,
+  type MusicInfo,
   type Preset,
   type RenderEvent,
 } from '@reel/render';
@@ -20,7 +23,12 @@ const HELP = `reelgen — render kinetic-typography reels from a job spec
 Usage:
   reelgen render <job.json> [--quality draft|standard|final] [--formats 9:16,1:1]
                             [--workers N] [--no-cache] [--out dir]
-  reelgen setup fonts       download and verify every catalog font into assets/fonts/
+  reelgen setup [fonts|samples|analysis]
+                            install local assets (no argument: all three)
+                              fonts     catalog fonts → assets/fonts/ (SHA-256 checked)
+                              samples   CC0 audio samples → assets/samples/ (SHA-256 checked)
+                              analysis  beat-tracking sidecar (uv sync in sidecar/, ~720 MB) and the
+                                        Beat This! final0 model → assets/models/ (81 MB, SHA-256 checked)
   reelgen clean [--cache]   delete job temp files (data/jobs); --cache also empties the chunk cache
   reelgen --help
 
@@ -166,7 +174,7 @@ async function render(args: string[]): Promise<void> {
       case 'spec':
         screen = new Screen(dim(`[${e.job}]`));
         screen.line(
-          `spec ok · ${e.sections} sections · ${e.duration.toFixed(1)} s · ${e.bpm} bpm · formats ${e.formats.join(',')} · ${e.quality} (${e.fps} fps)`,
+          `spec ok · ${e.sections} sections · ${e.duration.toFixed(1)} s · ${Number(e.bpm.toFixed(1))} bpm · formats ${e.formats.join(',')} · ${e.quality} (${e.fps} fps)`,
         );
         break;
       case 'bundle':
@@ -175,14 +183,34 @@ async function render(args: string[]): Promise<void> {
       case 'qa':
         screen.line(gateLine(e.phase, e.result), e.result.level === 'fail' ? process.stderr : process.stdout);
         break;
-      case 'audio':
+      case 'music':
+        screen.line(musicLine(e.info));
+        break;
+      case 'sfx': {
+        const kinds = Object.entries(e.byKind)
+          .sort(([a, x], [b, y]) => y - x || (a < b ? -1 : 1))
+          .map(([k, n]) => `${n} ${k}`)
+          .join(' · ');
         screen.line(
-          e.source === 'none'
-            ? `audio ${green('✓')} silence (${e.duration.toFixed(3)} s)`
-            : `score ${green('✓')} ${e.source} · ${e.sha256?.slice(0, 12)}… (${e.duration.toFixed(3)} s, ${e.notes} notes) → AAC 256k · ` +
-                `${e.lufs?.toFixed(1)} LUFS · TP ${e.tp?.toFixed(1)} dBTP · ${e.normalization ?? ''} loudnorm ${dim(secs(e.ms))}`,
+          e.enabled
+            ? `sfx ${green('✓')} ${e.count} sound${e.count === 1 ? '' : 's'}${kinds ? `: ${kinds}` : ''} ${dim(secs(e.ms))}`
+            : `sfx ${dim('– off (spec.sfx = false)')}`,
         );
         break;
+      }
+      case 'audio': {
+        const noMusic = { sfx: ' · -no-music: SFX stem', silent: ' · -no-music: silent', off: '' }[e.noMusic];
+        screen.line(
+          !e.sha256
+            ? `audio ${green('✓')} silence (${e.duration.toFixed(3)} s)${noMusic}`
+            : `audio ${green('✓')} mix ${e.sha256.slice(0, 12)}… (${e.duration.toFixed(3)} s) → AAC 256k · ` +
+                (e.lufs !== undefined
+                  ? `${e.lufs.toFixed(1)} LUFS · TP ${e.tp?.toFixed(1)} dBTP · ${e.normalization ?? ''} loudnorm`
+                  : 'SFX only, not normalised') +
+                `${noMusic} ${dim(secs(e.ms))}`,
+        );
+        break;
+      }
       case 'plan':
         progress.set(
           e.format,
@@ -266,10 +294,46 @@ async function clean(args: string[]): Promise<void> {
   if (!values.cache) console.log(dim(`chunk cache kept: ${rel(CHUNK_DIR)} (${mb(await dirSize(CHUNK_DIR))}); use --cache to empty it`));
 }
 
+const SETUP_TARGETS = ['fonts', 'samples', 'analysis'] as const;
+
 async function setup(args: string[]): Promise<void> {
-  if (args[0] !== 'fonts' || args.length > 1) throw new UsageError('usage: reelgen setup fonts');
-  const paths = await ensureFonts(Object.keys(FONTS), (msg) => console.log(msg));
-  for (const [id, path] of Object.entries(paths)) console.log(`${green('✓')} ${id.padEnd(18)} ${rel(path)}`);
+  const targets = args.length ? args : [...SETUP_TARGETS];
+  for (const t of targets) {
+    if (!(SETUP_TARGETS as readonly string[]).includes(t)) {
+      throw new UsageError(`unknown setup target "${t}" (known: ${SETUP_TARGETS.join(', ')})`);
+    }
+  }
+  const log = (msg: string) => console.log(msg);
+  for (const t of targets) {
+    const t0 = performance.now();
+    if (t === 'fonts') {
+      const paths = await ensureFonts(Object.keys(FONTS), log);
+      for (const [id, path] of Object.entries(paths)) console.log(`${green('✓')} ${id.padEnd(18)} ${rel(path)}`);
+    } else if (t === 'samples') await setupSamples(log);
+    else await setupAnalysis(log);
+    console.log(`${green('✓')} setup ${t} ${dim(secs(performance.now() - t0))}`);
+  }
+}
+
+function musicLine(m: MusicInfo): string {
+  const ok = green('✓');
+  switch (m.source) {
+    case 'none':
+      return `music ${ok} none (visual grid ${m.bpm} bpm)`;
+    case 'preset':
+      return `music ${ok} preset ${m.preset} · ${m.bpm} bpm · seed ${m.seed} · ${m.notes} notes ${dim(secs(m.ms))}`;
+    case 'track': {
+      const meter =
+        m.meterConfidence === null
+          ? 'no meter detected → bars of 4'
+          : `meter ${m.meter} confidence ${m.meterConfidence.toFixed(2)}${m.downbeatsUsed ? '' : ' → downbeats ignored'}`;
+      const trimmed = m.trimmed.head + m.trimmed.tail ? ` · ${m.trimmed.head + m.trimmed.tail} phantom beat(s) trimmed` : '';
+      return (
+        `music ${ok} track ${m.file} from ${m.offset.toFixed(2)} s · ${m.bpm.toFixed(1)} bpm · ${m.beats} beats, ${m.downbeats} downbeats · ` +
+        `${meter}${trimmed} · analysis ${m.analysis.cached ? 'cached' : secs(m.analysis.ms)} ${dim(secs(m.ms))}`
+      );
+    }
+  }
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -302,7 +366,7 @@ async function main(argv: string[]): Promise<number> {
       return 2;
     }
     // TimingError / SpecError / QaError carry user-facing messages; anything else also shows its cause chain
-    const known = ['TimingError', 'SpecError', 'QaError'].includes(err.name);
+    const known = ['TimingError', 'SpecError', 'QaError', 'SetupError'].includes(err.name);
     process.stderr.write(`${red('✗')} ${err.message}\n`);
     if (!known && err.stack && process.env.REELGEN_DEBUG) process.stderr.write(dim(err.stack) + '\n');
     return 1;

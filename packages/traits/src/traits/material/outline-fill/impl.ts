@@ -1,3 +1,4 @@
+import type { SoundCue } from '@reel/core';
 import { clamp01 } from '@reel/runtime';
 import { defineMaterial, type Channels, type Unit } from '../../../contract.ts';
 import { bases, surface } from '../../../lib/bauhaus.ts';
@@ -184,5 +185,16 @@ export default defineMaterial({
         }
       }
     }
+  },
+  /** One marker stroke across the section's outline → fill sweep (all its lines), centred on the swept words. */
+  sounds({ host, section }) {
+    const fills = section.units.flatMap((u) => {
+      const d = u.data.material as Deco | undefined;
+      return d?.kind === 'fill' ? [{ u, sweep: d.sweep }] : [];
+    });
+    if (!fills.length) return [];
+    const t = Math.min(...fills.map((f) => f.sweep));
+    const pan = fills.reduce((a, f) => a + host.pan(f.u, t), 0) / fills.length;
+    return [{ t, until: Math.max(...fills.map((f) => f.sweep)) + SWEEP, kind: 'swipe', weight: 0.55, pan } satisfies SoundCue];
   },
 });

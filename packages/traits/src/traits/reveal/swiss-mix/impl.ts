@@ -1,5 +1,7 @@
+import type { SoundCue } from '@reel/core';
 import { clamp01, quart } from '@reel/runtime';
 import { defineReveal, type Part, type Section, type Unit } from '../../../contract.ts';
+import { endcardStinger } from '../../../lib/sound.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'rise' | 'fall' | 'slide' | 'grow' | 'pop' | 'odometer' | 'rule' | 'drop' | 'shape';
@@ -193,5 +195,23 @@ export default defineReveal({
         c.blur += xk * 26 * B;
       }
     }
+  },
+  /** Pops for pop/grow emphasis, the hero and the pin's landing; one tick per odometer digit as it settles. */
+  sounds({ host, section, params }) {
+    const out: SoundCue[] = endcardStinger(section);
+    let k = 0;
+    for (const u of section.units) {
+      if (!u.revealed || !Number.isFinite(u.at)) continue;
+      const d = u.data.reveal as Data;
+      const st = u.at - (u.item < 0 ? 0 : params.lead);
+      const pan = host.pan(u);
+      if (d.anim === 'odometer') {
+        for (const q of columns.get(u) ?? []) out.push({ t: st + params.duration + q.j * 0.1, kind: 'tick', weight: 0.5, pitch: 2 * q.j, pan });
+      } else if (d.anim === 'drop') out.push({ t: st + 0.4, kind: 'pop', weight: 0.6, pitch: -3, pan });
+      else if (d.anim === 'pop' || d.anim === 'grow' || (d.anim === 'rise' && u.tags.hero)) {
+        out.push({ t: u.at, kind: 'pop', weight: d.anim === 'pop' ? 0.55 : 0.45, pitch: Math.min(7, 2 * k++), pan });
+      }
+    }
+    return out;
   },
 });

@@ -3,7 +3,7 @@
  * script, Math.random seeded per frame, frames grabbed with CDP `Page.captureScreenshot` (never `page.screenshot`).
  */
 import { chromium, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright';
-import type { ReelInput, TextBox } from '@reel/core';
+import type { ReelInput, SoundCue, TextBox } from '@reel/core';
 
 /**
  * M0a: Metal WebGL2 on the M1 Pro in chrome-headless-shell.
@@ -134,6 +134,11 @@ export class ReelTab {
 
   fingerprint(t0: number, t1: number): Promise<unknown> {
     return this.#page.evaluate(([a, b]) => window.reelPage.fingerprint(a, b), [t0, t1] as const);
+  }
+
+  /** The page's sound cues (valid after `ready()`, which `open` awaited). */
+  soundCues(): Promise<SoundCue[]> {
+    return this.#page.evaluate(() => window.reelPage.soundCues());
   }
 
   boxes(): Promise<TextBox[]> {

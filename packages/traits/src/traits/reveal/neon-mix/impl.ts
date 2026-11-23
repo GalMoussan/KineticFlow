@@ -3,9 +3,11 @@
  * = reel9's timing); distances in em of the unit (`u.font.size`) or in frame heights. RGB split goes to the parts
  * when the unit has parts (a part's text-shadow replaces the inner one), else to the unit; materials scale it.
  */
+import type { SoundCue } from '@reel/core';
 import { clamp01, hash, lerp } from '@reel/runtime';
 import { defineReveal, type Part, type Section, type Unit } from '../../../contract.ts';
 import { EXITS, exitWindow } from '../../../lib/neon.ts';
+import { digitParts, endcardStinger, sizeWeight } from '../../../lib/sound.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'slam' | 'rise' | 'drop' | 'track' | 'pop' | 'scramble' | 'slot';
@@ -193,5 +195,34 @@ export default defineReveal({
   fingerprint({ section, params }, t0, t1) {
     const ex = exitWindow(section);
     return ex && ex.t0 < t1 && ex.t1 >= t0 ? { exit: EXITS[section.index % EXITS.length], ...ex, d: Math.min(params.exit, ex.t1 - ex.t0) } : null;
+  },
+  /**
+   * Slams and drops hit (their `hit`), the hero pops, scrambled letters and slot digits tick as they settle (a
+   * scramble voices at most 4 evenly spread letters), track-ins pop softly, exits whoosh.
+   */
+  sounds({ host, section, params }) {
+    const sp = params.duration / REF;
+    const out: SoundCue[] = endcardStinger(section);
+    for (const u of section.units) {
+      if (!u.revealed || !Number.isFinite(u.at)) continue;
+      const { anim } = u.data.reveal as { anim: Anim };
+      const st = u.at - params.lead;
+      const pan = host.pan(u);
+      const n = u.parts.length;
+      if (u.hit) out.push({ t: u.hit.t, kind: 'impact', weight: sizeWeight(u, host.H, 0.5), pan });
+      else if (anim === 'pop') out.push({ t: u.at, kind: 'pop', weight: 0.65, pan });
+      else if (anim === 'track') out.push({ t: u.at, kind: 'pop', weight: 0.3, pitch: -2, pan });
+      else if (anim === 'scramble' && n) {
+        const step = Math.min(0.08, 0.2 / Math.max(1, n - 1)) * sp;
+        const picks = [...new Set(Array.from({ length: Math.min(4, n) }, (_, j) => Math.round((j * (n - 1)) / Math.max(1, Math.min(4, n) - 1))))];
+        picks.forEach((i, j) => out.push({ t: st + i * step + 0.45 * sp, kind: 'tick', weight: 0.3, pitch: 3 * j, pan }));
+      } else if (anim === 'slot') {
+        const step = Math.min(0.12, 0.3 / Math.max(1, n)) * sp;
+        digitParts(u).forEach((p, j) => out.push({ t: st + 0.22 * sp + p.index * step, kind: 'tick', weight: 0.45, pitch: 2 * j, pan }));
+      }
+    }
+    const ex = exitWindow(section);
+    if (ex) out.push({ t: ex.t0, until: ex.t0 + Math.min(params.exit, ex.t1 - ex.t0), kind: 'whoosh', weight: 0.55 });
+    return out;
   },
 });

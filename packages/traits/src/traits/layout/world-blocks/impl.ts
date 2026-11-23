@@ -12,6 +12,7 @@
  * - Decorations (layout-animated): top rule + dot, bottom bar, accent rules, intro/outro quote marks, logo badge.
  *   The location pin is a decoration the reveal animates.
  */
+import type { SoundCue } from '@reel/core';
 import { clamp01, lerp, visualOrder } from '@reel/runtime';
 import { defineLayout, type Metrics, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge, PIN_METRICS, pinSVG, quoteSVG } from '../../../lib/deco.ts';
@@ -469,5 +470,16 @@ export default defineLayout({
         }
       }
     }
+  },
+  /** The intro/outro quote marks bounce in on their cues. */
+  sounds({ host, layer }) {
+    const out: SoundCue[] = [];
+    for (const s of layer.sections) {
+      for (const u of s.units) {
+        const a = u.data.layout as Anim | undefined;
+        if (a?.anim === 'quote') out.push({ t: a.at, kind: 'pop', weight: 0.6, pitch: a.q === 'open' ? 5 : -2, pan: host.pan(u, a.at), section: s.id });
+      }
+    }
+    return out;
   },
 });

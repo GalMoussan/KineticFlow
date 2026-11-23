@@ -1,3 +1,4 @@
+import type { SoundCue } from '@reel/core';
 import { clamp01 } from '@reel/runtime';
 import { defineTransition, type Section } from '../../../contract.ts';
 import { bases, surface } from '../../../lib/bauhaus.ts';
@@ -148,5 +149,18 @@ export default defineTransition({
         break;
     }
     o.blur += Math.sin(Math.PI * p) * params.blur;
+  },
+  /** A whoosh as the incoming layer wipes in; each leading accent panel is a short swipe before it. */
+  sounds({ section }) {
+    const d = section.data.transition as Data | undefined;
+    const w = section.window;
+    if (!d || !w) return [];
+    const D = w.t1 - w.t0;
+    const n = d.colors.length;
+    const pan = d.geom === 'rtl' ? 0.35 : d.geom === 'ltr' ? -0.35 : d.geom === 'diag' ? 0.2 : 0;
+    const at = (j: number) => w.t0 + D * STARTS[n]![j]!;
+    const out = d.colors.map((_, j): SoundCue => ({ t: at(j), until: at(j) + Math.min(0.25, D * DUR), kind: 'swipe', weight: 0.35, pan }));
+    out.push({ t: at(n), until: at(n) + D * DUR, kind: 'whoosh', weight: 0.6, pan });
+    return out;
   },
 });

@@ -75,14 +75,14 @@ makeAvideo/
     timing/      ✅ beat grid → section budget → cue sheet
     runtime/     ✅ in-page helpers: eases, hash, fonts/images, measured unit splitting, visualOrder (bidi)
     traits/      ✅ trait contract, generic page host, resolver, 29 trait modules; authoring guide in README.md
-    styles/      ✅ one folder per catalog style: recipe.json only (kinetic-quote, swiss-title-reveal, neon-psychedelic)
-    audio/       ✅ pure-TS note synth + cue-driven presets (lofi-jazz); M3 adds samples, SFX, tracks
+    styles/      ✅ one folder per catalog style: recipe.json only (kinetic-quote, swiss-title-reveal, neon-psychedelic, bass-pulse)
+    audio/       ✅ deterministic DSP engine (dmath), CC0 sampler, 4 presets, SFX, envelopes; Node == Chromium hashes
     render/      ✅ capture pool, ffmpeg pipelines, fingerprint chunk cache, QA gates, dev/matrix.ts
   apps/
     server/      M4  Hono API, job queue, SSE, SQLite (node:sqlite), LLM providers, asset processing
     web/         M4  Vite + React UI
     cli/         M1  `reelgen serve | render <job.json> | setup [fonts|samples|music-ai] | clean`
-  sidecar/       M3  uv project: analyze.py (Beat This! + band envelopes), generate.py (ACE-Step, optional)
+  sidecar/       ✅  uv project: Beat This! beats/downbeats CLI (model from local file); ACE-Step generate.py in M7
   assets/        fonts/, samples/ (populated by `reelgen setup`, manifests committed)
   data/          gitignored: brand kits, uploads, jobs, cache, SQLite
 ```
@@ -339,21 +339,27 @@ every format.
 ### 8.2 Audio
 `packages/audio` turns `{music, sfx, cue sheet}` into audio.
 
-- **M1 (implemented):** a pure-TypeScript note synthesiser, ported from OpenKatana's `synthesize_score`
-  (sine/triangle/bell/noise, ADSR, equal-power pan). Each preset is a function `CueSheet → note list`, starting with
-  `lofi-jazz`, ported from `make_score11.py`.
-  - It sums notes in a fixed order in one buffer, so it is deterministic by construction, with no Web Audio summing
-    problem.
-  - The final render runs in Node. The preview (M4) runs the same code in the browser; `Math.sin` ulp differences
-    there are inaudible.
-- **M3 (richer DSP, samples, reverb):** either extend the pure synth (biquads, convolution) or use Web Audio stem
-  passes (M0e). A single Web Audio graph is *not* bit-deterministic: Chromium sums overlapping inputs in a varying
-  order (about −133 dBFS drift). With stem passes:
-  - each instrument group renders alone in its own `OfflineAudioContext`
-  - stems are summed in JS in a fixed order
-  - each bus effect runs as its own pass with one buffer input
-  
-  Measured: 1 hash across 8 renders, 4 launches and 2 Chromium builds, in about 2 s for 26 s.
+- **Engine (M3):** pure TypeScript, bit-identical in Node and Chromium.
+  - `dmath.ts` replaces every transcendental `Math.*` with + − × ÷ / floor / sqrt implementations (error ≤ 3e-15).
+  - DSP: SVF + biquad filters, ADSR, delay, Freeverb-style reverb, chorus, saturation, compressor, kick-keyed ducking,
+    true-peak bus limiter.
+  - Voices: FM e-piano, Karplus-Strong pluck, polyBLEP subtractive/supersaw, bells, sub boom, noise sweeps.
+  - Sampler with choke groups over 28 CC0 one-shots (stargate-sample-pack @ `dbfd6ec`, downloaded by
+    `reelgen setup samples` with SHA-256 checks).
+  - Presets turn the cue sheet into events on six buses (drums, bass, keys, lead, pads, fx); fixed-order sum, shared
+    reverb/delay sends, glue compression. `lofi-jazz`, `synthwave-drive`, `minimal-pop`, `house-128`; each renders
+    26 s in < 1 s.
+  - `master()` limits on 4× true peak so true-peak − LUFS ≤ 10.5 dB; loudnorm then stays linear.
+- **SFX:** `ReelPage.soundCues()` reports what the page animates (impacts, wipes, camera moves, digit ticks, flashes,
+  stinger), each trait voicing its own motion (`sounds` hook, thinned to ≤ 6 cues/s); `renderSfx` designs each kind.
+- **Own track:** `music: {source: 'track', file, offset, fadeOut}`. The sidecar finds beats/downbeats on the full
+  track (cached by audio + model hash); the timing engine lands text on detected beats and half-beats (downbeats only
+  when meter confidence ≥ 0.8). The decode is sample-accurate (seek 1 s early, cut in Node).
+- **Envelopes:** `computeEnvelopes` (FFT, no look-ahead, 95th-percentile normalisation) on the music stem fills
+  `REEL.cues.envelopes` for every source; only traits that read them (e.g. `rhythm: audio-reactive`) put them in
+  fingerprints.
+- **Render order:** music (preset or track) → grid → cue sheet → envelopes → page `ready()` → `soundCues()` → SFX →
+  `mix` → `master` → WAV.
 - ffmpeg then:
   - encodes AAC 256k,
   - loudness-normalises to −14 LUFS integrated, peak ≤ −1 dBTP (`loudnorm`, two-pass),
@@ -458,7 +464,7 @@ New:
 | M0 | ✅ **Spikes done** (2026-11-23). Results in `spikes/results/`: `capture.md` (a+b), `text.md` (c), `morph.md` (d), `audio.md` (e), `beats.md` (f) | Every spike PASS or PASS WITH CAVEATS; plan adjusted in §5.4, §7, §8, §10, §11, §13 |
 | M1 | ✅ **Done** (2026-11-23). `core` + `timing` + `runtime` + `audio` + `render` + `cli`, plus `kinetic-quote` ported as one monolithic data-driven style | `pnpm reelgen render examples/dilemma.json` → 9:16 + 1:1, 26.000 s, 780 frames, H.264 BT.709 + AAC −14 LUFS, faststart, `-no-music` copies; all fail-level QA gates pass. Measured: cold 30 s, warm 5 s; a date-only edit re-rendered only the 10–20 s chunk per format (20.7 s) |
 | M2 | ✅ **Done** (2026-11-23). Trait host + resolver; kinetic-quote, swiss-title-reveal and neon-psychedelic as recipes over 29 traits; per-section styles and palettes; blend; override | `dev/matrix.ts`: 3 styles × 5 test specs (event he/en, mixed he/en + niqqud, list, stats) × 4 formats, 15/15 with no QA failure. `examples/m2/`: mixed-sections, 3 blends and 2 overrides render with QA passing. Date-only edit still re-renders only chunk 2 |
-| M3 | Audio: sequencer + 4 presets + SFX map + own-track analysis (sidecar) + audio-reactive envelopes | Own MP3 → text lands on detected downbeats (±1 frame); preview and render audio hashes match |
+| M3 | ✅ **Done** (2026-11-23). DSP engine + CC0 sampler + 4 presets; SFX from page sound cues; own-track source with beat analysis sidecar; envelopes + `audio-reactive` trait + `bass-pulse` style | `examples/m3/track-he.json`: 27/27 landings on detected beats (0 ms at the cue sheet; re-detected on the delivered MP4: max 20 ms, mean 4 ms, all within 1 frame). Node == Chromium SHA-256 for all presets and SFX. Matrix 20/20 (4 styles × 5 specs × 4 formats) |
 | M4 | Server + Web UI (all screens) + SSE + brand kits + LLM providers | You go from pasted text and dropped logos to a finished MP4 without touching files |
 | M5 | Quality presets (60 fps, motion blur, 2× SS), cache, cleanup, multi-format | Final preset renders; disk after a job < 100 MB excluding outputs |
 | M6 | **R1 catalog**: styles #1–#25 | Each passes QA on the test-spec set in its formats |

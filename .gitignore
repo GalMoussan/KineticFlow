@@ -5,6 +5,7 @@ assets/fonts/*
 !assets/fonts/manifest.json
 assets/samples/*
 !assets/samples/manifest.json
+assets/models/
 sidecar/.venv/
 .env
 .DS_Store

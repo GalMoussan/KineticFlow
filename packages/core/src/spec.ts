@@ -74,8 +74,17 @@ export const Music = z.discriminatedUnion('source', [
     bpm: z.number().min(60).max(180),
     seed: z.number().int().nonnegative(),
   }),
-  /** Own track: `file` is an uploaded asset id; `offset` skips the intro (seconds). */
-  z.object({ source: z.literal('track'), file: Slug, offset: z.number().min(0).default(0) }),
+  /**
+   * Own track: `file` is an asset id resolved to `<specDir>/assets/<file>.{mp3,wav,m4a,aac,flac,ogg}`; `offset`
+   * skips the intro (seconds). Beats and downbeats come from the analysis sidecar; the video's text lands on them.
+   */
+  z.object({
+    source: z.literal('track'),
+    file: Slug,
+    offset: z.number().min(0).default(0),
+    /** Seconds of fade-out at the end of the video (the track is cut at `offset + duration`). */
+    fadeOut: z.number().min(0).max(5).default(1.5),
+  }),
   /** ACE-Step add-on; the generated audio is analysed like an uploaded track. */
   z.object({
     source: z.literal('ai'),

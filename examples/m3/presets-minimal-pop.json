@@ -1,0 +1,65 @@
+{
+  "id": "m3-presets-minimal-pop",
+  "language": "en",
+  "contentType": "event",
+  "sections": [
+    {
+      "role": "title",
+      "text": "Dilemma Café & Jam"
+    },
+    {
+      "role": "tagline",
+      "text": "The *hottest* topics of the day!"
+    },
+    {
+      "role": "body",
+      "text": "Come sit, talk and drink *coffee*"
+    },
+    {
+      "role": "teaser",
+      "text": "Expect *surprises*"
+    },
+    {
+      "role": "datetime",
+      "date": "2026-12-01",
+      "time": "19:30"
+    },
+    {
+      "role": "location",
+      "place": "Beit HaChan",
+      "city": "Kiryat Shmona"
+    },
+    {
+      "role": "cta",
+      "text": "Let's *talk!*"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "swiss-title-reveal",
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "minimal-pop",
+    "bpm": 120,
+    "seed": 3301
+  },
+  "duration": 26,
+  "formats": [
+    "9:16"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  },
+  "brief": "M3 music preset showcase: minimal-pop with its natural style, swiss-title-reveal."
+}

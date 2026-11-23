@@ -1,3 +1,4 @@
+import type { SoundCue } from '@reel/core';
 import { defineTransition, type Section } from '../../../contract.ts';
 import { meta } from './meta.ts';
 
@@ -26,5 +27,14 @@ export default defineTransition({
   fingerprint({ section }, t0, t1) {
     const tc = cutOf(section);
     return tc !== null && tc - RAMP < t1 && tc + LEN >= t0 ? { cut: tc } : null;
+  },
+  /** A riser through the outgoing hold (≤ 0.8 s, after its last landing) into an impact on the cut. */
+  sounds({ section, params }) {
+    const tc = cutOf(section);
+    if (tc === null) return [];
+    const out: SoundCue[] = [{ t: tc, kind: 'impact', weight: 0.45 + 0.4 * params.flash }];
+    const from = Math.max(tc - 0.8, section.prev?.timing.lastLand ?? 0);
+    if (tc - from >= 0.25) out.unshift({ t: from, until: tc, kind: 'riser', weight: 0.4 });
+    return out;
   },
 });

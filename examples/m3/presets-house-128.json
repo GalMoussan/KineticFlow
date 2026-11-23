@@ -1,0 +1,56 @@
+{
+  "id": "m3-presets-house-128",
+  "language": "he",
+  "contentType": "stats",
+  "sections": [
+    {
+      "role": "title",
+      "text": "שנה של דילמות"
+    },
+    {
+      "role": "stat",
+      "value": 120,
+      "suffix": "+",
+      "label": "משתתפים בכל ערב"
+    },
+    {
+      "role": "stat",
+      "value": 24,
+      "label": "ערבי דילמה"
+    },
+    {
+      "role": "countdown",
+      "from": "2026-11-23",
+      "to": "2026-12-01",
+      "label": "ימים לערב הבא"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "bass-pulse",
+  "palette": "outrun",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "house-128",
+    "bpm": 124,
+    "seed": 4401
+  },
+  "duration": 26,
+  "formats": [
+    "9:16"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  },
+  "brief": "M3 music preset showcase: house-128 with its natural style, bass-pulse (audio-reactive)."
+}

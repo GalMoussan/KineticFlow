@@ -32,6 +32,8 @@ import { meta as swissSnappy } from './traits/motion/snappy/meta.ts';
 import { meta as swissOutlineFill } from './traits/material/outline-fill/meta.ts';
 import { meta as swissSolidBauhaus } from './traits/background/solid-bauhaus/meta.ts';
 import { meta as swissPanelWipe } from './traits/transition/panel-wipe/meta.ts';
+import { meta as audioReactive } from './traits/rhythm/audio-reactive/meta.ts';
+import { meta as pulseGlow } from './traits/background/pulse-glow/meta.ts';
 
 export const TRAIT_META: readonly TraitMeta[] = [
   landKick,
@@ -63,4 +65,6 @@ export const TRAIT_META: readonly TraitMeta[] = [
   swissOutlineFill,
   swissSolidBauhaus,
   swissPanelWipe,
+  audioReactive,
+  pulseGlow,
 ];
