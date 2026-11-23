@@ -46,6 +46,7 @@ for (const style of styles) {
       id: `m-${name}-${style}`,
       style,
       palette: recipe.defaults.palette,
+      fonts: { ...recipe.defaults.fonts },
       formats: recipe.constraints.formats,
     });
     const path = join(specDir, `${raw.id}.json`);

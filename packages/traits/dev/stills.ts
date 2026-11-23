@@ -178,7 +178,10 @@ const fpHash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).di
 // ---------- main ----------
 await mkdir(OUT, { recursive: true });
 const raw = JSON.parse(await readFile(specPath, 'utf8'));
-if (args.style) Object.assign(raw, { style: args.style, palette: recipe(args.style).defaults.palette });
+if (args.style) {
+  const d = recipe(args.style).defaults;
+  Object.assign(raw, { style: args.style, palette: d.palette, fonts: { ...d.fonts } });
+}
 if (args.audio && args.style && raw.music?.source !== 'track') {
   const m = recipe(args.style).defaults.music;
   raw.music = { source: 'preset', preset: m.preset, bpm: m.bpm, seed: raw.music?.seed ?? 1 };

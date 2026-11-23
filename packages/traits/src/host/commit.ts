@@ -10,6 +10,7 @@ export function resetChannels(c: Channels): void {
   c.sx = 1;
   c.sy = 1;
   c.rot = 0;
+  c.skx = 0;
   c.opacity = 1;
   c.blur = 0;
   c.itx = 0;
@@ -17,12 +18,14 @@ export function resetChannels(c: Channels): void {
   c.isx = 1;
   c.isy = 1;
   c.irot = 0;
+  c.iskx = 0;
   c.clip = 1;
   c.clipFrom = 'start';
   c.color = null;
   c.glow = 0;
   c.glowColor = null;
   c.split = 0;
+  c.shadow = '';
   c.wght = 0;
   c.visible = true;
 }
@@ -33,12 +36,14 @@ export function resetPart(c: PartChannels): void {
   c.sx = 1;
   c.sy = 1;
   c.rot = 0;
+  c.skx = 0;
   c.opacity = 1;
   c.blur = 0;
   c.color = null;
   c.glow = 0;
   c.glowColor = null;
   c.split = 0;
+  c.shadow = '';
   c.glyph = null;
 }
 
@@ -54,21 +59,23 @@ function put(el: HTMLElement, prop: string, value: string): void {
 const n2 = (v: number) => v.toFixed(2);
 const n4 = (v: number) => v.toFixed(4);
 
-/** translate → rotate → scale; `none` at identity. */
-function transform(tx: number, ty: number, rot: number, sx: number, sy: number): string {
+/** translate → rotate → skewX → scale; `none` at identity. */
+function transform(tx: number, ty: number, rot: number, sx: number, sy: number, skx = 0): string {
   let s = '';
   if (tx !== 0 || ty !== 0) s += `translate(${n2(tx)}px, ${n2(ty)}px) `;
   if (rot !== 0) s += `rotate(${n4(rot)}deg) `;
+  if (skx !== 0) s += `skewX(${n4(skx)}deg) `;
   if (sx !== 1 || sy !== 1) s += sx === sy ? `scale(${n4(sx)}) ` : `scale(${n4(sx)}, ${n4(sy)}) `;
   return s ? s.trimEnd() : 'none';
 }
 
 const filter = (blur: number) => (blur > 0.01 ? `blur(${n2(blur)}px)` : 'none');
 
-function shadow(glow: number, color: string, split: number): string {
+function shadow(glow: number, color: string, split: number, extra: string): string {
   const s: string[] = [];
   if (split > 0.01) s.push(`${n2(split)}px 0 var(--split-a)`, `${n2(-split)}px 0 var(--split-b)`);
   if (glow > 0.01) s.push(`0 0 ${n2(glow)}px ${color}`, `0 0 ${n2(glow * 3)}px ${color}`);
+  if (extra) s.push(extra);
   return s.length ? s.join(', ') : 'none';
 }
 
@@ -101,28 +108,28 @@ export function commitUnit(u: Unit): void {
   // Every property is written even while hidden: hidden elements still take part in compositing decisions, so
   // stale values from an earlier frame would make the picture depend on seek order.
   put(el, 'visibility', shown ? 'visible' : 'hidden');
-  put(el, 'transform', transform(c.tx, c.ty, c.rot, c.sx, c.sy));
+  put(el, 'transform', transform(c.tx, c.ty, c.rot, c.sx, c.sy, c.skx));
   put(el, 'opacity', c.opacity >= 1 ? '1' : c.opacity.toFixed(3));
   put(el, 'filter', filter(c.blur));
   put(el, 'clip-path', inset(c.clip, c.clipFrom, u.section.dir === 'rtl'));
   const inner = u.inner;
   if (!inner) return;
-  put(inner, 'transform', transform(c.itx, c.ity, c.irot, c.isx, c.isy));
+  put(inner, 'transform', transform(c.itx, c.ity, c.irot, c.isx, c.isy, c.iskx));
   const color = c.color ?? u.color;
   put(inner, 'color', color);
-  put(inner, 'text-shadow', shadow(c.glow, c.glowColor ?? color, c.split));
+  put(inner, 'text-shadow', shadow(c.glow, c.glowColor ?? color, c.split, c.shadow));
   if (u.font.size) put(inner, 'font-weight', String(c.wght || u.font.weight));
   for (const p of u.parts) {
     const pc = p.ch;
     const s = p.span;
     // never `visibility` on parts: a visible child would show through a hidden unit
     const flat = Math.abs(pc.sx) <= 1e-4 || Math.abs(pc.sy) <= 1e-4;
-    put(s, 'transform', flat ? 'none' : transform(pc.tx, pc.ty, pc.rot, pc.sx, pc.sy));
+    put(s, 'transform', flat ? 'none' : transform(pc.tx, pc.ty, pc.rot, pc.sx, pc.sy, pc.skx));
     put(s, 'opacity', flat || pc.opacity <= 0 ? '0' : pc.opacity >= 1 ? '1' : pc.opacity.toFixed(3));
     put(s, 'filter', filter(pc.blur));
     const pcolor = pc.color ?? color;
     put(s, 'color', pcolor);
-    put(s, 'text-shadow', shadow(pc.glow, pc.glowColor ?? pcolor, pc.split));
+    put(s, 'text-shadow', shadow(pc.glow, pc.glowColor ?? pcolor, pc.split, pc.shadow));
     const text = pc.glyph ?? p.text;
     if (s.textContent !== text) s.textContent = text;
   }

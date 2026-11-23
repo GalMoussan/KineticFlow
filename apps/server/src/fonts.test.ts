@@ -14,7 +14,8 @@ for (const [id, f] of Object.entries(FONTS)) {
     assert.equal(info.family, f.family);
     assert.deepEqual(info.weights, f.weights);
     assert.deepEqual([...info.scripts].sort(), [...f.scripts].sort());
-    assert.ok(info.axes.includes('wght'));
+    // variable files carry a wght axis; static ones (one weight) must not claim a range
+    assert.ok(f.weights[0] === f.weights[1] ? !info.axes.includes('wght') : info.axes.includes('wght'));
     assert.equal(info.format, 'ttf');
     for (const ch of 'אבגדהוזחטיכלמנסעפצקרשת0123456789:.,') assert.ok(info.codepoints.has(ch.codePointAt(0)!), `${id} has ${ch}`);
   });

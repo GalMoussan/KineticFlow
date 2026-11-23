@@ -39,6 +39,63 @@ export const FONTS: Record<string, FontEntry> = {
     weights: [300, 900],
     scripts: ['hebrew', 'latin'],
   },
+  // M6 display faces; all cover Hebrew + niqqud + Latin (checked with readFont/missingChars).
+  heebo: {
+    family: 'Heebo',
+    file: 'Heebo[wght].ttf',
+    url: `${GF}/heebo/Heebo%5Bwght%5D.ttf`,
+    sha256: '18f930b583fa8fe6b40b2f8263b7ac6afbac07adc91a12467874e7467d3ace30',
+    weights: [100, 900],
+    scripts: ['hebrew', 'latin'],
+  },
+  fredoka: {
+    family: 'Fredoka',
+    file: 'Fredoka[wdth,wght].ttf',
+    url: `${GF}/fredoka/Fredoka%5Bwdth%2Cwght%5D.ttf`,
+    sha256: '2ba02e68b152868aef9ba28e24b3648c7d457fe6f25c761f2c2c53fb61a73fc8',
+    weights: [300, 700],
+    scripts: ['hebrew', 'latin'],
+  },
+  karantina: {
+    family: 'Karantina',
+    file: 'Karantina-Bold.ttf',
+    url: `${GF}/karantina/Karantina-Bold.ttf`,
+    sha256: 'fc099ee72a843fb5b4d574abd099e047eec4cf476a1a2c65fe520e1cdcc897be',
+    weights: [700, 700],
+    scripts: ['hebrew', 'latin'],
+  },
+  cousine: {
+    family: 'Cousine',
+    file: 'Cousine-Bold.ttf',
+    url: `${GF}/cousine/Cousine-Bold.ttf`,
+    sha256: '17c8a7245156d2253531c9e529474937b09d9f641c5ae7695c5e33f22822eef4',
+    weights: [700, 700],
+    scripts: ['hebrew', 'latin'],
+  },
+  'secular-one': {
+    family: 'Secular One',
+    file: 'SecularOne-Regular.ttf',
+    url: `${GF}/secularone/SecularOne-Regular.ttf`,
+    sha256: '2f45092a521db5042887941edfef73178ed7c5ba7fdfc5b6f581d44aab7b0234',
+    weights: [400, 400],
+    scripts: ['hebrew', 'latin'],
+  },
+  'suez-one': {
+    family: 'Suez One',
+    file: 'SuezOne-Regular.ttf',
+    url: `${GF}/suezone/SuezOne-Regular.ttf`,
+    sha256: '3ef86844aad0cf9db7dcbda326f3d2f54cc4ccfe56db949e9e0c60a17031bd41',
+    weights: [400, 400],
+    scripts: ['hebrew', 'latin'],
+  },
+  'amatic-sc': {
+    family: 'Amatic SC',
+    file: 'AmaticSC-Bold.ttf',
+    url: `${GF}/amaticsc/AmaticSC-Bold.ttf`,
+    sha256: 'd367beadee66efbb657d24d3d8f30f3b60633e9d5c8ded7385541cf775cabb4d',
+    weights: [700, 700],
+    scripts: ['hebrew', 'latin'],
+  },
 };
 
 export function fontEntry(id: string): FontEntry {

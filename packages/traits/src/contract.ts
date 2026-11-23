@@ -50,6 +50,12 @@ export interface Channels {
   sy: number;
   /** Degrees. */
   rot: number;
+  /**
+   * skewX in degrees, applied between rotate and scale (`rotate → skewX → scale`), so rot + skx + sx/sy express any
+   * 2D linear map: planar faces in parallel projection (isometric, card flips, orthographic orbits). Use
+   * `affine()` from `@reel/runtime` to decompose a matrix. Never 3D transforms (composited, see README §1).
+   */
+  skx: number;
   opacity: number;
   /** px. */
   blur: number;
@@ -59,6 +65,8 @@ export interface Channels {
   isx: number;
   isy: number;
   irot: number;
+  /** Inner skewX in degrees (as `skx`). */
+  iskx: number;
   /** Visible fraction 0..1 of the outer box, revealed from `clipFrom` (an inset clip); 1 = no clip. */
   clip: number;
   /** `start`/`end` follow the section's text direction. */
@@ -71,6 +79,11 @@ export interface Channels {
   glowColor: string | null;
   /** RGB-split offset in px (two shadows in `--split-a` / `--split-b`). */
   split: number;
+  /**
+   * Extra `text-shadow` layers appended after glow/split (comma-separated CSS, '' = none), in the inner element's
+   * own (transformed) coordinates: stacked offsets give extrusion, long shadows, stickers' outlines.
+   */
+  shadow: string;
   /** Absolute `font-weight` for this frame; 0 = `unit.font.weight`. DOM flow only (measured units do not reflow). */
   wght: number;
   /** false hides the unit regardless of the other channels. */
@@ -84,12 +97,16 @@ export interface PartChannels {
   sx: number;
   sy: number;
   rot: number;
+  /** skewX in degrees (as `Channels.skx`). */
+  skx: number;
   opacity: number;
   blur: number;
   color: string | null;
   glow: number;
   glowColor: string | null;
   split: number;
+  /** Extra `text-shadow` layers (as `Channels.shadow`). */
+  shadow: string;
   /** Text shown instead of the part's own (slot spin, scramble); null = its own. Must be final at section holds. */
   glyph: string | null;
 }

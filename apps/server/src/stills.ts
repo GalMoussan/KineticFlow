@@ -17,7 +17,11 @@ const SLOTS = 3;
 /** Cache hit check that also marks the entry as recently used for the LRU (`pruneCaches`). */
 const exists = (p: string) => access(p).then(async () => (await touch(p), true), () => false);
 
-/** The draft re-styled as one catalog style: its default palette, no per-section looks, no music (visual grid). */
+/**
+ * The draft re-styled as one catalog style: its default palette, no per-section looks, no music (visual grid). The
+ * style's default fonts replace the draft's unless the user chose fonts that are no style's default (a brand font),
+ * matching what picking the style does in the editor.
+ */
 export function restyle(raw: unknown, style: string): Record<string, unknown> {
   const spec = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const r = RECIPES[style]!;
@@ -28,7 +32,17 @@ export function restyle(raw: unknown, style: string): Record<string, unknown> {
         return rest;
       })
     : spec.sections;
-  return { ...spec, sections, style, palette: r.defaults.palette, music: { source: 'none' }, sfx: false };
+  const fonts = spec.fonts as { display?: string; text?: string } | undefined;
+  const brand = !!fonts?.text || !Object.values(RECIPES).some((x) => x.defaults.fonts.display === fonts?.display);
+  return {
+    ...spec,
+    sections,
+    style,
+    palette: r.defaults.palette,
+    ...(brand ? {} : { fonts: { ...r.defaults.fonts } }),
+    music: { source: 'none' },
+    sfx: false,
+  };
 }
 
 export class StillService {

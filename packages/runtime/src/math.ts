@@ -30,3 +30,29 @@ export const hash = (n: number): number => {
   const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
   return s - Math.floor(s);
 };
+
+/** A unit's 2D linear map as channel values: `rotate(rot) skewX(skx) scale(sx, sy)` (degrees). */
+export interface Affine {
+  rot: number;
+  skx: number;
+  sx: number;
+  sy: number;
+}
+
+const DEG = 180 / Math.PI;
+
+/**
+ * Decomposes the CSS `matrix(a, b, c, d, …)` linear part, i.e. (x, y) → (a·x + c·y, b·x + d·y), into
+ * rotate → skewX → scale, the order the host commits `rot`, `skx`, `sx`/`sy`. Planar faces under parallel projection
+ * (isometric blocks, orthographic orbits, card flips) are exactly such maps. An edge-on map (no area) returns
+ * `sy = 0`, which the host treats as hidden.
+ */
+export function affine(a: number, b: number, c: number, d: number): Affine {
+  const sx = Math.hypot(a, b);
+  if (sx < 1e-9) return { rot: 0, skx: 0, sx: 0, sy: 0 };
+  const cos = a / sx;
+  const sin = b / sx;
+  const sy = -sin * c + cos * d;
+  if (Math.abs(sy) < 1e-6) return { rot: Math.atan2(b, a) * DEG, skx: 0, sx, sy: 0 };
+  return { rot: Math.atan2(b, a) * DEG, skx: Math.atan((cos * c + sin * d) / sy) * DEG, sx, sy };
+}

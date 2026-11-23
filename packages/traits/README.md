@@ -129,14 +129,21 @@ opacity, and use `&&=` on `visible`, so traits compose.
 
 | record | fields | written to |
 |---|---|---|
-| `unit.ch` (outer) | `tx ty sx sy rot opacity blur visible`, `clip` + `clipFrom` (inset reveal; start/end follow text direction) | `div.u` transform (translate → rotate → scale, origin `unit.origin`), opacity, filter, clip-path, visibility |
-| `unit.ch` (inner) | `itx ity isx isy irot`, `color`, `glow` + `glowColor`, `split` (RGB split px), `wght` | `div.t` transform (origin `unit.innerOrigin`), colour, text-shadow, font-weight |
-| `part.ch` | `tx ty sx sy rot opacity blur color glow glowColor split glyph` | part span; `glyph` replaces its text (slot spin, scramble); it must be the real text again by the section hold |
+| `unit.ch` (outer) | `tx ty sx sy rot skx opacity blur visible`, `clip` + `clipFrom` (inset reveal; start/end follow text direction) | `div.u` transform (translate → rotate → skewX → scale, origin `unit.origin`), opacity, filter, clip-path, visibility |
+| `unit.ch` (inner) | `itx ity isx isy irot iskx`, `color`, `glow` + `glowColor`, `split` (RGB split px), `shadow` (extra text-shadow layers), `wght` | `div.t` transform (origin `unit.innerOrigin`), colour, text-shadow, font-weight |
+| `part.ch` | `tx ty sx sy rot skx opacity blur color glow glowColor split shadow glyph` | part span; `glyph` replaces its text (slot spin, scramble); it must be the real text again by the section hold |
 | `layer.ch` | `visible opacity clip` (CSS clip-path string), `tx ty s blur` (push of the layer's content) | `.layer` / `.cam` |
 | `host.stageCh` | `kick` (zoom ×(1+kick)), `shakeX shakeY shakeRot`, `flash` + `flashColor` | every visible layer's camera, the flash overlay |
 
 A unit whose `visible` is false, whose opacity or clip is 0, or whose scale is (near) 0 is hidden and not reported to
 QA. Glow and split shadows use `--split-a` / `--split-b` (magenta / cyan by default; override in your CSS).
+
+**Planar 3D without 3D transforms.** `rot` + `skx` + `sx`/`sy` express any 2D linear map (`affine(a, b, c, d)` from
+`@reel/runtime` decomposes one). Under parallel projection a plane maps affinely, so isometric faces, orthographic
+orbits and card flips are exact; under perspective a plane facing the camera maps to a uniform scale (z-depth,
+tunnels). Extrusion is a stack of `shadow` offsets along the projected depth vector, in the inner element's own
+(transformed) coordinates. CSS 3D transforms and WebGL text stay out: they composite (§1) and leave the DOM text QA
+measures.
 
 **Tags** (`unit.tags`) carry semantics from the layout to the other axes so they never re-derive roles: `hero` (the
 section's key unit), `align` (`'start' | 'end'` for aligned accent lines), `line`, `numeric` (date/time/stat/countdown

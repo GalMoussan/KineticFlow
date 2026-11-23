@@ -27,6 +27,8 @@ Each such change is listed in §1.
 | D13 | Languages: Hebrew (RTL, **with niqqud**), English, mixed he/en in one line | Your choices. Arabic is out of scope for now: per-letter animation breaks joined scripts |
 | D14 | Fonts: curated OFL library (Hebrew + Latin, ~20 families, downloaded by `reelgen setup`) + upload your own | Your choice |
 | D15 | Single user, localhost. Project lives in `geminiCode/makeAvideo` | Your choice. Hosting is revisited when v1 is done |
+| D16 | **R1 spatial styles are planar 3D in the DOM, no WebGL** (M6): units get `rot → skewX → scale` (`affine()`), extrusion is stacked `text-shadow` offsets, depth is uniform scale | Planes under parallel projection map affinely and planes facing a perspective camera scale uniformly, so isometric blocks, orbits, card flips, extrusions and z-tunnels are exact without 3D transforms (which composite and break determinism) and without leaving DOM text (Hebrew shaping, QA). three.js/troika stays an option for M7 effects that truly need lighting or free 3D |
+| D17 | **9:16 safe area = top 220, right 120, bottom 380, left 70** (M6) | Reels UI measured Nov 2026: header y < 210, caption rail y > 1590, buttons x ≥ 996 for y 614–1460 (capqa.app, krumzi.com). The old right inset (70) ran under the buttons, which RTL text starts against |
 
 Kept from the spec: deterministic output, weekday derived from the date, one cue sheet for animation and music, chunked
 parallel render with a content-hashed cache, QA gates, AAC + faststart + a no-music copy, CSP-locked pages with no
@@ -507,5 +509,5 @@ New:
 
 ## 14. Open items for you
 - Reference videos/accounts for the catalog's look (you'll send them later).
-- Current Instagram safe-area insets per format (verify against the app before M6).
+- ~~Current Instagram safe-area insets~~: measured sources adopted as D17; check one real post on your phone.
 - Approve the curated font list and sample packs when M3/M4 propose them.
