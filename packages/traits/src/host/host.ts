@@ -103,7 +103,16 @@ export function runHost(traits: readonly AnyTrait[]): void {
   const mctx = document.createElement('canvas').getContext('2d')!;
   const metricCache = new Map<string, Metrics>();
   const families = { display: REEL.fonts.display.family, text: REEL.fonts.text.family };
+  /**
+   * Weight clamped to what the font file has. Layouts ask for fixed weights (900); a static or narrower font would
+   * otherwise get Chromium's synthetic bold, which smears the face and no longer matches harfbuzz outlines.
+   */
+  const fontWeight = (family: 'display' | 'text', w: number): number => {
+    const [lo, hi] = REEL.fonts[family].weights;
+    return w < lo ? lo : w > hi ? hi : w;
+  };
   const metrics: Host['metrics'] = (text, weight, ltr, family = 'display') => {
+    weight = fontWeight(family, weight);
     const key = `${family}|${weight}|${ltr}|${text}`;
     let m = metricCache.get(key);
     if (!m) {
@@ -436,6 +445,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
     }
     for (const s of sections) for (const u of [...s.units]) s.ctx.unit.trait.prepare?.(s.ctx.unit.c, u);
     for (const L of layers) await as(L.ctx.layout as AnyInstance, () => L.ctx.layout.trait.layout(L.ctx.layout.c));
+    for (const s of sections) for (const u of s.units) if (u.font.size) u.font.weight = fontWeight(u.font.family, u.font.weight);
 
     let ordinal = 0;
     for (const s of sections) {
@@ -509,7 +519,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
         left: px(u.textAt.x),
         top: px(u.textAt.y),
         'font-family': `${fam}, sans-serif`,
-        ...(u.font.size ? { 'font-size': px(u.font.size), 'font-weight': String(u.font.weight) } : {}),
+        ...(u.font.size ? { 'font-size': px(u.font.size), 'font-weight': String((u.font.weight = fontWeight(u.font.family, u.font.weight))) } : {}),
         color: u.color,
         'transform-origin': u.innerOrigin,
         ...u.innerStyle,

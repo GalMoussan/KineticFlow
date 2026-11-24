@@ -1,0 +1,3 @@
+/* backdrop: full-frame static layers under the content. */
+.backdrop { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.backdrop > * { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }

@@ -1,0 +1,50 @@
+{
+  "id": "fluid-scale",
+  "name": "Fluid Scale",
+  "families": ["fluid-typography", "variable-font", "dynamic-layout"],
+  "energy": 3,
+  "background": "dark",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "fluid-fill",
+    "unit": "word",
+    "reveal": "soft-rise",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "module-grid",
+    "transition": "reflow"
+  },
+  "params": {
+    "rhythm.kick": 0.003,
+    "reveal.rise": 0.18,
+    "background.lines": 0,
+    "transition.whoosh": 0.4
+  },
+  "defaults": {
+    "palette": "fluid-ink",
+    "music": { "preset": "synthwave-drive", "bpm": 104 },
+    "fonts": { "display": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.15,
+    "minTail": 0.6,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

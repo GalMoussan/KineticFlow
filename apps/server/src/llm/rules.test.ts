@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JobSpec, plainText } from '@reel/core';
+import { RECIPES } from '@reel/styles';
 import { repairSection } from './index.ts';
 import { detectLanguage, emphasizeLine, findDateTime, rankRules, splitRules } from './rules.ts';
 
@@ -132,6 +133,8 @@ test('rankRules: keyword and energy matching', () => {
   assert.equal(rankRules('techno DJ club night, bass')[0]!.style, 'bass-pulse');
   assert.equal(rankRules('clean professional conference announcement')[0]!.style, 'swiss-title-reveal');
   const all = rankRules('');
-  assert.equal(all.length, 4);
+  assert.equal(all.length, Object.keys(RECIPES).length);
+  assert.equal(rankRules('airport departure board for our travel club')[0]!.style, 'split-flap');
+  assert.equal(rankRules('trivia night: 5 questions')[0]!.style, 'card-deck-3d');
   assert.ok(all.every((x) => x.score >= 0 && x.score <= 1 && x.reason));
 });

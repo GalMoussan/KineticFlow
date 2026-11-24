@@ -1,0 +1,51 @@
+{
+  "id": "elastic-stretch",
+  "name": "Elastic Stretch",
+  "families": ["fluid-organic", "motion"],
+  "energy": 3,
+  "background": "light",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "elastic",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "jelly-blobs",
+    "transition": "cut"
+  },
+  "params": {
+    "rhythm.kick": 0.006,
+    "layout.cap": 0.38,
+    "layout.plain": 0.7,
+    "background.tint": 0.24,
+    "layout.leading": 0.26
+  },
+  "defaults": {
+    "palette": "soft-jelly",
+    "music": { "preset": "minimal-pop", "bpm": 110 },
+    "fonts": { "display": "fredoka" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.7,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "id": "versus-split",
+  "name": "Versus Split",
+  "families": ["dynamic-layout", "narrative", "high-energy"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "hits",
+    "camera": "shake",
+    "layout": "versus-split",
+    "unit": "word",
+    "reveal": "neon-mix",
+    "motion": "punchy",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "module-grid",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "rhythm.kick": 0.01,
+    "rhythm.flash": 0.25,
+    "camera.shake": 0.8,
+    "background.lines": 0,
+    "transition.flash": 0.5
+  },
+  "defaults": {
+    "palette": "versus-duel",
+    "music": { "preset": "house-128", "bpm": 126 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.3,
+    "minTail": 0.6,
+    "entry": 0.55,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

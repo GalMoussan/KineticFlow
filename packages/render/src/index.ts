@@ -317,7 +317,8 @@ export async function renderJobWith(
   t = performance.now();
   const bundle = await makeBundle({ spec, specDir, outDir: join(jobDir, 'bundle'), traits: usedTraits(styles) });
   const server = await serveDir(bundle.dir);
-  const probeBrowser = await launchBrowser();
+  // CPU raster: the probe's forward/reverse purity check must not see the GPU glyph atlas' history (capture.ts)
+  const probeBrowser = await launchBrowser({ raster: 'cpu' });
   const ctx: Ctx = {
     spec,
     sheet,

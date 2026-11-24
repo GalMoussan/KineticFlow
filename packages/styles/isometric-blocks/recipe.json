@@ -1,0 +1,52 @@
+{
+  "id": "isometric-blocks",
+  "name": "Isometric Blocks",
+  "families": ["spatial", "dynamic-layout"],
+  "energy": 3,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "turntable",
+    "layout": "iso-blocks",
+    "unit": "word",
+    "reveal": "kinetic-mix",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "face-ink",
+    "background": "backdrop",
+    "transition": "handoff"
+  },
+  "params": {
+    "rhythm.kick": 0.002,
+    "background.light": 0.45,
+    "background.floor": 0,
+    "background.grid": 0.8,
+    "background.vignette": 0.22,
+    "transition.whoosh": 0.5
+  },
+  "defaults": {
+    "palette": "iso-pastel",
+    "music": { "preset": "minimal-pop", "bpm": 108 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 5,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.6,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

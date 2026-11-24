@@ -24,6 +24,46 @@ export const PALETTES: Record<string, ResolvedPalette> = {
   outrun: { bg: '#12002B', text: '#FFFFFF', accents: ['#FF2E88', '#FFB000', '#00E5FF'] },
   'y2k-candy': { bg: '#FFFFFF', text: '#B9A7FF', accents: ['#FF8AD8', '#8AE8FF', '#FFF07A', '#B9A7FF'] },
   'bauhaus-primary': { bg: '#F5F1E6', text: '#1F1F1F', accents: ['#E53935', '#1E5EFF', '#FFC400'] },
+  // word-per-beat: one saturated accent per beat on near-black, inked black or white
+  'beat-pop': { bg: '#0E0E10', text: '#FFFFFF', accents: ['#FF2D55', '#FFD60A', '#0A84FF', '#30D158', '#FF9F0A', '#BF5AF2'] },
+  // brutalist: newsprint grey-white, black, one signal red, a graphite grey
+  concrete: { bg: '#ECEAE4', text: '#0B0B0B', accents: ['#E62E00', '#0B0B0B', '#77736B'] },
+  // sticker-pop: candy stickers with white die-cut rims on electric violet
+  'sticker-candy': { bg: '#3B1FD1', text: '#FFFFFF', accents: ['#FFE14D', '#FF5FA2', '#3DF5C8', '#FF8A3D'] },
+  // equalizer-type: a low → high spectrum on black
+  spectrum: { bg: '#07090F', text: '#F2F5FF', accents: ['#FF3B6B', '#FF9F1C', '#C6F432', '#22D3EE', '#8B7BFF'] },
+  // lyric-karaoke: calm dusk indigo, cream lyrics, a warm gold sweep
+  'karaoke-dusk': { bg: '#1D1B3A', text: '#F4EFE6', accents: ['#FFC857', '#7FD1C7', '#F28482', '#B8B0F5'] },
+  // grid-reflow: Swiss modernist paper white, black, signal red, ultramarine
+  'swiss-modern': { bg: '#F3F1EC', text: '#111111', accents: ['#E3001B', '#1D4ED8', '#111111'] },
+  // bento: warm light-grey tray, tiles in tomato, cobalt, green, violet (white or black ink on top)
+  'bento-pop': { bg: '#EDEAE4', text: '#161616', accents: ['#E0452B', '#2D55D6', '#1E7A57', '#7446D0'] },
+  // versus-split: red corner vs blue corner on black, a yellow badge
+  'versus-duel': { bg: '#121016', text: '#FFFFFF', accents: ['#E5262C', '#2563EB', '#FFD000'] },
+  // fluid-scale: warm white type on ink, orange / sky / sun highlights
+  'fluid-ink': { bg: '#14161C', text: '#F4F1EA', accents: ['#FF6A3D', '#8FD3FF', '#F7D046'] },
+  // elastic-stretch: soft peach with plum ink, jelly pink / teal / violet / caramel
+  'soft-jelly': { bg: '#FFEDE4', text: '#3A2459', accents: ['#E2457A', '#22857E', '#6D4CE0', '#C9661B'] },
+  // typewriter-terminal: phosphor green on a black-green CRT, amber numbers, cyan secondary
+  'terminal-green': { bg: '#07100B', text: '#C9F7D3', accents: ['#3DFF7A', '#FFB22E', '#5CE1E6'] },
+  // mask-slide: editorial off-white page, ink black, one vermilion accent, deep blue figures
+  'editorial-light': { bg: '#F6F3EE', text: '#141414', accents: ['#D7381E', '#1F3A93', '#9E2A1A'] },
+  // split-flap: departure board, warm white flaps, yellow / amber / sky letters
+  'departure-board': { bg: '#0F1114', text: '#F3F0E6', accents: ['#FFD23F', '#FF9F1C', '#5BC0EB'] },
+  // scramble-decode: deep navy screen, ice-white text, mint decode head, electric-blue scramble, pink
+  'decode-cyan': { bg: '#060E16', text: '#E8FBFF', accents: ['#21F0B6', '#2C9BFF', '#FF4F8B'] },
+  // extrude-3d: cream type extruded in hot pink on deep violet, sun yellow / cyan / lilac accents
+  'bold-pop': { bg: '#1B1035', text: '#FFF3E2', accents: ['#FF3D7F', '#FFC53D', '#3DDCFF', '#9D7BFF'] },
+  // isometric-blocks: pale sky floor, slate ink, blocks in brick / teal / cobalt / violet / ochre
+  'iso-pastel': { bg: '#E4ECF2', text: '#1E2A3A', accents: ['#D9480F', '#0F766E', '#3B5BA9', '#6D28D9', '#A16207'] },
+  // card-deck-3d: card stock with navy ink (the table is the ink mixed into it), red / teal / plum / rust pips
+  'card-table': { bg: '#FBF6EC', text: '#1D2541', accents: ['#C8102E', '#1B7F79', '#2E294E', '#C2410C'] },
+  // z-tunnel: near-black blue-violet depth, ice-white words, cyan / magenta / amber / lilac neon frames
+  'tunnel-night': { bg: '#06061A', text: '#F4F7FF', accents: ['#2EE6FF', '#FF3DA5', '#FFB020', '#9D8CFF'] },
+  // glyph-morph: midnight ink, warm paper-white letters, gold / coral / teal / lilac / rose echoes
+  'midnight-ink': { bg: '#0F1020', text: '#F3ECDD', accents: ['#F2B84B', '#FF7A6B', '#5DCBC4', '#A99BFF', '#F497B8'] },
+  // liquid-morph: lavender milk, plum ink, raspberry / lagoon / violet / apricot / orchid liquids
+  'liquid-pastel': { bg: '#F7F0FB', text: '#2A1A47', accents: ['#D9407A', '#1C8FA3', '#7650E8', '#D86A2E', '#A63D8C'] },
 };
 
 export type PaletteRef = string | ResolvedPalette;

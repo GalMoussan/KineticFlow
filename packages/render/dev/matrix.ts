@@ -50,11 +50,13 @@ for (const style of styles) {
   const recipe = RECIPES[style]!;
   for (const name of specNames) {
     const raw = JSON.parse(await readFile(join(setDir, `${name}.json`), 'utf8'));
+    // What a user gets on picking the style: its palette, fonts and music (preset + bpm decide the timing).
     Object.assign(raw, {
       id: `m-${name}-${style}`,
       style,
       palette: recipe.defaults.palette,
       fonts: { ...recipe.defaults.fonts },
+      music: { source: 'preset', ...recipe.defaults.music, seed: raw.music?.seed ?? 1 },
       formats: recipe.constraints.formats,
     });
     const path = join(specDir, `${raw.id}.json`);

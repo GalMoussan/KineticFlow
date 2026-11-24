@@ -25,15 +25,13 @@ import { buildBundle, type Bundle } from '../../render/src/bundle.ts';
 import { reelInput } from '../../render/src/reel-input.ts';
 import { prepareMusic } from '../../render/src/audio.ts';
 import { nodeSampleBank } from '../../render/src/samples.ts';
-import { GPU_ARGS } from '../../render/src/capture.ts';
+import { launchBrowser } from '../../render/src/capture.ts';
 import type { Browser, CDPSession, Page } from 'playwright';
-import type * as Playwright from 'playwright';
 import type * as PngJs from 'pngjs';
 
-// Playwright and pngjs are dependencies of @reel/render and are not resolvable from this folder, so they are
-// resolved from that package and imported by path (a static import cannot express that).
+// pngjs is a dependency of @reel/render and is not resolvable from this folder, so it is resolved from that package
+// and imported by path (a static import cannot express that).
 const fromRender = createRequire(new URL('../../render/package.json', import.meta.url));
-const { chromium } = fromRender('playwright') as typeof Playwright;
 const { PNG } = fromRender('pngjs') as typeof PngJs;
 
 const REPO = new URL('../../../', import.meta.url).pathname;
@@ -88,8 +86,8 @@ async function serve(root: string): Promise<{ url: string; close(): Promise<void
   };
 }
 
-// Same launch args as the capture pipeline (incl. --disable-partial-raster, required for seek-order independence).
-const launch = () => chromium.launch({ headless: true, args: GPU_ARGS });
+// The renderer's purity-probe browser (CPU raster): determinism checks measure the page, not the GPU glyph atlas.
+const launch = () => launchBrowser({ raster: 'cpu' });
 
 // ---------- page ----------
 const problems: string[] = [];

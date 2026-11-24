@@ -10,7 +10,7 @@ import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promise
 import { dirname, join, relative, resolve } from 'node:path';
 import { build } from 'esbuild';
 import type { JobSpec, TraitAxis } from '@reel/core';
-import { HOST_CSS, TRAITS_SRC, traitFiles } from '@reel/traits/files.ts';
+import { HOST_CSS, TRAITS_SRC, pageAssets, traitFiles } from '@reel/traits/files.ts';
 import { resolveFonts, type SpecFont } from './fonts.ts';
 
 export interface Bundle {
@@ -100,8 +100,12 @@ export async function buildBundle(o: {
     legalComments: 'none',
     charset: 'utf8',
     logLevel: 'silent',
+    // harfbuzzjs' Emscripten loader only requires `fs` in its Node branch
+    external: ['fs'],
+    metafile: true,
   });
   files.set('engine.js', js.outputFiles[0]!.contents);
+  for (const [name, path] of Object.entries(pageAssets(Object.keys(js.metafile.inputs)))) files.set(name, await readFile(path));
   const sheets = await Promise.all(entry.css.map((p) => readFile(p, 'utf8')));
   files.set('engine.css', new TextEncoder().encode(sheets.join('\n')));
 

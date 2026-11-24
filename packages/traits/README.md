@@ -55,8 +55,21 @@ dev/sounds.ts       every style's `soundCues()` for a spec: counts per kind, den
   - a canvas redrawn every frame under text (starfield) stays composited, so the text above it shares one squashed
     layer: keep it to a full-frame `layer.under` canvas and verify with `dev/stills.ts` (all three determinism
     checks); canvases in `layer.over` (FX on top) are harmless.
-  Plain 2D `scale()` on non-composited elements is safe when written every frame (≤ 1/255 in every history), and so is
-  resizing the box.
+  Uniform 2D `scale()` on non-composited elements is safe when written every frame (≤ 1/255 in every history), and so
+  is resizing the box (in whole px).
+- **Glyph rasters remember their history (GPU raster).** Chunks render with GPU raster, whose glyph atlas caches
+  rasters per transform, so text drawn under a non-uniform scale (squash, stretch), a skew, a per-frame sub-pixel
+  translation of part spans, or a fractional stage zoom can come out differently depending on which frames were
+  seeked before and on machine load (M6 measured 17–153/255 for skewed/squashed text, 3–11/255 for plain text under
+  load; the stage `kick` shifted text in 1:1 and 16:9). Hence:
+  - glyphs scale only uniformly; squash/stretch text only briefly and mildly, or resize a box behind it instead;
+  - hide text whose map is steep (`lib/spatial` `steep()`: skew past 20° or a squash below 0.55) and show it again
+    once it is near front-on; faces/cards/flaps carry the motion, the print appears as they come round;
+  - styles whose hold text must be pixel-stable set `rhythm.kick` to 0;
+  - keep heavy `shadow` stacks off skewed text.
+  The probe browser of the renderer and of `dev/stills.ts` runs CPU raster (`launchBrowser({ raster: 'cpu' })`), so
+  their determinism checks report the page's own purity (a real bug), not atlas history; the render stays
+  consistent because every chunk seeks its frames in one fixed order in a fresh context.
 - **Text stays inside `format.safe`** at every section hold, in all four formats and in RTL and LTR. Layouts fit
   against `host.safe` and `host.zoomRange(section)` (see §5).
 
@@ -143,7 +156,8 @@ QA. Glow and split shadows use `--split-a` / `--split-b` (magenta / cyan by defa
 orbits and card flips are exact; under perspective a plane facing the camera maps to a uniform scale (z-depth,
 tunnels). Extrusion is a stack of `shadow` offsets along the projected depth vector, in the inner element's own
 (transformed) coordinates. CSS 3D transforms and WebGL text stay out: they composite (§1) and leave the DOM text QA
-measures.
+measures. Skew and non-uniform scale are for faces, cards, panels and decorations; text under a steep map is hidden
+(§1 "Glyph rasters remember their history").
 
 **Tags** (`unit.tags`) carry semantics from the layout to the other axes so they never re-derive roles: `hero` (the
 section's key unit), `align` (`'start' | 'end'` for aligned accent lines), `line`, `numeric` (date/time/stat/countdown
@@ -378,3 +392,24 @@ Then render the shared test set (`examples/test-set/*.json`) with QA passing in 
 | exits (whip, zoom, fall) | reveal, ending by `section.timing.out` when `section.next && section.next.layer !== section.layer` |
 | camera shake on hits | camera trait summing `u.hit` of the layer's units into `host.stageCh.shake*` (report the hits in the window from `fingerprint()`) |
 | scale / weight / glow following the music (bass-pulse, equalizer-type) | `rhythm: audio-reactive` (channels from the band envelopes, §7a); `section.pulse(t)` = smoothed bass for materials and backgrounds (`background: pulse-glow`). Variable-font weight changes only on unsplit units, centred with `host.metrics` per weight step |
+| one word per beat + recap (word-per-beat) | solo deco copies per content unit cut on its landing over a full-frame colour deco (inner `background: currentColor`, recoloured through `ch.color`); the real units return as a stacked recap before the hold (`layout/beat-stack`, `reveal/beat-cut`, `material/beat-swap`) |
+| brutal hard cuts (brutalist) | `motion: snap` (stepped curves, no easing) + a giant cropped deco copy on an inverted panel per landing; start-aligned grid rows, slug line, bled emphasis blocks (`layout/brutal-grid`) |
+| stickers (sticker-pop) | a ring of `shadow` offsets for the rim + offset drop layers (`material/sticker`); exits peel inside the exit window with rotate/lift/fly, no skew |
+| EQ bars on letters (equalizer-type) | owned bar + peak-cap elements inside `u.el`, resized every frame from band levels (`rhythm/equalizer`, `lib/eq.ts`); letters stay still (§1 glyph history) |
+| karaoke sweep (lyric-karaoke) | material-owned dim copy with the complementary clip of the word's sweep, `split: 'none'`, `rhythm.kick` 0 (`reveal/karaoke-sweep`, `material/karaoke-ink`) |
+| typing with a cursor (typewriter-terminal) | reveal hides parts past `floor((t − start) / step)` in `part.index` order; the cursor is a reveal-created decoration placed from the measured part rect on the run's reading side; blink from t |
+| departure-board flaps (split-flap) | reveal `mount` adds owned cells behind the parts (blank padding cells, housing, hinge); leaves fold by resizing their box in whole px and the glyph swaps at the fold (no text scaling) |
+| scramble by script (scramble-decode) | `lib/glyphs.ts` `standIn(scriptOf(grapheme), hash(…))`; resolve front in logical order |
+| directional mask slides (mask-slide) | `masked` units, inner `itx`/`ity` from the start or top edge by `tags.line`; `motion: functional`; `layout: flush-stack` (`gap`, `uniform`, `prompt`, `rule`, `dateRow`) |
+| words re-flowing between steps (grid-reflow, fluid-scale) | the layout solves one layout per landing step (`section.data.layout.steps`); `frame` adds the eased step deltas (`lib/modules.ts` `flipAt`) as translate + uniform scale with `origin: 0 0` |
+| tiles handed from one section to the next (grid-reflow, bento) | layer-scope `transition: reflow` keeps both layers drawn; the outgoing layout hides its tiles at its exit, the incoming one redraws them from `section.prev.data.layout` and morphs them into its geometry |
+| bento packing | guillotine DP over (first, last, w, h) in reading order (`layout/bento/pack.ts`), mirrored for RTL; tile score = weight · ln(size) + 0.9 · ln(fill) |
+| split-screen slams (versus-split) | full-frame panel decorations clipped by an inner `clip-path` polygon, animated by the layout with `tx`/`ty` + `u.hit` for shake; seams from connector words or role seams |
+| squash and stretch (elastic-stretch) | reveal writes inner `isx`/`isy` (or part `sx`/`sy`) in anti-phase from a closed-form damped spring, `innerOrigin` at the ink baseline; keep it brief (§1 glyph history) |
+| outline morphs (glyph-morph, shape-to-type, liquid-morph) | `lib/morph`: `unitOutline(host, u)` in `mount` (harfbuzz with the same font file and weight as the DOM, checked against the DOM width; null → fade), `morph(A, B).path(k)` in a section-group SVG overlay; the unit is hidden until it lands; `hb.wasm` ships through `files.ts` `pageAssets()` |
+| gooey liquid / floating shapes | `lib/morph/goo.ts` `blob()` + `neck()` as SVG paths rewritten every frame (no filters); `background: liquid-blobs` / `shape-field` (DOM gradients from t only) |
+| orthographic orbit + extrusion (extrude-3d) | camera `orbit` writes each unit's map through `lib/spatial` `placeOnPlane` and shares the projection via `rig(layer)`; `material: extrude` stacks `shadow` layers along the projected depth (`extrusion()`) |
+| perspective fly-through (z-tunnel) | camera `fly-through`: `view.s` = 1/distance on one reel-long path; reveal `z-arrive` scales words about the vanishing point; `background: tunnel` draws frames from `rig.travel` |
+| isometric blocks / turntable (isometric-blocks) | `layout: iso-blocks` puts faces and text on 3D planes with a front-face correction; camera `turntable` supplies the turn; faces pointing away are hidden |
+| dealt and flipped cards (card-deck-3d) | `layout: card-deck` maps every unit of a card about its centre; the back is drawn mirrored and shown when the card faces away |
+| hand-off between spatial layers | `transition: handoff` (show/hide fractions, one whoosh); backgrounds hide inside the incoming window so the outgoing identical backdrop carries on |

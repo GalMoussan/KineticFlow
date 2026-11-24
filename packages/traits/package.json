@@ -2,10 +2,15 @@
   "name": "@reel/traits",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./*": "./src/*" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
   "dependencies": {
     "@reel/core": "workspace:*",
-    "@reel/runtime": "workspace:*"
+    "@reel/runtime": "workspace:*",
+    "harfbuzzjs": "^0.4.15",
+    "polygon-clipping": "^0.15.7"
   },
   "devDependencies": {
     "@reel/styles": "workspace:*"

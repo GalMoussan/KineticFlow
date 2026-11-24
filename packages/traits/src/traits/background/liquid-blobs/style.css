@@ -1,0 +1,3 @@
+/* liquid-blobs: one full-frame element under the layer; blobs are soft radial gradients sized and moved per frame. */
+.liquid-blobs { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: var(--bg); }
+.liquid-blobs .blob { position: absolute; border-radius: 50%; }

@@ -27,7 +27,7 @@ Each such change is listed in §1.
 | D13 | Languages: Hebrew (RTL, **with niqqud**), English, mixed he/en in one line | Your choices. Arabic is out of scope for now: per-letter animation breaks joined scripts |
 | D14 | Fonts: curated OFL library (Hebrew + Latin, ~20 families, downloaded by `reelgen setup`) + upload your own | Your choice |
 | D15 | Single user, localhost. Project lives in `geminiCode/makeAvideo` | Your choice. Hosting is revisited when v1 is done |
-| D16 | **R1 spatial styles are planar 3D in the DOM, no WebGL** (M6): units get `rot → skewX → scale` (`affine()`), extrusion is stacked `text-shadow` offsets, depth is uniform scale | Planes under parallel projection map affinely and planes facing a perspective camera scale uniformly, so isometric blocks, orbits, card flips, extrusions and z-tunnels are exact without 3D transforms (which composite and break determinism) and without leaving DOM text (Hebrew shaping, QA). three.js/troika stays an option for M7 effects that truly need lighting or free 3D |
+| D16 | **R1 spatial styles are planar 3D in the DOM, no WebGL** (M6): units get `rot → skewX → scale` (`affine()`), extrusion is stacked `text-shadow` offsets, depth is uniform scale | Planes under parallel projection map affinely and planes facing a perspective camera scale uniformly, so isometric blocks, orbits, card flips, extrusions and z-tunnels are exact without 3D transforms (which composite and break determinism) and without leaving DOM text (Hebrew shaping, QA). Caveat found in M6: glyph rasters under skew or non-uniform scale depend on seek history (17–153/255), so skew/squash moves faces, cards and panels while text under a steep map is hidden (traits README §1). three.js/troika stays an option for M7 effects that truly need lighting or free 3D |
 | D17 | **9:16 safe area = top 220, right 120, bottom 380, left 70** (M6) | Reels UI measured Nov 2026: header y < 210, caption rail y > 1590, buttons x ≥ 996 for y 614–1460 (capqa.app, krumzi.com). The old right inset (70) ran under the buttons, which RTL text starts against |
 
 Kept from the spec: deterministic output, weekday derived from the date, one cue sheet for animation and music, chunked
@@ -280,6 +280,15 @@ Every style is a `recipe.json` (traits + params + defaults + constraints); a few
 #53, #54). All styles must pass QA on a shared test-spec set: event he, event en, list, stats, mixed he/en with niqqud,
 every format.
 
+**R1 as built (M6).** All 25 R1 styles exist as recipes over 82 traits. Deviations from the table, forced by the
+glyph-history rule (D16 caveat, traits README §1):
+- `equalizer-type`: EQ bars grow from each letter; the letters themselves do not stretch.
+- `extrude-3d`: words keep their projected size and position but stay upright; the extrusion and decorations show
+  the orbit.
+- `split-flap`: flaps fold their cells; the glyph swaps at the fold and never squashes.
+- `lyric-karaoke`: words sweep at their cue-sheet times; tap-to-align is still to come.
+- `elastic-stretch`: squash/stretch on landings is brief and mild.
+
 ---
 
 ## 7. Timing engine and cue sheet
@@ -321,11 +330,17 @@ every format.
   30 fps), with fixed boundaries. M0: one page survives ≥ 780 frames when frames are streamed. M5: throughput
   scales with concurrent tabs up to ~8, so short chunks over more workers win: dilemma 9:16 final takes 424 s at
   10 s × 4 workers, 345 s at 4 s × 4, **196 s at 4 s × 8**, 249 s at 2 s × 12.
-- **GPU** is on: `--use-angle=metal --enable-gpu-rasterization --ignore-gpu-blocklist` (M0a: Metal WebGL2 on M1 Pro).
-- **Determinism**, replacing OpenKatana's forward/reverse hash check (M0a: on GPU, render order leaves ≤ 2/255
-  residue):
-  - **(a)** 3 sampled frames re-rendered in chunk order in a fresh browser must hash identically;
-  - **(b)** a reverse-order check with tolerance max Δ ≤ 2/255.
+- **GPU** is on for chunks: `--use-angle=metal --enable-gpu-rasterization --ignore-gpu-blocklist
+  --disable-partial-raster` (M0a: Metal WebGL2 on M1 Pro).
+- **Determinism**, replacing OpenKatana's forward/reverse hash check:
+  - **(a)** the first 3 frames rendered in two fresh GPU browsers must hash identically;
+  - **(b)** 5 sampled frames forward, then reverse, in the probe page: max Δ ≤ 2/255.
+  - **M6:** the GPU glyph atlas made (b) fail at random under load (3–11/255 on sticker-pop, neon, glyph-morph;
+    never in isolation), and CPU raster measured 0/255 on the same frames. The probe browser (preflight,
+    gate (b), `dev/stills.ts`) therefore runs `--disable-gpu-rasterization`, so (b) measures the page's own purity.
+  - Chunks keep GPU raster: CPU raster cost +50 % at standard and 3.2× at final (dilemma 9:16 final 196 s →
+    625 s). Every chunk renders in one fixed order in a fresh context; text anti-aliasing may still vary by a few
+    /255 with machine load [INFERENCE].
 - **Frame flow:** per frame (or sub-frame) → `reelPage.seek(t)` → double rAF → CDP `Page.captureScreenshot`
   (`optimizeForSpeed`, `clip.scale` = supersample factor; CDP ignores `deviceScaleFactor` otherwise) → piped into that
   chunk's ffmpeg stdin. JPEG q95 is the default intermediate; PNG is opt-in. **No frame files on disk.**
@@ -365,7 +380,8 @@ every format.
 - **Render order:** music (preset or track) → grid → cue sheet → envelopes → page `ready()` → `soundCues()` → SFX →
   `mix` → `master` → WAV.
 - ffmpeg then:
-  - encodes AAC 256k,
+  - encodes AAC 256k with AudioToolbox (`aac_at`) when available (M6: ffmpeg's native `aac` overshot a
+    transient-heavy mix by 4 dB true peak; `aac_at` is bit-identical across runs), else native `aac`,
   - loudness-normalises to −14 LUFS integrated, peak ≤ −1 dBTP (`loudnorm`, two-pass),
   - writes the `-no-music` copy (SFX only, or silent if the user chooses).
 - QA gate: render the audio twice and require identical hashes (about 2 s).
@@ -487,7 +503,7 @@ New:
 | M3 | ✅ **Done** (2026-11-23). DSP engine + CC0 sampler + 4 presets; SFX from page sound cues; own-track source with beat analysis sidecar; envelopes + `audio-reactive` trait + `bass-pulse` style | `examples/m3/track-he.json`: 27/27 landings on detected beats (0 ms at the cue sheet; re-detected on the delivered MP4: max 20 ms, mean 4 ms, all within 1 frame). Node == Chromium SHA-256 for all presets and SFX. Matrix 20/20 (4 styles × 5 specs × 4 formats) |
 | M4 | ✅ **Done** (2026-11-24). `reelgen serve` → local studio: paste-and-split (Gemini/Claude or offline rules), logo background removal + palette extraction, brand kits, font upload, style grid from your own content, mixer, live preview with music + SFX, check, render queue with SSE | `apps/web/e2e/happy-path.ts` passes against the real server in 36 s: pasted Hebrew text + two dropped logos → split → style/palette/music → preview plays with audio → check → draft 9:16 MP4 plays; no files touched. Preview text edit 1.3 s, palette edit 3 ms |
 | M5 | ✅ **Done** (2026-11-24). Final preset end to end (60 fps, 6-sample motion blur, 2× SS); 4 s chunks over 8 workers; one LRU budget for all caches (`REEL_CACHE_MB`, pruned after every job and at `serve` start); `reelgen clean [--cache] [--outputs <days>]`; calibrated render-time estimates in the UI | Dilemma final, both formats: 60 fps, 1560 frames, all QA gates pass. Cold 9:16 final 196 s (was 424 s), neon 239 s; standard both formats 25 s (was 33 s). Disk left by a job, excluding outputs: 36 MB final, 21 MB standard, `data/jobs/` empty. Date-only edit re-renders 3 of 7 chunks. Web e2e still passes (36 s) |
-| M6 | **R1 catalog**: styles #1–#25 | Each passes QA on the test-spec set in its formats |
+| M6 | ✅ **Done** (2026-11-25). **R1 catalog**: styles #1–#25 as recipes over 82 traits (21 new styles: reveal, beat, layout, morph, spatial families); planar-3D channels (`skx`, `shadow`, `affine()`), harfbuzz outline morphs, 7 more Hebrew fonts, Reels-measured 9:16 safe area, font-weight clamping, CPU-raster purity probe, `aac_at` encoding, style grid for any catalog size | Integrated matrix with each style's own palette, fonts and music: 125/125 (25 styles × event-he, event-en, list, mixed-niqqud, stats × 4 formats), run as 3 concurrent matrices. Every style fits the 26 s test content at its default tempo. Style grid: 25 stills in 4.8 s under load. Web e2e passes |
 | M7 | Catalog to 54, ≥10 music presets, ACE-Step add-on (`reelgen setup music-ai`) | Same QA bar |
 | M8 (opt.) | A4 flier, alpha (ProRes 4444) / GIF outputs | |
 

@@ -1,0 +1,3 @@
+/* shape-field: full-frame element under the layer; each shape is a bordered box (circle, square, half-disc). */
+.shape-field { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: var(--bg); }
+.shape-field .sf { position: absolute; left: 0; top: 0; box-sizing: border-box; }

@@ -1,0 +1,3 @@
+/* screen: full-frame gradient layers under the layer (bloom, vignette, grid), the rolling band, scanlines over it. */
+.screen-fill { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.screen-band { position: absolute; left: 0; top: 0; width: 100%; }

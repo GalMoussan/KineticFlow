@@ -1,0 +1,50 @@
+{
+  "id": "brutalist",
+  "name": "Brutalist",
+  "families": ["high-energy", "motion"],
+  "energy": 5,
+  "background": "light",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "brutal-grid",
+    "unit": "word",
+    "reveal": "brutal-snap",
+    "motion": "snap",
+    "axis": "none",
+    "material": "brutal-ink",
+    "background": "plain",
+    "transition": "cut"
+  },
+  "params": {
+    "rhythm.kick": 0.012,
+    "rhythm.decay": 20,
+    "rhythm.length": 0.25,
+    "background.grid": 0.5
+  },
+  "defaults": {
+    "palette": "concrete",
+    "music": { "preset": "house-128", "bpm": 128 },
+    "fonts": { "display": "karantina", "text": "cousine" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 0.5,
+    "leadIn": 0.1,
+    "minTail": 0.6,
+    "entry": 0.45,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

@@ -276,8 +276,9 @@ async function freshCapture(o: { origin: string; entry: string; input: ReelInput
 }
 
 /**
- * (a) the job's first 3 frames in two fresh browsers, same order → identical bytes;
- * (b) 5 sampled frames forward then reverse in one page → max channel Δ ≤ 2/255 (GPU order residue, M0a).
+ * (a) the job's first 3 frames in two fresh GPU-raster browsers (as chunks render), same order → identical bytes;
+ * (b) 5 sampled frames forward then reverse in the probe page, which runs CPU raster (`launchBrowser` note) → max
+ *     channel Δ ≤ 2/255; a difference there is state carried between frames by the page itself.
  */
 export async function gateDeterminism(
   tab: ReelTab,

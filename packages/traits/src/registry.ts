@@ -34,6 +34,57 @@ import { meta as swissSolidBauhaus } from './traits/background/solid-bauhaus/met
 import { meta as swissPanelWipe } from './traits/transition/panel-wipe/meta.ts';
 import { meta as audioReactive } from './traits/rhythm/audio-reactive/meta.ts';
 import { meta as pulseGlow } from './traits/background/pulse-glow/meta.ts';
+import { meta as snap } from './traits/motion/snap/meta.ts';
+import { meta as plainBg } from './traits/background/plain/meta.ts';
+import { meta as beatStack } from './traits/layout/beat-stack/meta.ts';
+import { meta as beatCut } from './traits/reveal/beat-cut/meta.ts';
+import { meta as beatSwap } from './traits/material/beat-swap/meta.ts';
+import { meta as gridReflow } from './traits/layout/grid-reflow/meta.ts';
+import { meta as moduleGrid } from './traits/background/module-grid/meta.ts';
+import { meta as tileInk } from './traits/material/tile-ink/meta.ts';
+import { meta as reflow } from './traits/transition/reflow/meta.ts';
+import { meta as flushStack } from './traits/layout/flush-stack/meta.ts';
+import { meta as typewriter } from './traits/reveal/typewriter/meta.ts';
+import { meta as maskSlide } from './traits/reveal/mask-slide/meta.ts';
+import { meta as flap } from './traits/reveal/flap/meta.ts';
+import { meta as scramble } from './traits/reveal/scramble/meta.ts';
+import { meta as functional } from './traits/motion/functional/meta.ts';
+import { meta as glowTint } from './traits/material/glow-tint/meta.ts';
+import { meta as screen } from './traits/background/screen/meta.ts';
+import { meta as spatialHandoff } from './traits/transition/handoff/meta.ts';
+import { meta as spatialBackdrop } from './traits/background/backdrop/meta.ts';
+import { meta as spatialOrbit } from './traits/camera/orbit/meta.ts';
+import { meta as spatialExtrude } from './traits/material/extrude/meta.ts';
+import { meta as spatialTiltUp } from './traits/reveal/tilt-up/meta.ts';
+import { meta as spatialFlyThrough } from './traits/camera/fly-through/meta.ts';
+import { meta as spatialZArrive } from './traits/reveal/z-arrive/meta.ts';
+import { meta as spatialTunnel } from './traits/background/tunnel/meta.ts';
+import { meta as spatialTurntable } from './traits/camera/turntable/meta.ts';
+import { meta as spatialIsoBlocks } from './traits/layout/iso-blocks/meta.ts';
+import { meta as spatialFaceInk } from './traits/material/face-ink/meta.ts';
+import { meta as spatialCardDeck } from './traits/layout/card-deck/meta.ts';
+import { meta as brutalGrid } from './traits/layout/brutal-grid/meta.ts';
+import { meta as brutalSnap } from './traits/reveal/brutal-snap/meta.ts';
+import { meta as brutalInk } from './traits/material/brutal-ink/meta.ts';
+import { meta as glyphMorph } from './traits/reveal/glyph-morph/meta.ts';
+import { meta as liquidBlobs } from './traits/background/liquid-blobs/meta.ts';
+import { meta as fitStack } from './traits/layout/fit-stack/meta.ts';
+import { meta as sticker } from './traits/material/sticker/meta.ts';
+import { meta as stickerSlap } from './traits/reveal/sticker-slap/meta.ts';
+import { meta as bento } from './traits/layout/bento/meta.ts';
+import { meta as softRise } from './traits/reveal/soft-rise/meta.ts';
+import { meta as shapeMorph } from './traits/reveal/shape-morph/meta.ts';
+import { meta as shapeField } from './traits/background/shape-field/meta.ts';
+import { meta as liquidMorph } from './traits/reveal/liquid-morph/meta.ts';
+import { meta as versusSplit } from './traits/layout/versus-split/meta.ts';
+import { meta as fluidFill } from './traits/layout/fluid-fill/meta.ts';
+import { meta as elastic } from './traits/reveal/elastic/meta.ts';
+import { meta as jellyBlobs } from './traits/background/jelly-blobs/meta.ts';
+import { meta as equalizer } from './traits/rhythm/equalizer/meta.ts';
+import { meta as barRise } from './traits/reveal/bar-rise/meta.ts';
+import { meta as spectrum } from './traits/material/spectrum/meta.ts';
+import { meta as karaokeSweep } from './traits/reveal/karaoke-sweep/meta.ts';
+import { meta as karaokeInk } from './traits/material/karaoke-ink/meta.ts';
 
 export const TRAIT_META: readonly TraitMeta[] = [
   landKick,
@@ -67,4 +118,55 @@ export const TRAIT_META: readonly TraitMeta[] = [
   swissPanelWipe,
   audioReactive,
   pulseGlow,
+  snap,
+  plainBg,
+  beatStack,
+  beatCut,
+  beatSwap,
+  gridReflow,
+  moduleGrid,
+  tileInk,
+  reflow,
+  flushStack,
+  typewriter,
+  maskSlide,
+  flap,
+  scramble,
+  functional,
+  glowTint,
+  screen,
+  spatialHandoff,
+  spatialBackdrop,
+  spatialOrbit,
+  spatialExtrude,
+  spatialTiltUp,
+  spatialFlyThrough,
+  spatialZArrive,
+  spatialTunnel,
+  spatialTurntable,
+  spatialIsoBlocks,
+  spatialFaceInk,
+  spatialCardDeck,
+  brutalGrid,
+  brutalSnap,
+  brutalInk,
+  glyphMorph,
+  liquidBlobs,
+  fitStack,
+  sticker,
+  stickerSlap,
+  bento,
+  softRise,
+  shapeMorph,
+  shapeField,
+  liquidMorph,
+  versusSplit,
+  fluidFill,
+  elastic,
+  jellyBlobs,
+  equalizer,
+  barRise,
+  spectrum,
+  karaokeSweep,
+  karaokeInk,
 ];

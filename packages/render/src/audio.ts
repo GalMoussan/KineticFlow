@@ -219,6 +219,20 @@ export interface AudioResult {
   ms: number;
 }
 
+let encoder: Promise<string> | undefined;
+/**
+ * AAC encoder: Apple AudioToolbox (`aac_at`) when this ffmpeg has it, else ffmpeg's native `aac`. M6: the native
+ * encoder overshot a transient-heavy mix by 4 dB (true peak −3.5 → +0.5 dBTP after loudnorm, extrude-3d ×
+ * mixed-niqqud); `aac_at` kept it at −3.4 and is bit-identical across runs.
+ */
+function aacEncoder(): Promise<string> {
+  encoder ??= ffmpeg(['-encoders']).then(
+    ({ stdout }) => (/\baac_at\b/.test(stdout) ? 'aac_at' : 'aac'),
+    () => 'aac',
+  );
+  return encoder;
+}
+
 export async function finishAudio(o: {
   music: Stereo | null;
   sfx: Stereo | null;
@@ -235,7 +249,8 @@ export async function finishAudio(o: {
   const aac = join(o.workDir, 'audio.m4a');
   // exact length: pad/trim to `samples` after resampling loudnorm's 192 kHz output back to 48 kHz
   const fit = `aresample=${sr},apad=whole_len=${samples},atrim=end_sample=${samples}`;
-  const enc = (out: string) => ['-c:a', 'aac', '-b:a', '256k', '-ar', String(sr), '-ac', '2', '-movflags', '+faststart', out];
+  const codec = await aacEncoder();
+  const enc = (out: string) => ['-c:a', codec, '-b:a', '256k', '-ar', String(sr), '-ac', '2', '-movflags', '+faststart', out];
 
   const hashes: AudioResult['hashes'] = {
     ...(o.music ? { music: stereoSha(o.music) } : {}),

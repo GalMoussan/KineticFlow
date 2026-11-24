@@ -12,8 +12,17 @@ import type { ReelInput, SoundCue, TextBox } from '@reel/core';
  */
 export const GPU_ARGS = ['--use-angle=metal', '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--disable-partial-raster'];
 
-export function launchBrowser(): Promise<Browser> {
-  return chromium.launch({ headless: true, args: GPU_ARGS });
+/**
+ * `raster: 'cpu'` swaps GPU tile raster for Skia's CPU raster (WebGL and compositing stay on the GPU). M6: the GPU
+ * glyph atlas makes text pixels depend on earlier frames under load (3–11/255 on sticker-pop, neon, glyph-morph;
+ * not reproducible in isolation), while CPU raster measured 0/255 on the same frames. Chunks keep GPU raster: CPU
+ * raster costs +50 % at standard and 3.2× at final (dilemma 9:16: 196 s → 625 s), and every chunk renders in one
+ * fixed order in a fresh context, so its pixels stay reproducible. The purity probe (`gateDeterminism`) uses CPU
+ * raster, so its forward/reverse check measures the page, not the atlas.
+ */
+export function launchBrowser(o: { raster?: 'gpu' | 'cpu' } = {}): Promise<Browser> {
+  const args = o.raster === 'cpu' ? GPU_ARGS.map((a) => (a === '--enable-gpu-rasterization' ? '--disable-gpu-rasterization' : a)) : GPU_ARGS;
+  return chromium.launch({ headless: true, args });
 }
 
 export interface ShotOptions {

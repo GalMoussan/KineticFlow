@@ -112,23 +112,27 @@ export class StillService {
     return job;
   }
 
+  /**
+   * The preview session is created inside the capture slot: sessions live in a bounded LRU, so creating all of a
+   * large request's sessions up front (25 styles) evicted the first ones before their capture and their page 404'd.
+   */
   async #capture(spec: Record<string, unknown>, style: string, key: string, req: { format: FormatId; section?: string | undefined; width: number }): Promise<StyleStill> {
     const file = `${key}.jpg`;
     const url = `/files/preview/stills/${file}`;
     const path = join(this.#dir, file);
     if (await exists(path)) return { style, url };
-    let created;
-    try {
-      created = await this.#preview.create(spec, req.format, { quiet: true });
-    } catch (e) {
-      return { style, error: e instanceof HttpError ? e.message : `cannot lay out this content: ${(e as Error).message}` };
-    }
-    const { session, response } = created;
-    const section = (req.section && response.sections.find((s) => s.id === req.section)) || response.sections.find((s) => s.role === 'title') || response.sections[0]!;
-    const t = section.holdEnd > section.holdStart ? (section.holdStart + section.holdEnd) / 2 : Math.max(0, section.holdEnd - 1 / response.fps);
     const f = formatOf(req.format);
-    try {
-      const jpg = await this.#slot(async () => {
+    const shot = await this.#slot(async (): Promise<Uint8Array | StyleStill> => {
+      let created;
+      try {
+        created = await this.#preview.create(spec, req.format, { quiet: true });
+      } catch (e) {
+        return { style, error: e instanceof HttpError ? e.message : `cannot lay out this content: ${(e as Error).message}` };
+      }
+      const { session, response } = created;
+      const section = (req.section && response.sections.find((s) => s.id === req.section)) || response.sections.find((s) => s.role === 'title') || response.sections[0]!;
+      const t = section.holdEnd > section.holdStart ? (section.holdStart + section.holdEnd) / 2 : Math.max(0, section.holdEnd - 1 / response.fps);
+      try {
         const browser = await this.#getBrowser();
         const tab = await ReelTab.open(browser, { origin: this.#origin(), entry: response.url.slice(1), input: session.input });
         try {
@@ -137,15 +141,16 @@ export class StillService {
         } finally {
           await tab.close();
         }
-      });
-      await mkdir(this.#dir, { recursive: true });
-      const tmp = `${path}.${process.pid}.tmp`;
-      await writeFile(tmp, jpg);
-      await rename(tmp, path);
-      return { style, url };
-    } catch (e) {
-      return { style, error: `capture failed: ${(e as Error).message.split('\n')[0]}` };
-    }
+      } catch (e) {
+        return { style, error: `capture failed: ${(e as Error).message.split('\n')[0]}` };
+      }
+    });
+    if (!(shot instanceof Uint8Array)) return shot;
+    await mkdir(this.#dir, { recursive: true });
+    const tmp = `${path}.${process.pid}.tmp`;
+    await writeFile(tmp, shot);
+    await rename(tmp, path);
+    return { style, url };
   }
 
   async close(): Promise<void> {

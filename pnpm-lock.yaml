@@ -183,6 +183,12 @@ importers:
       '@reel/runtime':
         specifier: workspace:*
         version: link:../runtime
+      harfbuzzjs:
+        specifier: ^0.4.15
+        version: 0.4.15
+      polygon-clipping:
+        specifier: ^0.15.7
+        version: 0.15.7
     devDependencies:
       '@reel/styles':
         specifier: workspace:*

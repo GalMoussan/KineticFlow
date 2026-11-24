@@ -1,0 +1,54 @@
+{
+  "id": "sticker-pop",
+  "name": "Sticker Pop",
+  "families": ["motion", "high-energy"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "fit-stack",
+    "unit": "word",
+    "reveal": "sticker-slap",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "sticker",
+    "background": "plain",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "rhythm.kick": 0.006,
+    "layout.leading": 0.5,
+    "layout.cap": 0.3,
+    "layout.plain": 0.72,
+    "layout.tilt": 6,
+    "motion.overshoot": 1.3,
+    "background.dots": 0.8,
+    "transition.flash": 0
+  },
+  "defaults": {
+    "palette": "sticker-candy",
+    "music": { "preset": "minimal-pop", "bpm": 120 },
+    "fonts": { "display": "fredoka" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.15,
+    "minTail": 0.6,
+    "entry": 0.55,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

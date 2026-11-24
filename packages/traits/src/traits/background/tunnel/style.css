@@ -1,0 +1,3 @@
+/* tunnel: full-frame root; frames are positioned and sized by the trait every frame. */
+.tunnel { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.tunnel > div { position: absolute; box-sizing: border-box; }
