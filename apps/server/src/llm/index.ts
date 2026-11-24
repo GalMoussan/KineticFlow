@@ -118,7 +118,7 @@ const SPLIT_SCHEMA: Schema = {
 
 function splitPrompt(lang: Lang, today: Date): string {
   return [
-    `You split pasted text into the sections of a 15–30 second kinetic-typography video (Instagram reel).`,
+    `You split pasted text into the sections of a kinetic-typography video (Instagram reel, usually 15–30 s; longer when the text needs it).`,
     `Write every section in ${LANG_NAME[lang]}, the language of the text. Never translate. Never invent facts.`,
     `Roles: title (always first, ≤ 6 words); text roles ${TEXT_ROLES.join(', ')}; datetime {date, time}; location {place, city};`,
     `list {title, items ≤ 10}; stat {value, prefix, suffix, label}; countdown {from, to, label}. Do not add an endcard (added for you).`,
