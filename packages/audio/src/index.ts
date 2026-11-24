@@ -130,6 +130,12 @@ export function master(x: Stereo, o: { ceiling?: number } = {}): Stereo {
   const sr = x.sampleRate;
   const l = Float64Array.from(x.l);
   const r = Float64Array.from(x.r);
+  for (let i = 0; i < l.length; i++) {
+    // A NaN anywhere would silence the whole limiter and fail the encode with an opaque ffmpeg error.
+    if (!Number.isFinite(l[i]!) || !Number.isFinite(r[i]!)) {
+      throw new Error(`mix has a non-finite sample at ${(i / sr).toFixed(3)} s (a sound cue or stem produced NaN/Infinity)`);
+    }
+  }
   let ceiling = o.ceiling ?? 0.6;
   // Limiting lowers the loudness too, so re-measure and tighten; aim 0.2 dB under the cap so it converges in 1–3 passes.
   for (let pass = 0; pass < 5; pass++) {
