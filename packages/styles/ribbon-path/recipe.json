@@ -1,0 +1,52 @@
+{
+  "id": "ribbon-path",
+  "name": "Ribbon Path",
+  "families": ["path"],
+  "energy": 3,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "ribbon-band",
+    "unit": "grapheme",
+    "reveal": "ribbon-flow",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "backdrop",
+    "transition": "handoff"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "background.light": 0.35,
+    "background.floor": 0,
+    "background.vignette": 0.12,
+    "background.seam": 1,
+    "transition.whoosh": 0
+  },
+  "defaults": {
+    "palette": "ribbon-cream",
+    "music": { "preset": "minimal-pop", "bpm": 112 },
+    "fonts": { "display": "fredoka" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote", "datetime",
+      "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.6,
+    "minTail": 0.7,
+    "entry": 0.5,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

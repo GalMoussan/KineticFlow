@@ -1,0 +1,55 @@
+{
+  "id": "glitch-digital",
+  "name": "Glitch Digital",
+  "families": ["generative", "high-energy", "beat-synced"],
+  "energy": 5,
+  "background": "dark",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "glitch",
+    "motion": "snap",
+    "axis": "none",
+    "material": "glow-tint",
+    "background": "screen",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "material.glow": 0.3,
+    "background.lines": 0.45,
+    "background.grid": 0.3,
+    "background.sweep": 0.5,
+    "background.bloom": 0.25,
+    "background.vignette": 0.65,
+    "transition.flash": 0.35,
+    "transition.decay": 26
+  },
+  "defaults": {
+    "palette": "glitch-acid",
+    "music": { "preset": "house-128", "bpm": 128 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.15,
+    "minTail": 0.6,
+    "entry": 0.5,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

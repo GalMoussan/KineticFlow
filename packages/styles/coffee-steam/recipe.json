@@ -1,0 +1,55 @@
+{
+  "id": "coffee-steam",
+  "name": "Coffee Steam",
+  "families": ["fluid-organic"],
+  "energy": 1,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "slow-push",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "soft-rise",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "foam",
+    "background": "steam",
+    "transition": "fade-push"
+  },
+  "params": {
+    "camera.push": 0.04,
+    "reveal.duration": 0.9,
+    "reveal.rise": 0.5,
+    "rhythm.kick": 0,
+    "layout.cap": 0.3,
+    "layout.leading": 0.5,
+    "transition.dip": 0.3,
+    "transition.push": 0.04,
+    "transition.sound": 0.18
+  },
+  "defaults": {
+    "palette": "latte-foam",
+    "music": { "preset": "lofi-jazz", "bpm": 92 },
+    "fonts": { "display": "suez-one" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 1,
+    "outroBeats": 0
+  }
+}

@@ -86,6 +86,11 @@ export interface Channels {
   shadow: string;
   /** Absolute `font-weight` for this frame; 0 = `unit.font.weight`. DOM flow only (measured units do not reflow). */
   wght: number;
+  /**
+   * Variable-font width axis (`wdth`, % of normal) for this frame via `font-variation-settings`; 0 = the font's
+   * default. Fonts without the axis ignore it. DOM flow only (measured parts keep their places).
+   */
+  wdth: number;
   /** false hides the unit regardless of the other channels. */
   visible: boolean;
 }
@@ -109,6 +114,8 @@ export interface PartChannels {
   shadow: string;
   /** Text shown instead of the part's own (slot spin, scramble); null = its own. Must be final at section holds. */
   glyph: string | null;
+  /** Absolute `font-weight` of this part for this frame; 0 = the unit's weight. The part keeps its measured place. */
+  wght: number;
 }
 
 /** Stage-level channels: shared by every visible layer's camera, reset per frame. */
@@ -268,6 +275,11 @@ export interface Metrics {
   id: number;
   fa: number;
   fd: number;
+  /**
+   * Pen advance per 1 px of font size (`measureText` width). Absent on hand-built pin and badge metrics.
+   * Positive `bl` is ink to the left of the pen; a negative `bl` is ink to the right of it.
+   */
+  w?: number;
 }
 
 export interface Section {

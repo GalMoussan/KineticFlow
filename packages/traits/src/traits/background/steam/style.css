@@ -1,0 +1,3 @@
+/* steam: warm haze and the steam SVG under the layer. */
+.steam-bg { position: absolute; inset: 0; }
+.steam-svg { position: absolute; left: 0; top: 0; }

@@ -27,6 +27,7 @@ export function resetChannels(c: Channels): void {
   c.split = 0;
   c.shadow = '';
   c.wght = 0;
+  c.wdth = 0;
   c.visible = true;
 }
 
@@ -45,6 +46,7 @@ export function resetPart(c: PartChannels): void {
   c.split = 0;
   c.shadow = '';
   c.glyph = null;
+  c.wght = 0;
 }
 
 const written = new WeakMap<HTMLElement, Map<string, string>>();
@@ -118,7 +120,13 @@ export function commitUnit(u: Unit): void {
   const color = c.color ?? u.color;
   put(inner, 'color', color);
   put(inner, 'text-shadow', shadow(c.glow, c.glowColor ?? color, c.split, c.shadow));
-  if (u.font.size) put(inner, 'font-weight', String(c.wght || u.font.weight));
+  if (u.font.size) {
+    const weight = c.wght || u.font.weight;
+    put(inner, 'font-weight', String(weight));
+    // wdth 0 removes the property, so styles that never set it keep font-weight alone.
+    // A set wdth names wght too: font-variation-settings replaces the whole axis set.
+    put(inner, 'font-variation-settings', c.wdth ? `"wdth" ${n2(c.wdth)}, "wght" ${n2(weight)}` : '');
+  }
   for (const p of u.parts) {
     const pc = p.ch;
     const s = p.span;
@@ -132,6 +140,7 @@ export function commitUnit(u: Unit): void {
     put(s, 'text-shadow', shadow(pc.glow, pc.glowColor ?? pcolor, pc.split, pc.shadow));
     const text = pc.glyph ?? p.text;
     if (s.textContent !== text) s.textContent = text;
+    put(s, 'font-weight', pc.wght ? String(Math.round(pc.wght)) : '');
   }
 }
 

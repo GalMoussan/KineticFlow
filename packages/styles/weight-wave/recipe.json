@@ -1,0 +1,59 @@
+{
+  "id": "weight-wave",
+  "name": "Weight Wave",
+  "families": ["variable-font", "beat-synced", "motion"],
+  "energy": 3,
+  "background": "light",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "flush-stack",
+    "unit": "grapheme",
+    "reveal": "soft-rise",
+    "motion": "smooth",
+    "axis": "weight-wave",
+    "material": "glow-tint",
+    "background": "plain",
+    "transition": "fade-push"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "layout.align": 2,
+    "layout.weight": 800,
+    "layout.cap": 0.3,
+    "layout.leading": 0.26,
+    "reveal.lead": 0.12,
+    "reveal.duration": 0.4,
+    "reveal.rise": 0.16,
+    "reveal.blur": 0.3,
+    "background.grid": 0.12,
+    "transition.dip": 0.6,
+    "transition.push": 0.03,
+    "transition.sound": 0.2
+  },
+  "defaults": {
+    "palette": "type-specimen",
+    "music": { "preset": "minimal-pop", "bpm": 116 },
+    "fonts": { "display": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.55,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

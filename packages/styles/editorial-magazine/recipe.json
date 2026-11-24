@@ -1,0 +1,58 @@
+{
+  "id": "editorial-magazine",
+  "name": "Editorial Magazine",
+  "families": ["dynamic-layout"],
+  "energy": 2,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "magazine-page",
+    "unit": "word",
+    "reveal": "mask-slide",
+    "motion": "functional",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "paper-print",
+    "transition": "page-turn"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "reveal.lead": 0.12,
+    "reveal.duration": 0.45,
+    "reveal.exit": 0.22,
+    "background.grain": 0.08,
+    "background.fibres": 0.35,
+    "background.halftone": 0,
+    "background.scraps": 0,
+    "background.kick": 0,
+    "transition.push": 0.06,
+    "transition.shade": 0.55,
+    "transition.blur": 6
+  },
+  "defaults": {
+    "palette": "magazine-paper",
+    "music": { "preset": "minimal-pop", "bpm": 104 },
+    "fonts": { "display": "frank-ruhl-libre", "text": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.5,
+    "minTail": 0.7,
+    "entry": 0.55,
+    "endUnitBeats": 0.5,
+    "endHold": 2.2,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

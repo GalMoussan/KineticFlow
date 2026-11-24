@@ -1,0 +1,56 @@
+{
+  "id": "cutout-collage",
+  "name": "Cut-out Collage",
+  "families": ["textured", "high-energy"],
+  "energy": 4,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "fit-stack",
+    "unit": "grapheme",
+    "reveal": "ransom",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "cutout",
+    "background": "paper-print",
+    "transition": "panel-wipe"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "layout.leading": 0.6,
+    "layout.cap": 0.26,
+    "layout.tilt": 4,
+    "background.scraps": 1,
+    "background.fibres": 0.6,
+    "background.grain": 0.08,
+    "background.kick": 0,
+    "transition.panels": 2,
+    "transition.blur": 0
+  },
+  "defaults": {
+    "palette": "kraft-collage",
+    "music": { "preset": "minimal-pop", "bpm": 120 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.8,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.6,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

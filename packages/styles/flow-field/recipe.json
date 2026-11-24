@@ -1,0 +1,54 @@
+{
+  "id": "flow-field",
+  "name": "Flow Field",
+  "families": ["generative", "fluid-organic"],
+  "energy": 2,
+  "background": "dark",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "flush-stack",
+    "unit": "grapheme",
+    "reveal": "flow-drift",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "glow-tint",
+    "background": "flow-field",
+    "transition": "fade-push"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "layout.align": 2,
+    "layout.weight": 500,
+    "layout.cap": 0.3,
+    "layout.leading": 0.34,
+    "material.glow": 0.25,
+    "transition.dip": 0.3,
+    "transition.sound": 0.15
+  },
+  "defaults": {
+    "palette": "deep-current",
+    "music": { "preset": "lofi-jazz", "bpm": 96 },
+    "fonts": { "display": "frank-ruhl-libre" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.3,
+    "minTail": 0.7,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

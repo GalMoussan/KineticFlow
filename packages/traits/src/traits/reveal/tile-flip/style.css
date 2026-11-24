@@ -1,0 +1,2 @@
+/* Letter tiles sit in the section group, behind the measured text. */
+.mosaic-tile { position: absolute; overflow: clip; box-sizing: border-box; }

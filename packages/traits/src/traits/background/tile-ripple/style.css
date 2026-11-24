@@ -1,0 +1,3 @@
+/* tile-ripple / tile-flip: grout under the mosaic, tiles resized in whole px (no CSS 3D). */
+.mosaic-grout { position: absolute; inset: 0; }
+.mosaic-tile { position: absolute; overflow: clip; box-sizing: border-box; }

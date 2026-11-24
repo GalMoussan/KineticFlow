@@ -1,0 +1,2 @@
+/* chalkboard: the frozen board canvas under the layer. */
+.cb-board { position: absolute; left: 0; top: 0; }

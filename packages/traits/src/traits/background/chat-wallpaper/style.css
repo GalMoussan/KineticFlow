@@ -1,0 +1,4 @@
+/* chat-wallpaper: full-frame wall, top fade, input bar (all static). */
+.chat-wall { position: absolute; inset: 0; }
+.chat-fade, .chat-footer { position: absolute; left: 0; right: 0; }
+.chat-field, .chat-send { position: absolute; }

@@ -1,0 +1,55 @@
+{
+  "id": "particle-assemble",
+  "name": "Particle Assemble",
+  "families": ["generative", "reveal", "high-energy"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "particle-assemble",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "glow-tint",
+    "background": "screen",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "material.glow": 0.35,
+    "background.lines": 0,
+    "background.grid": 0,
+    "background.sweep": 0,
+    "background.bloom": 0.4,
+    "background.vignette": 0.75,
+    "transition.flash": 0.2,
+    "transition.decay": 20
+  },
+  "defaults": {
+    "palette": "ember-dust",
+    "music": { "preset": "synthwave-drive", "bpm": 116 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.15,
+    "minTail": 0.6,
+    "entry": 0.55,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

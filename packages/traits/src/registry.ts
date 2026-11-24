@@ -103,6 +103,52 @@ import { meta as dilemmaCards } from './traits/layout/dilemma-cards/meta.ts';
 import { meta as dilemmaMix } from './traits/reveal/dilemma-mix/meta.ts';
 import { meta as slowPush } from './traits/camera/slow-push/meta.ts';
 import { meta as heartbeat } from './traits/rhythm/heartbeat/meta.ts';
+import { meta as chatThread } from './traits/layout/chat-thread/meta.ts';
+import { meta as chatScroll } from './traits/camera/chat-scroll/meta.ts';
+import { meta as chatPop } from './traits/reveal/chat-pop/meta.ts';
+import { meta as chatInk } from './traits/material/chat-ink/meta.ts';
+import { meta as chatWallpaper } from './traits/background/chat-wallpaper/meta.ts';
+import { meta as listStack } from './traits/layout/list-stack/meta.ts';
+import { meta as stackPush } from './traits/reveal/stack-push/meta.ts';
+import { meta as cutout } from './traits/material/cutout/meta.ts';
+import { meta as ransom } from './traits/reveal/ransom/meta.ts';
+import { meta as chalkboard } from './traits/background/chalkboard/meta.ts';
+import { meta as chalk } from './traits/material/chalk/meta.ts';
+import { meta as chalkWrite } from './traits/reveal/chalk-write/meta.ts';
+import { meta as steam } from './traits/background/steam/meta.ts';
+import { meta as foam } from './traits/material/foam/meta.ts';
+import { meta as bubble } from './traits/material/bubble/meta.ts';
+import { meta as weightWave } from './traits/axis/weight-wave/meta.ts';
+import { meta as widthBreath } from './traits/axis/width-breath/meta.ts';
+import { meta as particleAssemble } from './traits/reveal/particle-assemble/meta.ts';
+import { meta as flowDrift } from './traits/reveal/flow-drift/meta.ts';
+import { meta as flowField } from './traits/background/flow-field/meta.ts';
+import { meta as glitch } from './traits/reveal/glitch/meta.ts';
+import { meta as scrollStack } from './traits/layout/scroll-stack/meta.ts';
+import { meta as rampScroll } from './traits/camera/ramp-scroll/meta.ts';
+import { meta as punchIn } from './traits/reveal/punch-in/meta.ts';
+import { meta as ribbonBand } from './traits/layout/ribbon-band/meta.ts';
+import { meta as ribbonFlow } from './traits/reveal/ribbon-flow/meta.ts';
+import { meta as creditsColumn } from './traits/layout/credits-column/meta.ts';
+import { meta as creditsDolly } from './traits/camera/credits-dolly/meta.ts';
+import { meta as creditHold } from './traits/reveal/credit-hold/meta.ts';
+import { meta as tickerBoard } from './traits/layout/ticker-board/meta.ts';
+import { meta as bandLock } from './traits/reveal/band-lock/meta.ts';
+import { meta as nestFrames } from './traits/layout/nest-frames/meta.ts';
+import { meta as drosteZoom } from './traits/camera/droste-zoom/meta.ts';
+import { meta as nestShow } from './traits/reveal/nest-show/meta.ts';
+import { meta as paperSheet } from './traits/layout/paper-sheet/meta.ts';
+import { meta as unfold } from './traits/reveal/unfold/meta.ts';
+import { meta as tileBoard } from './traits/layout/tile-board/meta.ts';
+import { meta as tileRipple } from './traits/background/tile-ripple/meta.ts';
+import { meta as tileFlip } from './traits/reveal/tile-flip/meta.ts';
+import { meta as magazinePage } from './traits/layout/magazine-page/meta.ts';
+import { meta as pageTurn } from './traits/transition/page-turn/meta.ts';
+import { meta as orbitRing } from './traits/layout/orbit-ring/meta.ts';
+import { meta as orbitSettle } from './traits/reveal/orbit-settle/meta.ts';
+import { meta as mapRoute } from './traits/layout/map-route/meta.ts';
+import { meta as mapDrop } from './traits/reveal/map-drop/meta.ts';
+import { meta as cityMap } from './traits/background/city-map/meta.ts';
 
 export const TRAIT_META: readonly TraitMeta[] = [
   landKick,
@@ -205,4 +251,50 @@ export const TRAIT_META: readonly TraitMeta[] = [
   dilemmaMix,
   slowPush,
   heartbeat,
+  chatThread,
+  chatScroll,
+  chatPop,
+  chatInk,
+  chatWallpaper,
+  listStack,
+  stackPush,
+  cutout,
+  ransom,
+  chalkboard,
+  chalk,
+  chalkWrite,
+  steam,
+  foam,
+  bubble,
+  weightWave,
+  widthBreath,
+  particleAssemble,
+  flowDrift,
+  flowField,
+  glitch,
+  scrollStack,
+  rampScroll,
+  punchIn,
+  ribbonBand,
+  ribbonFlow,
+  creditsColumn,
+  creditsDolly,
+  creditHold,
+  tickerBoard,
+  bandLock,
+  nestFrames,
+  drosteZoom,
+  nestShow,
+  paperSheet,
+  unfold,
+  tileBoard,
+  tileRipple,
+  tileFlip,
+  magazinePage,
+  pageTurn,
+  orbitRing,
+  orbitSettle,
+  mapRoute,
+  mapDrop,
+  cityMap,
 ];

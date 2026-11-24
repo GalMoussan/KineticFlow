@@ -22,31 +22,75 @@ export const tok = (u: Unit, wt: number, family: 'display' | 'text' = 'display')
 
 export const inkOf = (host: Host, t: Tok): Metrics => host.metrics(t.u.text, t.wt, t.u.ltr, t.family ?? 'display');
 
-/** Ink extents of tokens set on one line, per 1 px of font size: width (ink to ink, `gap` em apart), ascent, descent. */
-export function lineDims(host: Host, toks: readonly Tok[], gap: number): { w: number; ia: number; id: number } {
+/** Pen advance per 1 px. Hand-built metrics (pins, badges) fall back to the ink width. */
+export const advanceOf = (m: Metrics): number => (m.w != null && m.w > 0 ? m.w : Math.max(0, m.bl) + Math.max(0, m.br));
+
+/**
+ * Space-character advance per 1 px, measured on each token's face; the line uses the widest so a heavier word
+ * does not collapse the gap. This is the gap a reader needs between words. An em gap between ink boxes is smaller
+ * than the side bearings on Hebrew, so the painted glyphs touch.
+ */
+export function wordGap(host: Host, toks: readonly Tok[]): number {
+  let s = 0;
+  for (const t of toks) {
+    const m = host.metrics(' ', t.wt, true, t.family ?? 'display');
+    if ((m.w ?? 0) > s) s = m.w!;
+  }
+  return s > 0 ? s : 0.25;
+}
+
+/**
+ * Extents of tokens set on one line, per 1 px of font size. Default width is ink to ink, `gap` em apart.
+ * `wordSpace` uses pen advances separated by the measured space advance (`wordGap`).
+ */
+export function lineDims(host: Host, toks: readonly Tok[], gap: number, wordSpace = false): { w: number; ia: number; id: number } {
   if (!toks.length) return { w: 0, ia: 0, id: 0 };
   const ms = toks.map((t) => inkOf(host, t));
+  const w = wordSpace
+    ? ms.reduce((a, m) => a + advanceOf(m), 0) + wordGap(host, toks) * (toks.length - 1)
+    : ms.reduce((a, m) => a + m.bl + m.br, 0) + gap * (toks.length - 1);
   return {
-    w: ms.reduce((a, m) => a + m.bl + m.br, 0) + gap * (toks.length - 1),
+    w,
     ia: Math.max(...ms.map((m) => m.ia)),
     id: Math.max(...ms.map((m) => m.id)),
   };
 }
 
-/** Visual (left-to-right) order of a line's tokens. */
-export const visual = (toks: readonly Tok[], dir: 'rtl' | 'ltr'): Tok[] => visualOrder(toks.map((t) => t.u.text), dir).map((i) => toks[i]!);
+/**
+ * Visual (left-to-right) order of a line's tokens.
+ * `atoms` asks `visualOrder` for each token's resolved direction (LRM / RLM) instead of its characters. A token that
+ * mixes Hebrew and Latin (`ב-WhatsApp`) stays one piece: character-level bidi anchors it on the leftmost Latin
+ * letter and slides that letter across the next word. Uniform tokens keep the same order either way.
+ */
+export const visual = (toks: readonly Tok[], dir: 'rtl' | 'ltr', atoms = false): Tok[] =>
+  visualOrder(
+    toks.map((t) => (atoms ? (t.u.ltr ? '\u200E' : '\u200F') : t.u.text)),
+    dir,
+  ).map((i) => toks[i]!);
 
 /**
  * Sets `toks` on one line at font size `S`: the ink run starts at x = `left`, glyphs sit on `base`. Writes each
- * unit's font, box, textAt, inkBox, baseline, innerOrigin and `tags.line`. Returns the ink run's right edge.
+ * unit's font, box, textAt, inkBox, baseline, innerOrigin and `tags.line`. Returns the run's right edge.
+ * `wordSpace` places each word on its pen advance and inserts the measured space advance, in visual order.
+ * The element's left edge is the pen (`textAt` puts it at `x0 + bl`), which matches Canvas `measureText`.
  */
-export function setLine(host: Host, toks: readonly Tok[], dir: 'rtl' | 'ltr', left: number, base: number, S: number, gap: number, line: number): number {
-  let x = left;
-  for (const t of visual(toks, dir)) {
+export function setLine(host: Host, toks: readonly Tok[], dir: 'rtl' | 'ltr', left: number, base: number, S: number, gap: number, line: number, wordSpace = false): number {
+  // Word-space mode is the measured-word path (magazine, map). Those tokens are atoms. The em-gap path keeps
+  // character-level `visualOrder`, so styles that do not opt in stay on the same pens.
+  const order = visual(toks, dir, wordSpace);
+  const sp = (wordSpace ? wordGap(host, toks) : gap) * S;
+  let cursor = left;
+  order.forEach((t, i) => {
     const m = inkOf(host, t);
     const inkW = (m.bl + m.br) * S;
-    const x0 = x;
-    x += inkW + gap * S;
+    const adv = advanceOf(m) * S;
+    // Em mode: `cursor` is the ink's left. Space mode: `cursor` is the pen, and the next pen is one advance
+    // plus one space later — the side bearings stay inside the advance, so the glyphs keep a real word gap.
+    const pen = wordSpace ? cursor : cursor + m.bl * S;
+    const x0 = pen - m.bl * S;
+    const step = wordSpace ? adv : inkW;
+    // Em mode steps from the ink's left, so a negative bearing cannot slide the next word.
+    cursor = (wordSpace ? pen : x0) + step + (i < order.length - 1 ? sp : 0);
     const box = { x: x0 - PAD.x * S, y: base - m.ia * S - PAD.y * S, w: inkW + 2 * PAD.x * S, h: (m.ia + m.id + 2 * PAD.y) * S };
     const mid = S / 2 + ((m.fa - m.fd) * S) / 2;
     const inkBox = { x: -m.bl * S, y: -m.ia * S + mid, w: inkW, h: (m.ia + m.id) * S };
@@ -59,8 +103,8 @@ export function setLine(host: Host, toks: readonly Tok[], dir: 'rtl' | 'ltr', le
       innerOrigin: `${(inkBox.x + inkW / 2).toFixed(2)}px ${(inkBox.y + inkBox.h / 2).toFixed(2)}px`,
     });
     t.u.tags.line = line;
-  }
-  return x - gap * S;
+  });
+  return cursor;
 }
 
 /**
@@ -158,17 +202,17 @@ export function pack(toks: readonly Tok[], k: number, f: number): Row[] {
 }
 
 /** Extents of a row at base size 1 (× its f): width (incl. indent and tracking), ink ascent, ink descent. */
-export function rowDims(host: Host, r: Row, gap: number): { w: number; ia: number; id: number } {
+export function rowDims(host: Host, r: Row, gap: number, wordSpace = false): { w: number; ia: number; id: number } {
   if (r.kind === 'box') return { w: r.w, ia: r.h, id: 0 };
-  const d = lineDims(host, r.toks, gap);
+  const d = lineDims(host, r.toks, gap, wordSpace);
   return { w: (d.w * (1 + (r.track ?? 0)) + (r.indent ?? 0)) * r.f, ia: d.ia * r.f, id: d.id * r.f };
 }
 
 /** Height of `rows` at base size 1: rows plus `leading` em (mean of both rows' f) between them. */
-export function stackHeight(host: Host, rows: readonly Row[], gap: number, leading: number): number {
+export function stackHeight(host: Host, rows: readonly Row[], gap: number, leading: number, wordSpace = false): number {
   let h = 0;
   rows.forEach((r, i) => {
-    const d = rowDims(host, r, gap);
+    const d = rowDims(host, r, gap, wordSpace);
     h += d.ia + d.id;
     if (i) h += (leading * (rows[i - 1]!.f + r.f)) / 2;
   });
@@ -187,16 +231,19 @@ export interface FitOptions {
   extraH?: number;
   /** Wide frames prefer the largest k near the best size (rows of words), narrow ones the smallest. */
   wide: boolean;
+  /** Separate words by the measured space advance on pen advances. Default keeps the em ink gap. */
+  wordSpace?: boolean;
 }
 
 /** Packs the blocks with the k (words per row) whose base size is best, as `center-stack` does. */
 export function fitRows(host: Host, blocks: readonly Block[], o: FitOptions): { rows: Row[]; size: number } {
   const live = blocks.filter((b) => (b.kind === 'row' ? b.row.kind === 'box' || b.row.toks.length : b.toks.length));
   const maxK = Math.max(1, ...live.map((b) => (b.kind === 'pack' ? b.toks.length : 1)));
+  const ws = o.wordSpace ?? false;
   const tries = Array.from({ length: maxK }, (_, i) => {
     const rows = live.flatMap((b): Row[] => (b.kind === 'row' ? [b.row] : pack(b.toks, i + 1, b.f)));
-    const w = Math.max(...rows.map((r) => rowDims(host, r, o.gap).w));
-    const h = stackHeight(host, rows, o.gap, o.leading) + (o.extraH ?? 0);
+    const w = Math.max(...rows.map((r) => rowDims(host, r, o.gap, ws).w));
+    const h = stackHeight(host, rows, o.gap, o.leading, ws) + (o.extraH ?? 0);
     const fmax = Math.max(0.01, ...rows.map((r) => (r.kind === 'text' ? r.f : 0)));
     return { rows, size: Math.min(o.w / w, o.h / h, o.cap / fmax) };
   });
@@ -225,6 +272,8 @@ export interface PlaceOptions {
   dir: 'rtl' | 'ltr';
   gap: number;
   leading: number;
+  /** Separate words by the measured space advance on pen advances. Default keeps the em ink gap. */
+  wordSpace?: boolean;
 }
 
 /**
@@ -235,10 +284,11 @@ export interface PlaceOptions {
  */
 export function placeRows(host: Host, rows: readonly Row[], size: number, o: PlaceOptions): RowRect[] {
   const rtl = o.dir === 'rtl';
+  const ws = o.wordSpace ?? false;
   let y = o.top;
   return rows.map((r, i) => {
     if (i) y += (o.leading * size * (rows[i - 1]!.f + r.f)) / 2;
-    const d = rowDims(host, r, o.gap);
+    const d = rowDims(host, r, o.gap, ws);
     const w = d.w * size;
     const x0 = o.align === 'center' ? o.left + (o.width - w) / 2 : rtl ? o.left + o.width - w : o.left;
     const top = y;
@@ -251,9 +301,9 @@ export function placeRows(host: Host, rows: readonly Row[], size: number, o: Pla
       const S = size * r.f;
       const ind = (r.indent ?? 0) * S;
       const tr = r.track ?? 0;
-      const plain = lineDims(host, r.toks, o.gap).w * S;
+      const plain = lineDims(host, r.toks, o.gap, ws).w * S;
       const left = (rtl ? x0 : x0 + ind) + (plain * tr) / 2;
-      setLine(host, r.toks, o.dir, left, base, S, o.gap, i);
+      setLine(host, r.toks, o.dir, left, base, S, o.gap, i, ws);
       cx = left + plain / 2;
       if (tr > 0) {
         for (const t of r.toks) {

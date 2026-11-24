@@ -1,0 +1,55 @@
+{
+  "id": "y2k-bubble",
+  "name": "Y2K Bubble",
+  "families": ["high-energy"],
+  "energy": 4,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "soft-rise",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "bubble",
+    "background": "liquid-blobs",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "reveal.duration": 0.35,
+    "reveal.rise": 0.15,
+    "reveal.blur": 0,
+    "transition.flash": 0.5,
+    "rhythm.kick": 0,
+    "layout.cap": 0.3,
+    "layout.leading": 0.4,
+    "background.strength": 0.75,
+    "background.speed": 1.4
+  },
+  "defaults": {
+    "palette": "y2k-lilac",
+    "music": { "preset": "house-128", "bpm": 124 },
+    "fonts": { "display": "fredoka" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.75,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.7,
+    "introBeats": 1,
+    "outroBeats": 0
+  }
+}
