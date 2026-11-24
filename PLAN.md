@@ -23,7 +23,7 @@ Each such change is listed in §1.
 | D9 | **Music sources:** sample sequencer (bundled CC0 one-shots), your own track (+ Beat This!), ACE-Step add-on; SFX layer on top of any of them | Your choices. The oscillator synth is dropped |
 | D10 | **Cloud LLM (Gemini and Claude, switchable), text-only and optional** | Splits pasted text into sections, suggests emphasis words, ranks styles from the brief. Rendering never calls out |
 | D11 | **Quality presets:** draft / standard / final; final = 60 fps + motion blur (sub-frame averaging) + 2× supersampling | Your choices (§8.3) |
-| D12 | Content types: event, list/top-N, story/dilemma, lyric (own audio), stats/countdown. Duration 6–30 s | Your choices |
+| D12 | Content types: event, list/top-N, story/dilemma, lyric (own audio), stats/countdown. Duration 6–180 s (raised from 30 s in M7 on request; `DURATION` in `@reel/core`; AI music clips cap at 240 s including the offset room) | Your choices |
 | D13 | Languages: Hebrew (RTL, **with niqqud**), English, mixed he/en in one line | Your choices. Arabic is out of scope for now: per-letter animation breaks joined scripts |
 | D14 | Fonts: curated OFL library (Hebrew + Latin, ~20 families, downloaded by `reelgen setup`) + upload your own | Your choice |
 | D15 | Single user, localhost. Project lives in `geminiCode/makeAvideo` | Your choice. Hosting is revisited when v1 is done |

@@ -68,3 +68,12 @@ test('weekday is derived from the date, per locale', () => {
   assert.equal(weekday('2026-12-01', 'en'), 'Tuesday');
   assert.equal(daysBetween('2026-11-23', '2026-12-01'), 8);
 });
+
+test('duration: 6–180 s; AI music must fit one ACE-Step clip', () => {
+  const at = (duration: number, music: unknown = { source: 'none' }) => JobSpec.safeParse({ ...dilemma, duration, music }).success;
+  assert.ok(at(180) && at(6));
+  assert.ok(!at(181) && !at(5));
+  const ai = (offset: number) => ({ source: 'ai', prompt: 'x', seed: 1, offset });
+  assert.ok(at(180, ai(0)), '180 s + intro room + tail fits 240 s');
+  assert.ok(!at(180, ai(60)), 'a 60 s offset on a 180 s video needs a 246 s clip');
+});

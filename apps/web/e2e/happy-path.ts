@@ -106,6 +106,17 @@ async function main(): Promise<void> {
     const chip = page.locator('.section-card').nth(1).locator('.chip.word').first();
     if (await chip.count()) await chip.click();
     await shot(page, 'sections');
+    // "Add section above" on section 3 inserts a new section in its place; undo removes it again.
+    await page.getByRole('button', { name: 'Add a section above section 3' }).click();
+    await page.locator('.insert-slot .add-section .chip', { hasText: 'Number' }).click();
+    await page.waitForFunction((n) => document.querySelectorAll('.section-card').length === n + 1, sections, { timeout: 10_000 });
+    const inserted = await page.locator('.section-card').nth(2).locator('.role-select').inputValue();
+    assert(inserted === 'stat', `new section inserted as section 3 (found "${inserted}")`);
+    await page.locator('.section-card').nth(2).scrollIntoViewIfNeeded();
+    await shot(page, 'section-inserted');
+    await page.keyboard.press('Meta+z');
+    await page.waitForFunction((n) => document.querySelectorAll('.section-card').length === n, sections, { timeout: 10_000 });
+    log(`inserted a stat above section 3, then undid it`);
 
     // 3. Logos with background removal
     await page.locator('#step-brand').scrollIntoViewIfNeeded();

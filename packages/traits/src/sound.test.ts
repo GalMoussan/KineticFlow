@@ -80,3 +80,18 @@ test('reactive: without envelopes the beat grid drives the bands (downbeats loud
   assert.ok(level(r, 'bass', 1) < 1 && level(r, 'bass', 1) > 0.7, 'beats slightly weaker');
   assert.ok(level(r, 'high', 0.8) > 2 * level(r, 'high', 0.7), 'hats on the off-beat (0.75 s)');
 });
+
+test('finishCues: non-finite pan/pitch/until are dropped, not passed to the mixer', () => {
+  const out = finishCues(
+    [
+      { t: 1, kind: 'pop', weight: 0.5, pan: Number.NaN, pitch: Number.POSITIVE_INFINITY },
+      { t: 2, kind: 'whoosh', weight: 0.5, until: Number.NaN },
+      { t: 3, kind: 'pop', weight: Number.NaN },
+    ],
+    10,
+  );
+  assert.deepEqual(out, [
+    { t: 1, kind: 'pop', weight: 0.5 },
+    { t: 2, kind: 'whoosh', weight: 0.5 },
+  ]);
+});

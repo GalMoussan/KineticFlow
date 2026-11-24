@@ -116,6 +116,15 @@ export function aiClipSeconds(duration: number, offset: number): number {
   return Math.max(10, Math.ceil(Math.max(duration + AI_INTRO_ROOM_S, offset + duration) + AI_TAIL_S));
 }
 
+/** Longest AI clip ACE-Step generates here (`sidecar/music-ai/generate.py`). */
+export const AI_CLIP_MAX_S = 240;
+
+/**
+ * Video length in seconds. 180 s matches Instagram's 3-minute Reels; long videos with little text get long holds
+ * (the timing engine spreads the spare time over the sections).
+ */
+export const DURATION = { min: 6, max: 180 } as const;
+
 export const QUALITY_PRESETS = {
   draft: { fps: 30, motionBlur: null, supersample: 1 },
   standard: { fps: 30, motionBlur: null, supersample: 1 },
@@ -144,7 +153,7 @@ export const JobSpec = z
     fonts: z.object({ display: Slug, text: Slug.optional() }),
     music: Music,
     sfx: z.boolean().default(true),
-    duration: z.number().min(6).max(30),
+    duration: z.number().min(DURATION.min).max(DURATION.max),
     formats: z.array(FormatId).min(1),
     quality: Quality.default('standard'),
     outputs: z
@@ -163,6 +172,13 @@ export const JobSpec = z
     }
     if (roles.includes('lyric') && spec.music.source !== 'track') {
       ctx.addIssue({ code: 'custom', path: ['music'], message: 'lyric sections need music.source = "track"' });
+    }
+    if (spec.music.source === 'ai' && aiClipSeconds(spec.duration, spec.music.offset) > AI_CLIP_MAX_S) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['music', 'offset'],
+        message: `AI music clips are at most ${AI_CLIP_MAX_S} s: lower the start offset or the duration`,
+      });
     }
     spec.sections.forEach((s, i) => {
       if (s.role === 'countdown' && s.from > s.to) {

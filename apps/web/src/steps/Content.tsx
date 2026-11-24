@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DURATION } from '@reel/core';
 import type { Validation } from '@reel/api';
 import { api, errorMessage, type SplitInput } from '../api.ts';
 import { exampleSpec } from '../Home.tsx';
@@ -58,12 +59,12 @@ function PasteBox() {
   const contentType = s.spec.contentType as ContentType;
   const fitAfterSplit = useRef(false);
 
-  // Once the split content is saved and timed: lengthen the video if the text needs it (up to the 30 s cap).
+  // Once the split content is saved and timed: lengthen the video if the text needs it (up to the duration cap).
   const timing = s.validation?.timing;
   useEffect(() => {
     if (!fitAfterSplit.current || s.save !== 'saved' || !timing) return;
     fitAfterSplit.current = false;
-    if (timing.ok || timing.needed > 30) return;
+    if (timing.ok || timing.needed > DURATION.max) return;
     const need = Math.ceil(timing.needed * 2) / 2;
     s.update((d) => ({ ...d, duration: need }));
     s.toast(`Made the video ${need} s long so your text fits`, { action: { label: 'Undo', run: s.undo } });
@@ -165,7 +166,7 @@ function DurationControl() {
   const duration = s.spec.duration;
   return (
     <div className="card" data-path="duration">
-      <Slider label="Duration" value={duration} min={6} max={30} step={0.5} format={(x) => `${x} s`} onChange={(x) => s.update((d) => ({ ...d, duration: x }), 'duration')} dataPath="duration" />
+      <Slider label="Duration" value={duration} min={DURATION.min} max={DURATION.max} step={0.5} format={(x) => `${x} s`} onChange={(x) => s.update((d) => ({ ...d, duration: x }), 'duration')} dataPath="duration" />
       <TimingFeedback validation={v} />
     </div>
   );
@@ -179,7 +180,7 @@ function TimingFeedback({ validation }: { validation: Validation | null }) {
   const timing = validation?.timing;
   if (!timing) return <p className="muted small">Timing appears once every section is filled in.</p>;
   if (!timing.ok) {
-    const fits = timing.needed <= 30;
+    const fits = timing.needed <= DURATION.max;
     const need = Math.ceil(timing.needed * 2) / 2;
     return (
       <div className="timing-warn" role="alert">

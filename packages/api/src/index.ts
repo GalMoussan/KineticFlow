@@ -7,6 +7,7 @@
  * validation result so the UI can show issues inline without a second round trip.
  */
 import { z } from 'zod';
+import { AI_CLIP_MAX_S } from '@reel/core';
 import type {
   FormatId,
   JobSpecInput,
@@ -202,7 +203,7 @@ export const MusicAiRequest = z.object({
   lyrics: z.string().max(4000).optional(),
   bpm: z.number().int().min(60).max(180).optional(),
   seed: z.number().int().nonnegative(),
-  seconds: z.number().int().min(10).max(240),
+  seconds: z.number().int().min(10).max(AI_CLIP_MAX_S),
   cachedOnly: z.boolean().optional(),
 });
 export interface MusicAiState {
