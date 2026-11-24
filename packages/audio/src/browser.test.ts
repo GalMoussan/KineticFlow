@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dilemmaSheet, sheetSoundCues } from '../dev/fixtures.ts';
 import { loadSampleBank, sampleBytes } from '../dev/samples.ts';
-import { MUSIC_PRESETS, renderMusic, renderSfx, type Stereo } from './index.ts';
+import { MUSIC_PRESETS, PRESET_DEFAULT_BPM as BPM, renderMusic, renderSfx, type Stereo } from './index.ts';
 
 const fromRender = createRequire(fileURLToPath(new URL('../../render/package.json', import.meta.url)));
 
@@ -59,8 +59,6 @@ globalThis.__audioHashes = async (input) => {
 
 const hash = (x: Stereo) =>
   createHash('sha256').update(new Uint8Array(x.l.buffer, x.l.byteOffset, x.l.byteLength)).update(new Uint8Array(x.r.buffer, x.r.byteOffset, x.r.byteLength)).digest('hex');
-
-const BPM: Record<string, number> = { 'lofi-jazz': 100, 'synthwave-drive': 120, 'minimal-pop': 120, 'house-128': 124 };
 
 test('Node and Chromium render bit-identical music and SFX (SHA-256)', async (t) => {
   let playwright: Playwright;

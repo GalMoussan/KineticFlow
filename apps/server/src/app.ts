@@ -7,6 +7,7 @@ import {
   AssetKind,
   CreateProject,
   EmphasisRequest,
+  MusicAiRequest,
   PreviewAudioRequest,
   PreviewRequest,
   RankStylesRequest,
@@ -17,6 +18,7 @@ import {
   StyleStillsRequest,
   ValidateRequest,
   type CheckResult,
+  type MusicAiState,
   type ProjectSummary,
   type ProjectWithValidation,
   type RenderStreamEvent,
@@ -27,7 +29,7 @@ import { ingestAsset } from './assets.ts';
 import { catalog } from './catalog.ts';
 import { apiError, check, HttpError, jsonBody, newId, sendFile, slugify, uniqueSlug, within } from './http.ts';
 import { rankStyles, splitContent, suggestEmphasis } from './llm/index.ts';
-import { musicSample } from './music.ts';
+import { musicSample, type MusicAiJobs } from './music.ts';
 import type { Paths } from './paths.ts';
 import type { PreviewService } from './preview.ts';
 import { materialise, specTitle, specStyle, starterSpec } from './projects.ts';
@@ -44,6 +46,7 @@ export interface AppDeps {
   stills: StillService;
   queue: RenderQueue;
   hub: Hub<RenderStreamEvent>;
+  musicAi: MusicAiJobs;
   log: (msg: string) => void;
   /** SSE comment interval (default 15 s). */
   heartbeatMs?: number;
@@ -52,7 +55,7 @@ export interface AppDeps {
 const rec = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
 
 export function createApp(d: AppDeps): Hono {
-  const { store, paths, preview, stills, queue, hub, log } = d;
+  const { store, paths, preview, stills, queue, hub, musicAi, log } = d;
   const app = new Hono();
   const validate = (spec: unknown) => validateSpec(spec, { specDir: paths.data, store });
   const withValidation = async (id: string): Promise<ProjectWithValidation> => {
@@ -302,6 +305,50 @@ export function createApp(d: AppDeps): Hono {
     const bpm = c.req.query('bpm') === undefined ? undefined : Number(c.req.query('bpm'));
     const path = await musicSample(join(paths.preview, 'audio'), c.req.param('preset'), bpm);
     return (await sendFile(c, path, { 'Cache-Control': 'max-age=86400' }))!;
+  });
+
+  // ── AI music (ACE-Step add-on) ──
+  app.post('/api/music-ai', async (c) => c.json(await musicAi.start(check(MusicAiRequest, await jsonBody(c)))));
+  app.get('/api/music-ai/:key/events', (c) => {
+    const key = c.req.param('key');
+    if (!musicAi.state(key)) throw new HttpError(404, `no AI music job "${key}" (start it with POST /api/music-ai)`);
+    return streamSSE(c, async (stream) => {
+      const pending: MusicAiState[] = [];
+      let wake: (() => void) | null = null;
+      const unsubscribe = musicAi.subscribe(key, (s) => {
+        pending.push(s);
+        wake?.();
+      });
+      let closed = false;
+      stream.onAbort(() => {
+        closed = true;
+        wake?.();
+      });
+      const hb = setInterval(() => void stream.write(': hb\n\n').catch(() => {}), d.heartbeatMs ?? 15_000);
+      try {
+        let last = musicAi.state(key)!;
+        await stream.writeSSE({ data: JSON.stringify(last) });
+        while (!closed && last.status === 'running') {
+          const next = pending.shift();
+          if (!next) {
+            const w = Promise.withResolvers<void>();
+            wake = w.resolve;
+            await w.promise;
+            wake = null;
+            continue;
+          }
+          last = next;
+          await stream.writeSSE({ data: JSON.stringify(next) });
+        }
+      } finally {
+        clearInterval(hb);
+        unsubscribe();
+      }
+    });
+  });
+  app.get('/api/music-ai/:key/audio', async (c) => {
+    const res = await sendFile(c, musicAi.audioPath(c.req.param('key')), { 'Cache-Control': 'max-age=86400' });
+    return res || c.json(apiError('AI clip not found (generate it again)'), 404);
   });
 
   app.get('/preview/:sid/*', async (c) => {

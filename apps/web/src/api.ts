@@ -7,6 +7,7 @@ import type {
   Catalog,
   CheckResult,
   EmphasisResult,
+  MusicAiState,
   PreviewAudio,
   PreviewSession,
   ProjectSummary,
@@ -107,6 +108,8 @@ export const api = {
   styleStills: (spec: JobSpecInput, styles: string[], format: FormatId, width: number, signal?: AbortSignal) =>
     call<StyleStill[]>('POST', '/api/style-stills', { spec, styles, format, width }, signal),
   musicSample: (preset: string, bpm: number) => `/api/music/${preset}/sample?bpm=${Math.round(bpm)}`,
+  musicAi: (req: { prompt: string; lyrics?: string; bpm?: number; seed: number; seconds: number; cachedOnly?: boolean }) =>
+    call<MusicAiState>('POST', '/api/music-ai', req),
 
   split: (req: SplitInput) => call<SplitResult>('POST', '/api/llm/split', req),
   emphasis: (text: string, language?: 'he' | 'en') =>
@@ -138,6 +141,23 @@ export function renderEvents(id: string, on: (e: RenderStreamEvent) => void, onE
     closed = true;
     es.close();
   };
+}
+
+/** Follows an AI music job (SSE) until it is done or failed; returns the unsubscribe function. */
+export function musicAiEvents(key: string, on: (s: MusicAiState) => void): () => void {
+  const es = new EventSource(`/api/music-ai/${key}/events`);
+  es.onmessage = (m) => {
+    try {
+      const s = JSON.parse(m.data as string) as MusicAiState;
+      on(s);
+      if (s.status !== 'running') es.close();
+    } catch {
+      /* ignore malformed frames */
+    }
+  };
+  // the server ends the stream after the last state; EventSource would reconnect forever otherwise
+  es.onerror = () => es.close();
+  return () => es.close();
 }
 
 export function errorMessage(e: unknown): string {

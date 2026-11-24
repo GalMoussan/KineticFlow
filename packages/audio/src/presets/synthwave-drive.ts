@@ -145,4 +145,4 @@ function arrange(sheet: CueSheet, music: PresetMusic) {
   };
 }
 
-export const synthwaveDrive: Preset = { bpm: [100, 130], arrange };
+export const synthwaveDrive: Preset = { name: 'Synthwave Drive', description: 'Retro synths, driving beat', bpm: [100, 130], defaultBpm: 110, arrange };

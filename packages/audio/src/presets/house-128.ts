@@ -141,4 +141,4 @@ function arrange(sheet: CueSheet, music: PresetMusic) {
   };
 }
 
-export const house128: Preset = { bpm: [118, 130], arrange };
+export const house128: Preset = { name: 'House 128', description: 'Four-on-the-floor club energy', bpm: [118, 130], defaultBpm: 124, arrange };

@@ -1,0 +1,56 @@
+{
+  "id": "functional-clean",
+  "name": "Functional Clean",
+  "families": ["simple"],
+  "energy": 1,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "info-card",
+    "unit": "word",
+    "reveal": "soft-rise",
+    "motion": "functional",
+    "axis": "none",
+    "material": "glow-tint",
+    "background": "plain",
+    "transition": "fade-push"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "reveal.blur": 0,
+    "reveal.rise": 0.22,
+    "reveal.duration": 0.5,
+    "reveal.lead": 0.1,
+    "reveal.count": 0.8,
+    "motion.power": 2,
+    "transition.dip": 0.6,
+    "transition.push": 0.03,
+    "transition.sound": 0.12
+  },
+  "defaults": {
+    "palette": "clear-contrast",
+    "music": { "preset": "minimal-pop", "bpm": 100 },
+    "fonts": { "display": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote", "datetime",
+      "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.3,
+    "minTail": 0.8,
+    "entry": 0.7,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

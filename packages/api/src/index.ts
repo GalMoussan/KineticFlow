@@ -61,11 +61,14 @@ export interface Catalog {
   traits: CatalogTrait[];
   palettes: Record<string, ResolvedPalette>;
   fonts: CatalogFont[];
-  music: { id: string; bpm: [number, number]; defaultBpm: number }[];
+  music: { id: string; name: string; description: string; bpm: [number, number]; defaultBpm: number }[];
   formats: { id: FormatId; w: number; h: number }[];
   roles: SectionRole[];
-  /** Which optional subsystems are installed / configured. */
-  setup: { fonts: boolean; samples: boolean; analysis: boolean; llm: LlmProvider[] };
+  /**
+   * Which optional subsystems are installed / configured. `musicAi`: the ACE-Step add-on
+   * (`reelgen setup music-ai`) and the beat analysis it needs.
+   */
+  setup: { fonts: boolean; samples: boolean; analysis: boolean; musicAi: boolean; llm: LlmProvider[] };
 }
 
 // ---------- validation ----------
@@ -185,6 +188,36 @@ export interface PreviewAudio {
   url: string;
 }
 export type { SoundCue };
+
+// ---------- AI music (ACE-Step add-on) ----------
+
+/**
+ * `POST /api/music-ai` starts (or joins, or answers from the cache) the generation of one clip, `seconds` long
+ * (`aiClipSeconds(duration, offset)` of the spec, so the render finds the same clip). `cachedOnly` answers 404
+ * instead of generating. Returns the job's `MusicAiState`; `GET /api/music-ai/:key/events` streams it (SSE) until
+ * `done` or `error`; `GET /api/music-ai/:key/audio` is the generated WAV.
+ */
+export const MusicAiRequest = z.object({
+  prompt: z.string().trim().min(1).max(500),
+  lyrics: z.string().max(4000).optional(),
+  bpm: z.number().int().min(60).max(180).optional(),
+  seed: z.number().int().nonnegative(),
+  seconds: z.number().int().min(10).max(240),
+  cachedOnly: z.boolean().optional(),
+});
+export interface MusicAiState {
+  key: string;
+  status: 'running' | 'done' | 'error';
+  /** 0..1 */
+  progress: number;
+  stage: string;
+  /** The clip (WAV), when done. */
+  url?: string;
+  cached?: boolean;
+  /** Wall time of the generation, ms. */
+  ms?: number;
+  error?: string;
+}
 
 // ---------- check (preflight QA without rendering video): POST /api/projects/:id/check ----------
 

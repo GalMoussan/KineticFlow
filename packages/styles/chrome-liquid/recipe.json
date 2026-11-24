@@ -1,0 +1,52 @@
+{
+  "id": "chrome-liquid",
+  "name": "Chrome Liquid",
+  "families": ["textured", "high-energy"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "kinetic-mix",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "chrome",
+    "background": "liquid-chrome",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "rhythm.kick": 0.006,
+    "layout.cap": 0.32,
+    "motion.overshoot": 1.3,
+    "material.period": 2.6,
+    "material.depth": 0.035,
+    "transition.flash": 0.55
+  },
+  "defaults": {
+    "palette": "chrome-night",
+    "music": { "preset": "house-128", "bpm": 122 },
+    "fonts": { "display": "secular-one" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.15,
+    "minTail": 0.6,
+    "entry": 0.55,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

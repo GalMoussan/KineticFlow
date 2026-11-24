@@ -24,6 +24,14 @@ import fluidScale from '../fluid-scale/recipe.json' with { type: 'json' };
 import elasticStretch from '../elastic-stretch/recipe.json' with { type: 'json' };
 import equalizerType from '../equalizer-type/recipe.json' with { type: 'json' };
 import lyricKaraoke from '../lyric-karaoke/recipe.json' with { type: 'json' };
+import minimalLuxe from '../minimal-luxe/recipe.json' with { type: 'json' };
+import functionalClean from '../functional-clean/recipe.json' with { type: 'json' };
+import statCounter from '../stat-counter/recipe.json' with { type: 'json' };
+import chromeLiquid from '../chrome-liquid/recipe.json' with { type: 'json' };
+import retro80s from '../retro-80s/recipe.json' with { type: 'json' };
+import risograph from '../risograph/recipe.json' with { type: 'json' };
+import countdown from '../countdown/recipe.json' with { type: 'json' };
+import dilemmaReveal from '../dilemma-reveal/recipe.json' with { type: 'json' };
 
 /**
  * Catalog of style recipes, validated at load. A style is only a recipe (`<id>/recipe.json`): one trait per axis
@@ -55,6 +63,14 @@ export const RECIPES: Record<string, StyleRecipe> = {
   'elastic-stretch': StyleRecipe.parse(elasticStretch),
   'equalizer-type': StyleRecipe.parse(equalizerType),
   'lyric-karaoke': StyleRecipe.parse(lyricKaraoke),
+  'minimal-luxe': StyleRecipe.parse(minimalLuxe),
+  'functional-clean': StyleRecipe.parse(functionalClean),
+  'stat-counter': StyleRecipe.parse(statCounter),
+  'chrome-liquid': StyleRecipe.parse(chromeLiquid),
+  'retro-80s': StyleRecipe.parse(retro80s),
+  risograph: StyleRecipe.parse(risograph),
+  countdown: StyleRecipe.parse(countdown),
+  'dilemma-reveal': StyleRecipe.parse(dilemmaReveal),
 };
 
 export function recipe(id: string): StyleRecipe {

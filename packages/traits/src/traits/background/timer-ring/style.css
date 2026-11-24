@@ -1,0 +1,3 @@
+/* timer-ring: full-frame field + dial SVG under the content. */
+.timer-ring { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.timer-ring > svg { position: absolute; left: 0; top: 0; }

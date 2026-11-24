@@ -1,0 +1,18 @@
+/* synth-grid: sky + sun + floor grid under the layer; VHS scanlines, band, vignette and OSD over it. */
+.sg-fill, .sg-scan, .sg-vignette { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.sg-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.sg-band {
+  position: absolute; left: 0; width: 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.10) 35%, rgba(200,220,255,0.16) 55%, rgba(255,255,255,0) 100%);
+}
+.sg-streak { position: absolute; height: 2px; background: rgba(255,255,255,0.75); }
+.sg-osd {
+  position: absolute; font-family: var(--display), sans-serif; font-weight: 700; line-height: 1.15;
+  letter-spacing: 0.06em; direction: ltr; white-space: nowrap;
+}
+.sg-play {
+  display: inline-block; width: 0; height: 0; margin-right: 0.35em; vertical-align: 0.02em;
+  border-top: 0.38em solid transparent; border-bottom: 0.38em solid transparent; border-left: 0.6em solid;
+}
+.sg-word { display: inline-block; }
+.sg-clock { font-size: 0.8em; }

@@ -9,6 +9,7 @@ import { computeEnvelopes, encodeWav, master, mix, renderMusic, type SampleBank,
 import type { Choreography, CueSheet, JobSpec } from '@reel/core';
 import { buildCueSheet, MIN_METER_CONFIDENCE, trimEdgeBeats } from '@reel/timing';
 import { analyzeTrack } from './analysis.ts';
+import { aiClip, generateMusicAi } from './music-ai.ts';
 import { beatStrengths, decodeTrack, resolveTrack, videoGrid } from './track.ts';
 import { ffmpeg, sha256 } from './util.ts';
 
@@ -67,32 +68,43 @@ export function stereoSha(x: Stereo): string {
 
 // ───────────────────────────── steps 1–3: music source, grid, cue sheet ─────────────────────────────
 
+/** What an own track and an AI clip report once analysed and placed (render order steps 1–3). */
+interface TrackFields {
+  path: string;
+  /** SHA-256 of the audio file. */
+  sha256: string;
+  offset: number;
+  fadeOut: number;
+  /** Seconds of the video covered by the audio (less than the duration when the file ends early). */
+  covered: number;
+  /** Median detected tempo. */
+  bpm: number;
+  /** Detected beats and downbeats inside the video (after phantom-beat trimming). */
+  beats: number;
+  downbeats: number;
+  meter: number | null;
+  meterConfidence: number | null;
+  /** Whether the detected downbeats were trusted (meter confidence ≥ 0.8). */
+  downbeatsUsed: boolean;
+  /** Phantom beats dropped at the start/end of the window. */
+  trimmed: { head: number; tail: number };
+  analysis: { cached: boolean; model: string; path: string; ms: number };
+  ms: number;
+}
+
 export type MusicInfo =
   | { source: 'preset'; preset: string; bpm: number; seed: number; notes: number; ms: number }
-  | {
-      source: 'track';
-      file: string;
-      path: string;
-      /** SHA-256 of the track file. */
-      sha256: string;
-      offset: number;
-      fadeOut: number;
-      /** Seconds of the video covered by the track (less than the duration when the file ends early). */
-      covered: number;
-      /** Median detected tempo. */
-      bpm: number;
-      /** Detected beats and downbeats inside the video (after phantom-beat trimming). */
-      beats: number;
-      downbeats: number;
-      meter: number | null;
-      meterConfidence: number | null;
-      /** Whether the detected downbeats were trusted (meter confidence ≥ 0.8). */
-      downbeatsUsed: boolean;
-      /** Phantom beats dropped at the start/end of the window. */
-      trimmed: { head: number; tail: number };
-      analysis: { cached: boolean; model: string; path: string; ms: number };
-      ms: number;
-    }
+  | ({ source: 'track'; file: string } & TrackFields)
+  | ({
+      source: 'ai';
+      prompt: string;
+      /** Whether lyrics were sung (else instrumental). */
+      lyrics: boolean;
+      seed: number;
+      bpmHint: number | null;
+      /** The clip: cache hit or a fresh ACE-Step run (with its sidecar timings). */
+      generation: { cached: boolean; key: string; seconds: number; ms: number; timings?: { load_s: number; generate_s: number; total_s: number } };
+    } & TrackFields)
   | { source: 'none'; bpm: number };
 
 export interface MusicStage {
@@ -101,13 +113,14 @@ export interface MusicStage {
   /** 48 kHz music stem, exactly round(frames/fps · 48000) samples; null for `music.source = none`. */
   music: Stereo | null;
   info: MusicInfo;
-  /** Track jobs: every detected beat in video time, untrimmed (the `audio-sync` gate's reference). */
+  /** Track and AI jobs: every detected beat in video time, untrimmed (the `audio-sync` gate's reference). */
   detectedBeats?: number[];
 }
 
 /**
- * Render order steps 1–3: the music source (preset render, or track decode + trim + fade), the grid (track analysis)
- * → cue sheet, and the band envelopes of the music stem → `sheet.envelopes`.
+ * Render order steps 1–3: the music source (preset render, or track/AI clip decode + trim + fade), the grid (beat
+ * analysis) → cue sheet, and the band envelopes of the music stem → `sheet.envelopes`. AI clips are generated (or
+ * read from their cache) first, reporting `onProgress`; from there they are own tracks.
  */
 export async function prepareMusic(o: {
   spec: JobSpec;
@@ -117,6 +130,8 @@ export async function prepareMusic(o: {
   samples: SampleBank;
   /** Tempo of the visual grid without music (the style's default). */
   defaultBpm?: number;
+  /** AI music generation progress (0..1, stage). */
+  onProgress?: (p: number, stage: string) => void;
 }): Promise<MusicStage> {
   const start = performance.now();
   const { spec, fps, choreography } = o;
@@ -139,58 +154,86 @@ export async function prepareMusic(o: {
     }
     case 'track': {
       const path = await resolveTrack(o.specDir, m.file);
-      const samples = Math.round((frames / fps) * SAMPLE_RATE);
-      const [an, decoded] = await Promise.all([
-        analyzeTrack(path),
-        decodeTrack(path, { offset: m.offset, samples, fadeOut: m.fadeOut, sampleRate: SAMPLE_RATE }),
-      ]);
-      const envelopes = computeEnvelopes(decoded.audio, fps, frames);
-      const raw = videoGrid(an.analysis, m.offset, spec.duration);
-      // Phantom-beat trimming judges onset strength, so it stops where our own fade-out starts (the fade weakens
-      // onsets of real beats). Beats in the fade and past the end only shape the last half-beats; they go when the
-      // window's tail was phantom.
-      const judged = (t: number) => t < spec.duration - m.fadeOut;
-      const inBeats = raw.beats.filter(judged);
-      const trim = trimEdgeBeats(
-        { ...raw, beats: inBeats, downbeats: raw.downbeats.filter(judged) },
-        beatStrengths(inBeats, envelopes.onset, fps),
-      );
-      const grid = trim.tail
-        ? trim.grid
-        : {
-            ...trim.grid,
-            beats: [...trim.grid.beats, ...raw.beats.filter((t) => !judged(t))],
-            downbeats: [...trim.grid.downbeats, ...raw.downbeats.filter((t) => !judged(t))],
-          };
-      const sheet = buildCueSheet({ spec, choreography, fps, grid });
-      const a = an.analysis;
+      const t = await trackStage({ spec, choreography, fps, frames, path, offset: m.offset, fadeOut: m.fadeOut, start });
+      return { ...t, info: { source: 'track', file: m.file, ...t.fields } };
+    }
+    case 'ai': {
+      const gen = await generateMusicAi(aiClip(spec), o.onProgress);
+      const t = await trackStage({ spec, choreography, fps, frames, path: gen.path, offset: m.offset, fadeOut: m.fadeOut, start });
       return {
-        sheet: { ...sheet, envelopes },
-        music: decoded.audio,
-        detectedBeats: raw.beats,
+        ...t,
         info: {
-          source: 'track',
-          file: m.file,
-          path,
-          sha256: a.source.sha256,
-          offset: m.offset,
-          fadeOut: m.fadeOut,
-          covered: decoded.fromFile / SAMPLE_RATE,
-          bpm: sheet.bpm!,
-          beats: sheet.beats.length,
-          downbeats: sheet.downbeats.length,
-          meter: a.meter,
-          meterConfidence: a.meter_confidence,
-          downbeatsUsed: (a.meter_confidence ?? 0) >= MIN_METER_CONFIDENCE && trim.grid.downbeats.length > 0,
-          trimmed: { head: trim.head, tail: trim.tail },
-          analysis: { cached: an.cached, model: a.model.name, path: an.path, ms: an.ms },
-          ms: performance.now() - start,
+          source: 'ai',
+          prompt: m.prompt,
+          lyrics: !!m.lyrics?.trim(),
+          seed: m.seed,
+          bpmHint: m.bpm ?? null,
+          generation: { cached: gen.cached, key: gen.key, seconds: gen.duration, ms: gen.ms, ...(gen.timings ? { timings: gen.timings } : {}) },
+          ...t.fields,
         },
       };
     }
-    case 'ai':
-      throw new Error('music source "ai" arrives in M7; use "preset", "track" or "none"');
   }
+}
+
+/** An audio file as the music: beats on the whole file, the video's window decoded, faded, analysed into a grid. */
+async function trackStage(o: {
+  spec: JobSpec;
+  choreography: Choreography;
+  fps: number;
+  frames: number;
+  path: string;
+  offset: number;
+  fadeOut: number;
+  start: number;
+}): Promise<{ sheet: CueSheet; music: Stereo; detectedBeats: number[]; fields: TrackFields }> {
+  const { spec, fps, frames, path } = o;
+  const samples = Math.round((frames / fps) * SAMPLE_RATE);
+  const [an, decoded] = await Promise.all([
+    analyzeTrack(path),
+    decodeTrack(path, { offset: o.offset, samples, fadeOut: o.fadeOut, sampleRate: SAMPLE_RATE }),
+  ]);
+  const envelopes = computeEnvelopes(decoded.audio, fps, frames);
+  const raw = videoGrid(an.analysis, o.offset, spec.duration);
+  // Phantom-beat trimming judges onset strength, so it stops where our own fade-out starts (the fade weakens
+  // onsets of real beats). Beats in the fade and past the end only shape the last half-beats; they go when the
+  // window's tail was phantom.
+  const judged = (t: number) => t < spec.duration - o.fadeOut;
+  const inBeats = raw.beats.filter(judged);
+  const trim = trimEdgeBeats(
+    { ...raw, beats: inBeats, downbeats: raw.downbeats.filter(judged) },
+    beatStrengths(inBeats, envelopes.onset, fps),
+  );
+  const grid = trim.tail
+    ? trim.grid
+    : {
+        ...trim.grid,
+        beats: [...trim.grid.beats, ...raw.beats.filter((t) => !judged(t))],
+        downbeats: [...trim.grid.downbeats, ...raw.downbeats.filter((t) => !judged(t))],
+      };
+  const sheet = buildCueSheet({ spec, choreography: o.choreography, fps, grid });
+  const a = an.analysis;
+  return {
+    sheet: { ...sheet, envelopes },
+    music: decoded.audio,
+    detectedBeats: raw.beats,
+    fields: {
+      path,
+      sha256: a.source.sha256,
+      offset: o.offset,
+      fadeOut: o.fadeOut,
+      covered: decoded.fromFile / SAMPLE_RATE,
+      bpm: sheet.bpm!,
+      beats: sheet.beats.length,
+      downbeats: sheet.downbeats.length,
+      meter: a.meter,
+      meterConfidence: a.meter_confidence,
+      downbeatsUsed: (a.meter_confidence ?? 0) >= MIN_METER_CONFIDENCE && trim.grid.downbeats.length > 0,
+      trimmed: { head: trim.head, tail: trim.tail },
+      analysis: { cached: an.cached, model: a.model.name, path: an.path, ms: an.ms },
+      ms: performance.now() - o.start,
+    },
+  };
 }
 
 // ───────────────────────────── step 5: mix, master, loudness, AAC ─────────────────────────────

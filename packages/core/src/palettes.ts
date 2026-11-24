@@ -64,6 +64,32 @@ export const PALETTES: Record<string, ResolvedPalette> = {
   'midnight-ink': { bg: '#0F1020', text: '#F3ECDD', accents: ['#F2B84B', '#FF7A6B', '#5DCBC4', '#A99BFF', '#F497B8'] },
   // liquid-morph: lavender milk, plum ink, raspberry / lagoon / violet / apricot / orchid liquids
   'liquid-pastel': { bg: '#F7F0FB', text: '#2A1A47', accents: ['#D9407A', '#1C8FA3', '#7650E8', '#D86A2E', '#A63D8C'] },
+  // minimal-luxe: ink on bone, antique gold hairlines and emphasis, warm taupe figures
+  'luxe-bone': { bg: '#F2EDE4', text: '#1D1B18', accents: ['#8C6B2E', '#5E554A', '#A27C38'] },
+  // functional-clean: near-black ink on cool paper (16:1), deep blue / teal / rust accents all ≥ 7:1
+  'clear-contrast': { bg: '#EDF1F6', text: '#0A1222', accents: ['#0A3FA8', '#005A4E', '#8A2600'] },
+  // stat-counter: dashboard night, mint / amber / sky / coral data inks
+  'data-night': { bg: '#0D1220', text: '#EEF3FF', accents: ['#3DDC97', '#FFB547', '#5AA9FF', '#FF6F7D'] },
+  // list-stack: warm black, paper-white items, vermilion / sun / teal / violet numerals
+  'stack-ink': { bg: '#111014', text: '#F7F3EA', accents: ['#FF5A36', '#FFC23D', '#2EC4B6', '#8E7CFF'] },
+  // chrome-liquid: studio night, steel-white chrome, icy cyan / lavender / pink tints, silver
+  'chrome-night': { bg: '#0A0F1C', text: '#E8EEF7', accents: ['#6FD3FF', '#B79CFF', '#FF7EC8', '#C9D3E0'] },
+  // risograph: off-white stock, riso blue ink, fluorescent pink / blue / yellow / green spot inks
+  'riso-fluoro': { bg: '#F3EEE3', text: '#1D3BA8', accents: ['#FF3E9A', '#0078BF', '#FFC800', '#00A35C'] },
+  // chalkboard-cafe: green slate, white chalk, yellow / teal / pink chalk, wood frame (accent 3)
+  'chalk-cafe': { bg: '#24302A', text: '#F2F0E6', accents: ['#F6D776', '#9FD8CB', '#F2A7B8', '#8B5A34'] },
+  // cutout-collage: kraft board, black ink; red / yellow / blue / newsprint / black / pink paper scraps
+  'kraft-collage': { bg: '#CDB48C', text: '#141414', accents: ['#E2402B', '#F3C33C', '#2E5BA6', '#F4EFE4', '#151515', '#EE8FAE'] },
+  // coffee-steam: latte, espresso ink, roast / caramel accents, milk foam (accent 2), crema, cocoa
+  'latte-foam': { bg: '#E8D6C1', text: '#3A261B', accents: ['#8A4B2D', '#9C6239', '#FFF6EA', '#C99466', '#5B3A28'] },
+  // retro-80s: outrun night, hot pink / sun amber / laser cyan / violet grid
+  'synth-sunset': { bg: '#14002E', text: '#FFFFFF', accents: ['#FF2E88', '#FFB000', '#00E5FF', '#8F3BFF'] },
+  // y2k-bubble: lilac haze, grape ink, bubblegum / aqua / violet / mint / tangerine candy
+  'y2k-lilac': { bg: '#E9DDFF', text: '#2B1B5C', accents: ['#FF4FB8', '#1FB8E8', '#9B5CFF', '#2FD39A', '#FFB53D'] },
+  // countdown: launch-control black, bone-white type, amber hero / ring head, launch-orange numbers and ring, ice / yellow emphasis
+  'launch-control': { bg: '#0A0B10', text: '#F3F0E8', accents: ['#FFB21E', '#FF5A1F', '#7FD8FF', '#FFE066'] },
+  // dilemma-reveal: plum ink under a spotlight, cream type, one hot coral accent (seals, answer card), lilac numbers
+  'dilemma-plum': { bg: '#170B1F', text: '#F6EEE6', accents: ['#FF3D6E', '#C9B6F2', '#FF3D6E'] },
 };
 
 export type PaletteRef = string | ResolvedPalette;

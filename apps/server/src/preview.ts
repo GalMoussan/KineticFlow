@@ -12,7 +12,9 @@ import type { PreviewSession, SpecIssue } from '@reel/api';
 import { encodeWav, master, renderSfx, type Stereo } from '@reel/audio';
 import { format as formatOf, JobSpec, SOUND_KINDS, type Choreography, type FormatId, type ReelInput, type SoundCue } from '@reel/core';
 import {
+  aiClip,
   buildBundle,
+  cachedMusicAi,
   checkSamples,
   mixStems,
   nodeSampleBank,
@@ -110,7 +112,6 @@ export function parseForPreview(raw: unknown): { spec: JobSpec; styles: StyleRes
     throw new HttpError(422, `the spec is not valid yet: ${issues[0]!.path.join('.') || 'spec'}: ${issues[0]!.message}`, issues);
   }
   const spec = parsed.data;
-  if (spec.music.source === 'ai') throw new HttpError(422, 'AI music arrives in a later version', [{ path: ['music', 'source'], message: 'not available yet', level: 'error' }]);
   const styles = resolveStyles(spec, RECIPES, TRAIT_META);
   const errors = styles.diagnostics.filter((d) => d.level === 'error');
   if (errors.length || !styles.job) {
@@ -230,6 +231,12 @@ export class PreviewService {
     }
     const job = (async (): Promise<MusicEntry> => {
       if (spec.music.source === 'preset' || spec.sfx) await checkSamples();
+      // AI clips are generated from the music picker (`/api/music-ai`, with progress); the preview only uses them.
+      if (spec.music.source === 'ai' && !(await cachedMusicAi(aiClip(spec)))) {
+        throw new HttpError(409, 'the AI music is not generated yet: press Generate in the music picker', [
+          { path: ['music', 'prompt'], message: 'not generated yet', level: 'error' },
+        ]);
+      }
       let stage: MusicStage;
       try {
         stage = await prepareMusic({ spec, specDir: this.#specDir, choreography, fps, samples: this.#samples, defaultBpm });

@@ -11,6 +11,7 @@ import type { RenderStreamEvent } from '@reel/api';
 import { cacheBudgetBytes, pruneCaches } from '@reel/render';
 import { createApp } from './app.ts';
 import { loadDotEnv } from './llm/index.ts';
+import { MusicAiJobs } from './music.ts';
 import { paths as defaultPaths, REPO, type Paths } from './paths.ts';
 import { PreviewService } from './preview.ts';
 import { Hub, RenderQueue } from './renders.ts';
@@ -44,7 +45,8 @@ export async function startServer(o: { port?: number; host?: string; paths?: Pat
   let origin = '';
   const stills = new StillService({ preview, dir: join(paths.preview, 'stills'), origin: () => origin, log });
   const queue = new RenderQueue({ store, paths, hub, log, print: !o.quiet });
-  const app = createApp({ store, paths, preview, stills, queue, hub, log, ...(o.heartbeatMs ? { heartbeatMs: o.heartbeatMs } : {}) });
+  const musicAi = new MusicAiJobs(log);
+  const app = createApp({ store, paths, preview, stills, queue, hub, musicAi, log, ...(o.heartbeatMs ? { heartbeatMs: o.heartbeatMs } : {}) });
   const host = o.host ?? '127.0.0.1';
   const listening = Promise.withResolvers<number>();
   const server = serve({ fetch: app.fetch, port: o.port ?? 0, hostname: host }, (info) => listening.resolve(info.port));

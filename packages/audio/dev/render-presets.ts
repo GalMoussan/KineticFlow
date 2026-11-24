@@ -1,14 +1,20 @@
 /**
- * Listening deliverables (M3): every preset on the dilemma cue sheet, an SFX demo, and the M1-vs-M3 lofi comparison,
- * as MP3s in out/dev/audio/. Each file goes through the production chain (stems → mix → master → two-pass linear
- * loudnorm to −14 LUFS / −1.5 dBTP). Prints render times, CPU time of renderSfx, and the loudness of every master.
- *   node packages/audio/dev/render-presets.ts
+ * Listening deliverables (M3, M7): every preset on the dilemma cue sheet at its default tempo, an SFX demo, and the
+ * M1-vs-M3 lofi comparison, as MP3s in out/dev/audio/. Each file goes through the production chain (stems → mix →
+ * master → two-pass linear loudnorm to −14 LUFS / −1.5 dBTP). Prints render times, CPU time of renderSfx, the
+ * loudness of every master and listening proxies per preset:
+ * - `bands`: share of the master's energy (dB) under 60 Hz, 60–250, 250–2k, 2k–8k and over 8 kHz;
+ * - `beats` (when the analysis sidecar is set up): Beat This! on the delivered MP3 against the cue sheet's grid —
+ *   share of grid beats with a detected beat within 70 ms, mean/max error of those, and the detected tempo.
+ *   node packages/audio/dev/render-presets.ts [--presets id,id]   (a filter skips the SFX demo and lofi comparison)
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { SoundCue } from '@reel/core';
-import { MUSIC_PRESETS, PRESET_BPM, encodeWav, master, mix, renderMusic, renderSfx, synthesize, type Stereo } from '../src/index.ts';
+import { parseArgs } from 'node:util';
+import type { CueSheet, SoundCue } from '@reel/core';
+import { Biquad } from '../src/dsp.ts';
+import { MUSIC_PRESETS, PRESET_DEFAULT_BPM, encodeWav, master, mix, renderMusic, renderSfx, synthesize, type Stereo } from '../src/index.ts';
 import { dilemma, dilemmaSheet, sheetSoundCues } from './fixtures.ts';
 import { lofiJazz as lofiM1 } from './lofi-m1.ts';
 import { loadSampleBank } from './samples.ts';
@@ -17,9 +23,9 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const dir = `${root}out/dev/audio`;
 mkdirSync(dir, { recursive: true });
 const bank = await loadSampleBank();
-
-/** Tempo each preset is demoed at (the dilemma spec's own 100 for lofi-jazz). */
-const DEMO_BPM: Record<string, number> = { 'lofi-jazz': 100, 'synthwave-drive': 120, 'minimal-pop': 120, 'house-128': 124 };
+const { values } = parseArgs({ options: { presets: { type: 'string' } } });
+const only = values.presets?.split(',').map((s) => s.trim());
+for (const id of only ?? []) if (!MUSIC_PRESETS.includes(id)) throw new Error(`unknown preset ${id}`);
 
 interface Ebur {
   lufs: number;
@@ -48,9 +54,53 @@ function deliver(x: Stereo, name: string): { master: Ebur; mp3: Ebur; normalizat
   return out;
 }
 
+/** Energy share (dB re total) per band of the mono mix, split with 4th-order (two cascaded biquad) filters. */
+function bands(x: Stereo): Record<string, number> {
+  const mono = new Float64Array(x.l.length);
+  for (let i = 0; i < mono.length; i++) mono[i] = (x.l[i]! + x.r[i]!) / 2;
+  const energy = (edges: [number | null, number | null]) => {
+    const y = Float64Array.from(mono);
+    for (const [type, f] of [['hp', edges[0]], ['lp', edges[1]]] as const) {
+      if (f !== null) for (let k = 0; k < 2; k++) new Biquad(type, f, x.sampleRate).run(y);
+    }
+    let e = 0;
+    for (let i = 0; i < y.length; i++) e += y[i]! * y[i]!;
+    return e;
+  };
+  const split: Record<string, [number | null, number | null]> = { '<60': [null, 60], '60-250': [60, 250], '250-2k': [250, 2000], '2k-8k': [2000, 8000], '>8k': [8000, null] };
+  const es = Object.fromEntries(Object.entries(split).map(([k, e]) => [k, energy(e)]));
+  const total = Object.values(es).reduce((a, b) => a + b, 0);
+  return Object.fromEntries(Object.entries(es).map(([k, e]) => [k, +(10 * Math.log10(e / total)).toFixed(1)]));
+}
+
+const BEAT_PY = `${root}sidecar/.venv/bin/python`;
+const BEAT_MODEL = `${root}assets/models/beat_this-final0.ckpt`;
+
+/** Beat This! on the delivered file against the grid beats from the first beat to the groove's end. */
+function beatAlignment(mp3: string, sheet: CueSheet): Record<string, number> | null {
+  if (!existsSync(BEAT_PY) || !existsSync(BEAT_MODEL)) return null;
+  const out = `${mp3}.beats.json`;
+  execFileSync(BEAT_PY, [`${root}sidecar/analyze.py`, mp3, '--model', BEAT_MODEL, '-o', out], { stdio: 'ignore' });
+  const a = JSON.parse(readFileSync(out, 'utf8')) as { beats: number[]; bpm: number | null };
+  rmSync(out);
+  // The grid while the groove plays (the ending chord and fade have no beats to find).
+  const grid = sheet.beats.filter((t) => t <= sheet.duration - 3);
+  const errs: number[] = [];
+  for (const g of grid) {
+    const d = Math.min(...a.beats.map((b) => Math.abs(b - g)));
+    if (d <= 0.07) errs.push(d * 1000);
+  }
+  return {
+    hit: +(errs.length / grid.length).toFixed(3),
+    meanMs: +(errs.reduce((x, y) => x + y, 0) / Math.max(1, errs.length)).toFixed(1),
+    maxMs: +Math.max(0, ...errs).toFixed(1),
+    detectedBpm: a.bpm ?? 0,
+  };
+}
+
 const rows: Record<string, unknown>[] = [];
-for (const id of MUSIC_PRESETS) {
-  const bpm = DEMO_BPM[id] ?? PRESET_BPM[id]![0];
+for (const id of only ?? MUSIC_PRESETS) {
+  const bpm = PRESET_DEFAULT_BPM[id]!;
   const sheet = dilemmaSheet(bpm);
   const music = { preset: id, bpm, seed: 1101 };
   renderMusic(sheet, music, { samples: bank }); // warm-up (JIT, sample preparation)
@@ -58,8 +108,28 @@ for (const id of MUSIC_PRESETS) {
   const m = renderMusic(sheet, music, { samples: bank });
   const ms = performance.now() - t;
   const out = master(mix([{ audio: m, gain: 1 }], sheet.duration));
-  const d = deliver(out, `${id}-${bpm}`);
-  rows.push({ preset: id, bpm, events: m.notes, renderMs: Math.round(ms), masterLufs: d.master.lufs, masterTruePeak: d.master.truePeak, crestDb: +(d.master.truePeak - d.master.lufs).toFixed(1), mp3Lufs: d.mp3.lufs, mp3TruePeak: d.mp3.truePeak, loudnorm: d.normalization, file: `out/dev/audio/${id}-${bpm}.mp3` });
+  const d = deliver(out, id);
+  const file = `out/dev/audio/${id}.mp3`;
+  rows.push({
+    preset: id,
+    bpm,
+    seconds: sheet.duration,
+    events: m.notes,
+    renderMs: Math.round(ms),
+    masterLufs: d.master.lufs,
+    masterTruePeak: d.master.truePeak,
+    crestDb: +(d.master.truePeak - d.master.lufs).toFixed(1),
+    mp3Lufs: d.mp3.lufs,
+    mp3TruePeak: d.mp3.truePeak,
+    loudnorm: d.normalization,
+    bands: bands(out),
+    beats: beatAlignment(`${root}${file}`, sheet),
+    file,
+  });
+}
+if (only) {
+  for (const r of rows) console.log(JSON.stringify(r));
+  process.exit(0);
 }
 
 // SFX demo: one of each kind, 1.4 s apart, with lengths where the kind uses them.

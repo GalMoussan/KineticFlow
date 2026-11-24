@@ -1,0 +1,53 @@
+{
+  "id": "dilemma-reveal",
+  "name": "Dilemma Reveal",
+  "families": ["narrative"],
+  "energy": 3,
+  "background": "dark",
+  "traits": {
+    "rhythm": "heartbeat",
+    "camera": "slow-push",
+    "layout": "dilemma-cards",
+    "unit": "word",
+    "reveal": "dilemma-mix",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "face-ink",
+    "background": "backdrop",
+    "transition": "cut"
+  },
+  "params": {
+    "camera.push": 0.06,
+    "material.shadow": 0,
+    "material.min": 3,
+    "background.light": 0.55,
+    "background.floor": 0.35,
+    "background.vignette": 0.85,
+    "background.seam": 0
+  },
+  "defaults": {
+    "palette": "dilemma-plum",
+    "music": { "preset": "lofi-jazz", "bpm": 100 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.6,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

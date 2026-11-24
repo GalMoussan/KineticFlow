@@ -25,8 +25,14 @@ export interface PresetMusic {
 }
 
 export interface Preset {
+  /** Display name (music cards, catalog). */
+  name: string;
+  /** One short line on how it sounds. */
+  description: string;
   /** Tempo range the arrangement is written for (it renders at any tempo). */
   bpm: [number, number];
+  /** Tempo the studio starts at (inside `bpm`). */
+  defaultBpm: number;
   arrange(sheet: CueSheet, music: PresetMusic): Arrangement;
 }
 

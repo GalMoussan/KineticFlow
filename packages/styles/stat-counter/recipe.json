@@ -1,0 +1,51 @@
+{
+  "id": "stat-counter",
+  "name": "Stat Counter",
+  "families": ["stats", "dynamic-layout"],
+  "energy": 3,
+  "background": "dark",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "stat-board",
+    "unit": "word",
+    "reveal": "tally",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "glow-tint",
+    "background": "plain",
+    "transition": "fade-push"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "background.grid": 0.45,
+    "transition.dip": 0.3,
+    "transition.push": 0.06,
+    "transition.sound": 0.22
+  },
+  "defaults": {
+    "palette": "data-night",
+    "music": { "preset": "synthwave-drive", "bpm": 108 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote", "datetime",
+      "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.25,
+    "minTail": 0.9,
+    "entry": 0.85,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

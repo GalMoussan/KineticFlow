@@ -1,0 +1,3 @@
+/* paper-print: frozen paper under the layer, halftone shapes and torn scraps on it, frozen grain over it. */
+.pp-paper, .pp-grain { position: absolute; left: 0; top: 0; }
+.pp-shape, .pp-scrap { position: absolute; }

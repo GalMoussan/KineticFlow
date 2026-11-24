@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { RenderStreamEvent } from '@reel/api';
 import { createApp } from './app.ts';
+import type { MusicAiJobs } from './music.ts';
 import { paths } from './paths.ts';
 import type { PreviewService } from './preview.ts';
 import { Hub, summary, type RenderQueue } from './renders.ts';
@@ -59,8 +60,8 @@ test('GET /api/renders/:id/events: current state first, every event to every sub
     }
   })();
   // routes under test touch only the store and the hub
-  const unused = {} as PreviewService & StillService & RenderQueue;
-  const app = createApp({ store, paths: paths('/tmp/reel-sse-unused'), preview: unused, stills: unused, queue: unused, hub, log: () => {}, heartbeatMs: 30 });
+  const unused = {} as PreviewService & StillService & RenderQueue & MusicAiJobs;
+  const app = createApp({ store, paths: paths('/tmp/reel-sse-unused'), preview: unused, stills: unused, queue: unused, musicAi: unused, hub, log: () => {}, heartbeatMs: 30 });
   store.insertRender({ id: 'r1', projectId: 'p', title: 'T', quality: 'draft', formats: ['1:1'], spec: {} });
   store.updateRender('r1', { state: 'running' });
 

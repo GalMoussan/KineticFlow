@@ -1,0 +1,3 @@
+/* liquid-chrome: a full-frame backdrop gradient and one SVG of mercury blobs under the layer. */
+.lc-back { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.lc-svg { position: absolute; left: 0; top: 0; overflow: visible; }

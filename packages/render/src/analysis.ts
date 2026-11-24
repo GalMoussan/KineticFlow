@@ -45,7 +45,8 @@ export interface TrackAnalysis {
 
 const SETUP_HINT = 'run `reelgen setup analysis` (installs the beat-tracking sidecar, ~720 MB, and its 81 MB model)';
 
-function run(cmd: string, args: string[], o: { cwd?: string; log?: (line: string) => void } = {}) {
+/** Runs a sidecar process, streaming its non-empty output lines to `log`; resolves with the exit code and stderr. */
+export function run(cmd: string, args: string[], o: { cwd?: string; log?: (line: string) => void } = {}) {
   const { promise, resolve } = Promise.withResolvers<{ code: number; stderr: string }>();
   const child = spawn(cmd, args, { cwd: o.cwd, stdio: ['ignore', 'pipe', 'pipe'] });
   const err: Buffer[] = [];

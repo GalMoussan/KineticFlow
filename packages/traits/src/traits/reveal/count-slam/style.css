@@ -1,0 +1,2 @@
+/* count-slam: countdown steps over a number (reveal-owned, inside the unit's outer box). */
+.u > .count-step { position: absolute; line-height: 1; white-space: nowrap; direction: ltr; unicode-bidi: isolate; font-kerning: normal; display: none; }

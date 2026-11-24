@@ -1,0 +1,2 @@
+/* luxe-frame: the logo badge is framed by a gold hairline, not a stroke. */
+.u.luxe-badge .badge { border-width: 2px !important; }

@@ -1,0 +1,50 @@
+{
+  "id": "countdown",
+  "name": "Countdown",
+  "families": ["stats", "high-energy"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "shake",
+    "layout": "count-board",
+    "unit": "word",
+    "reveal": "count-slam",
+    "motion": "punchy",
+    "axis": "none",
+    "material": "face-ink",
+    "background": "timer-ring",
+    "transition": "cut"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "camera.shake": 0.8,
+    "material.shadow": 0,
+    "material.min": 3
+  },
+  "defaults": {
+    "palette": "launch-control",
+    "music": { "preset": "house-128", "bpm": 128 },
+    "fonts": { "display": "rubik", "text": "cousine" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 2,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.5,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

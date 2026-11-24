@@ -1,0 +1,15 @@
+[project]
+name = "reel-music-ai"
+version = "1.0.0"
+description = "Reel Studio optional add-on: ACE-Step 1.5 text-to-music (MLX DiT + VAE on Apple Silicon)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # ACE-Step 1.5, pinned to one upstream commit (MIT). Its macOS arm64 markers pull torch (MPS/CPU) + mlx + mlx-lm
+    # and skip nano-vllm (CUDA only).
+    "ace-step @ git+https://github.com/ACE-Step/ACE-Step-1.5@ca1e85fe9430179831e6bc6be790c332190a3866",
+]
+
+[tool.uv]
+package = false
+# The add-on is resolved for Apple Silicon macOS only (the machine this project targets); see `reelgen setup music-ai`.
+environments = ["sys_platform == 'darwin' and platform_machine == 'arm64'"]

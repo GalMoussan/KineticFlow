@@ -85,6 +85,24 @@ import { meta as barRise } from './traits/reveal/bar-rise/meta.ts';
 import { meta as spectrum } from './traits/material/spectrum/meta.ts';
 import { meta as karaokeSweep } from './traits/reveal/karaoke-sweep/meta.ts';
 import { meta as karaokeInk } from './traits/material/karaoke-ink/meta.ts';
+import { meta as fadePush } from './traits/transition/fade-push/meta.ts';
+import { meta as luxeFrame } from './traits/layout/luxe-frame/meta.ts';
+import { meta as trackIn } from './traits/reveal/track-in/meta.ts';
+import { meta as infoCard } from './traits/layout/info-card/meta.ts';
+import { meta as statBoard } from './traits/layout/stat-board/meta.ts';
+import { meta as tally } from './traits/reveal/tally/meta.ts';
+import { meta as chrome } from './traits/material/chrome/meta.ts';
+import { meta as liquidChrome } from './traits/background/liquid-chrome/meta.ts';
+import { meta as synthGrid } from './traits/background/synth-grid/meta.ts';
+import { meta as paperPrint } from './traits/background/paper-print/meta.ts';
+import { meta as riso } from './traits/material/riso/meta.ts';
+import { meta as countBoard } from './traits/layout/count-board/meta.ts';
+import { meta as countSlam } from './traits/reveal/count-slam/meta.ts';
+import { meta as timerRing } from './traits/background/timer-ring/meta.ts';
+import { meta as dilemmaCards } from './traits/layout/dilemma-cards/meta.ts';
+import { meta as dilemmaMix } from './traits/reveal/dilemma-mix/meta.ts';
+import { meta as slowPush } from './traits/camera/slow-push/meta.ts';
+import { meta as heartbeat } from './traits/rhythm/heartbeat/meta.ts';
 
 export const TRAIT_META: readonly TraitMeta[] = [
   landKick,
@@ -169,4 +187,22 @@ export const TRAIT_META: readonly TraitMeta[] = [
   spectrum,
   karaokeSweep,
   karaokeInk,
+  fadePush,
+  luxeFrame,
+  trackIn,
+  infoCard,
+  statBoard,
+  tally,
+  chrome,
+  liquidChrome,
+  synthGrid,
+  paperPrint,
+  riso,
+  countBoard,
+  countSlam,
+  timerRing,
+  dilemmaCards,
+  dilemmaMix,
+  slowPush,
+  heartbeat,
 ];

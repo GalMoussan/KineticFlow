@@ -134,4 +134,4 @@ function arrange(sheet: CueSheet, music: PresetMusic) {
   };
 }
 
-export const minimalPop: Preset = { bpm: [100, 130], arrange };
+export const minimalPop: Preset = { name: 'Minimal Pop', description: 'Clean plucks, light groove', bpm: [100, 130], defaultBpm: 116, arrange };

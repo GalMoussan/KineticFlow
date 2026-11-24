@@ -7,7 +7,7 @@ import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SpecIssue, Validation } from '@reel/api';
 import { contrast, fontEntry, isCatalogFont, JobSpec, PALETTES, words, type ResolvedPalette } from '@reel/core';
-import { FONT_DIR, findFontFile, fontCodepoints, missingChars, resolveQuality, specText } from '@reel/render';
+import { aiClip, cachedMusicAi, FONT_DIR, findFontFile, fontCodepoints, missingChars, musicAiReady, resolveQuality, specText } from '@reel/render';
 import { RECIPES } from '@reel/styles';
 import { buildCueSheet, TimingError } from '@reel/timing';
 import { formatDiagnostics, resolveStyles, TRAIT_META } from '@reel/traits';
@@ -26,10 +26,11 @@ export function paletteName(p: ResolvedPalette): string {
   return Object.entries(PALETTES).find(([, q]) => JSON.stringify(q) === k)?.[0] ?? 'custom';
 }
 
-/** Tempo the timing engine would use without rendering audio (tracks: the analysed tempo, when known). */
+/** Tempo the timing engine would use without rendering audio (tracks: the analysed tempo, when known; AI: the hint). */
 export function previewBpm(spec: JobSpec, defaultBpm: number, store: Store): number {
   const m = spec.music;
-  if (m.source === 'preset' || m.source === 'ai') return m.bpm;
+  if (m.source === 'preset') return m.bpm;
+  if (m.source === 'ai') return m.bpm ?? defaultBpm;
   if (m.source === 'track') {
     const bpm = store.getAsset(m.file)?.meta.bpm;
     return typeof bpm === 'number' && bpm > 0 ? bpm : defaultBpm;
@@ -60,7 +61,9 @@ export async function validateSpec(raw: unknown, env: ValidateEnv): Promise<Vali
     issues.push({ path: ['music', 'file'], message: `track "${spec.music.file}" is not uploaded`, level: 'error' });
   }
   if (spec.music.source === 'ai') {
-    issues.push({ path: ['music', 'source'], message: 'AI music arrives in a later version; pick a preset, a track or none', level: 'error' });
+    if (!(await cachedMusicAi(aiClip(spec))) && !(await musicAiReady())) {
+      issues.push({ path: ['music', 'source'], message: 'AI music is not set up: run `reelgen setup music-ai`', level: 'error' });
+    }
   }
   const fontSlots = (['display', 'text'] as const).filter((k) => spec.fonts[k] !== undefined);
   const fontPaths = new Map<string, string>();

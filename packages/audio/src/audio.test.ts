@@ -9,6 +9,8 @@ import {
   MAX_CREST_DB,
   MUSIC_PRESETS,
   PRESET_BPM,
+  PRESET_DEFAULT_BPM,
+  PRESET_INFO,
   SAMPLE_MANIFEST,
   ScoreError,
   decodeWav,
@@ -47,9 +49,26 @@ const energy = (x: Float32Array, from: number, to: number) => {
   return e;
 };
 
-test('at least four presets; unknown presets are rejected', () => {
-  assert.ok(MUSIC_PRESETS.length >= 4);
-  assert.deepEqual(MUSIC_PRESETS, ['lofi-jazz', 'synthwave-drive', 'minimal-pop', 'house-128']);
+test('at least ten presets with catalog metadata; unknown presets are rejected', () => {
+  assert.deepEqual(MUSIC_PRESETS, [
+    'lofi-jazz',
+    'synthwave-drive',
+    'minimal-pop',
+    'house-128',
+    'trap-808',
+    'cinematic-pulse',
+    'chiptune',
+    'acoustic-folk',
+    'ambient-drift',
+    'funk-disco',
+  ]);
+  assert.deepEqual(PRESET_INFO.map((p) => p.id), MUSIC_PRESETS);
+  assert.equal(new Set(PRESET_INFO.map((p) => p.name)).size, PRESET_INFO.length);
+  for (const p of PRESET_INFO) {
+    assert.ok(p.bpm[0] >= 60 && p.bpm[1] <= 180 && p.bpm[0] < p.bpm[1], `${p.id}: range ${p.bpm}`);
+    assert.ok(p.defaultBpm >= p.bpm[0] && p.defaultBpm <= p.bpm[1], `${p.id}: default ${p.defaultBpm}`);
+    assert.ok(p.description.length > 5 && p.description.length <= 48, `${p.id}: "${p.description}"`);
+  }
   assert.throws(() => renderMusic(sheet, { ...music, preset: 'polka' }, { samples: bank }), /lofi-jazz/);
 });
 
@@ -116,8 +135,8 @@ test('lofi-jazz: each landing pluck starts on its exact sample (onset within 1 m
   }
 });
 
-/** Demo tempo per preset (as dev/render-presets.ts). */
-const DEMO_BPM: Record<string, number> = { 'lofi-jazz': 100, 'synthwave-drive': 120, 'minimal-pop': 120, 'house-128': 124 };
+/** Demo tempo per preset: its studio default (as dev/render-presets.ts). */
+const DEMO_BPM = PRESET_DEFAULT_BPM;
 
 for (const id of MUSIC_PRESETS) {
   test(`${id}: the sub band (< 60 Hz) peaks on the kicks (kick frames ≥ 1.5× the rest)`, () => {

@@ -85,15 +85,36 @@ export const Music = z.discriminatedUnion('source', [
     /** Seconds of fade-out at the end of the video (the track is cut at `offset + duration`). */
     fadeOut: z.number().min(0).max(5).default(1.5),
   }),
-  /** ACE-Step add-on; the generated audio is analysed like an uploaded track. */
+  /**
+   * ACE-Step add-on (`reelgen setup music-ai`): a clip generated from `prompt` (+ `lyrics`; instrumental without)
+   * at the `bpm` hint and `seed`, `aiClipSeconds` long, cached per (model, prompt, lyrics, length, bpm, seed). From
+   * there it is an own track: beats from the analysis sidecar, `offset` skips into the clip, `fadeOut` ends it.
+   */
   z.object({
     source: z.literal('ai'),
-    prompt: z.string().min(1).max(500),
-    bpm: z.number().min(60).max(180),
+    prompt: z.string().trim().min(1).max(500),
+    lyrics: z.string().max(4000).optional(),
+    bpm: z.number().int().min(60).max(180).optional(),
     seed: z.number().int().nonnegative(),
+    offset: z.number().min(0).max(60).default(0),
+    fadeOut: z.number().min(0).max(5).default(1.5),
   }),
   z.object({ source: z.literal('none') }),
 ]);
+
+/** Seconds of room the AI clip leaves for `offset` (skipping a generated intro) without generating a new clip. */
+export const AI_INTRO_ROOM_S = 14;
+/** Seconds generated past the video's end: ACE-Step writes a song ending (≈ 2–5 s of tail and silence). */
+export const AI_TAIL_S = 6;
+
+/**
+ * Length of the AI clip a spec needs (whole seconds, ≥ ACE-Step's 10 s minimum): the video, room for an offset of up
+ * to `AI_INTRO_ROOM_S` and the tail margin; larger offsets get a longer clip. Shared by the render and the studio,
+ * so both name the same cached clip.
+ */
+export function aiClipSeconds(duration: number, offset: number): number {
+  return Math.max(10, Math.ceil(Math.max(duration + AI_INTRO_ROOM_S, offset + duration) + AI_TAIL_S));
+}
 
 export const QUALITY_PRESETS = {
   draft: { fps: 30, motionBlur: null, supersample: 1 },

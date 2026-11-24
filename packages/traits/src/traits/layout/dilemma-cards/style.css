@@ -1,0 +1,3 @@
+/* dilemma-cards: the '?' faces of seals, the face-down answer card and the question watermark. */
+.dl-q, .dl-seal { text-align: center; font-weight: 900; white-space: nowrap; }
+.u.dl-card { box-sizing: border-box; }

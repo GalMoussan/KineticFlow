@@ -180,4 +180,4 @@ function arrange(sheet: CueSheet, music: PresetMusic) {
   };
 }
 
-export const lofiJazz: Preset = { bpm: [80, 110], arrange };
+export const lofiJazz: Preset = { name: 'Lofi Jazz', description: 'Warm keys, brushed drums', bpm: [80, 110], defaultBpm: 100, arrange };

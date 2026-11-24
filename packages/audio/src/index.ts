@@ -9,11 +9,17 @@ import type { CueSheet } from '@reel/core';
 import { dbToGain, gainToDb } from './dmath.ts';
 import { limit, loudness, truePeak } from './dynamics.ts';
 import { renderArrangement } from './engine.ts';
+import { acousticFolk } from './presets/acoustic-folk.ts';
+import { ambientDrift } from './presets/ambient-drift.ts';
+import { chiptune } from './presets/chiptune.ts';
+import { cinematicPulse } from './presets/cinematic-pulse.ts';
+import { funkDisco } from './presets/funk-disco.ts';
 import { house128 } from './presets/house-128.ts';
 import { lofiJazz } from './presets/lofi-jazz.ts';
 import { minimalPop } from './presets/minimal-pop.ts';
 import type { Preset } from './presets/plan.ts';
 import { synthwaveDrive } from './presets/synthwave-drive.ts';
+import { trap808 } from './presets/trap-808.ts';
 import { kitSample } from './samples.ts';
 import { SAMPLE_RATE, type SampleBank, type Stereo } from './types.ts';
 
@@ -37,12 +43,26 @@ const PRESETS: Record<string, Preset> = {
   'synthwave-drive': synthwaveDrive,
   'minimal-pop': minimalPop,
   'house-128': house128,
+  'trap-808': trap808,
+  'cinematic-pulse': cinematicPulse,
+  chiptune,
+  'acoustic-folk': acousticFolk,
+  'ambient-drift': ambientDrift,
+  'funk-disco': funkDisco,
 };
 
 export const MUSIC_PRESETS: string[] = Object.keys(PRESETS);
 
 /** Design tempo range of each preset (they render at any tempo). */
 export const PRESET_BPM: Record<string, [number, number]> = Object.fromEntries(Object.entries(PRESETS).map(([id, p]) => [id, p.bpm]));
+
+/** Tempo each preset starts at in the studio (and is demoed and tested at). */
+export const PRESET_DEFAULT_BPM: Record<string, number> = Object.fromEntries(Object.entries(PRESETS).map(([id, p]) => [id, p.defaultBpm]));
+
+/** Catalog entries for the music cards, in registry order. */
+export const PRESET_INFO: { id: string; name: string; description: string; bpm: [number, number]; defaultBpm: number }[] = Object.entries(PRESETS).map(
+  ([id, p]) => ({ id, name: p.name, description: p.description, bpm: p.bpm, defaultBpm: p.defaultBpm }),
+);
 
 function preset(id: string): Preset {
   const p = PRESETS[id];

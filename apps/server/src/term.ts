@@ -88,14 +88,20 @@ export function musicLine(m: MusicInfo): string {
       return `music ${ok} none (visual grid ${m.bpm} bpm)`;
     case 'preset':
       return `music ${ok} preset ${m.preset} · ${m.bpm} bpm · seed ${m.seed} · ${m.notes} notes ${dim(secs(m.ms))}`;
-    case 'track': {
+    case 'track':
+    case 'ai': {
       const meter =
         m.meterConfidence === null
           ? 'no meter detected → bars of 4'
           : `meter ${m.meter} confidence ${m.meterConfidence.toFixed(2)}${m.downbeatsUsed ? '' : ' → downbeats ignored'}`;
       const trimmed = m.trimmed.head + m.trimmed.tail ? ` · ${m.trimmed.head + m.trimmed.tail} phantom beat(s) trimmed` : '';
+      const what =
+        m.source === 'track'
+          ? `track ${m.file}`
+          : `ai "${m.prompt.length > 40 ? `${m.prompt.slice(0, 39)}…` : m.prompt}" seed ${m.seed}${m.bpmHint ? ` (hint ${m.bpmHint} bpm)` : ''} · ` +
+            (m.generation.cached ? 'clip cached' : `generated ${m.generation.seconds} s in ${secs(m.generation.ms)}`);
       return (
-        `music ${ok} track ${m.file} from ${m.offset.toFixed(2)} s · ${m.bpm.toFixed(1)} bpm · ${m.beats} beats, ${m.downbeats} downbeats · ` +
+        `music ${ok} ${what} from ${m.offset.toFixed(2)} s · ${m.bpm.toFixed(1)} bpm · ${m.beats} beats, ${m.downbeats} downbeats · ` +
         `${meter}${trimmed} · analysis ${m.analysis.cached ? 'cached' : secs(m.analysis.ms)} ${dim(secs(m.ms))}`
       );
     }
@@ -159,8 +165,18 @@ export function renderPrinter(o: { live?: boolean; prefix?: string } = {}): Rend
         screen.line(gateLine(e.phase, e.result), e.result.level === 'fail' ? process.stderr : process.stdout);
         break;
       case 'music':
+        if (live) screen.live([]);
         screen.line(musicLine(e.info));
         break;
+      case 'music-ai': {
+        const text = `music ${bar(e.progress, 1, 20)} ${Math.round(e.progress * 100)}% ACE-Step · ${e.stage}`;
+        if (live) screen.live([text]);
+        else if (performance.now() - lastPlain > 5000 || e.progress === 1) {
+          lastPlain = performance.now();
+          screen.line(text);
+        }
+        break;
+      }
       case 'sfx': {
         const kinds = Object.entries(e.byKind)
           .sort(([a, x], [b, y]) => y - x || (a < b ? -1 : 1))

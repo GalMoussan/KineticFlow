@@ -15,6 +15,7 @@ import {
   pruneCaches,
   renderJob,
   setupAnalysis,
+  setupMusicAi,
   setupSamples,
   type Preset,
 } from '@reel/render';
@@ -32,12 +33,17 @@ Usage:
                               --dev      Vite dev server with hot reload on 5173 (proxying /api, /files and
                                          /preview to the API server on 5180+) instead of the built app
                               --no-open  do not open the browser
-  reelgen setup [fonts|samples|analysis]
-                            install local assets (no argument: all three)
+  reelgen setup [fonts|samples|analysis|music-ai]
+                            install local assets (no argument: fonts, samples and analysis)
                               fonts     catalog fonts → assets/fonts/ (SHA-256 checked)
                               samples   CC0 audio samples → assets/samples/ (SHA-256 checked)
                               analysis  beat-tracking sidecar (uv sync in sidecar/, ~720 MB) and the
                                         Beat This! final0 model → assets/models/ (81 MB, SHA-256 checked)
+                              music-ai  optional AI music add-on for "music": {"source": "ai", ...}:
+                                        analysis, then ACE-Step 1.5 (uv sync in sidecar/music-ai/, ~1.4 GB)
+                                        and its pinned checkpoints → assets/models/ace-step/ (10.1 GB,
+                                        SHA-256/git hashes checked); clips cache in data/cache/music-ai/
+                                        (never pruned, like the analysis cache)
   reelgen clean [--cache] [--outputs <days>]
                             delete temp files (data/jobs, data/checks) and prune the caches (rendered
                             chunks, preview audio/bundles, style stills) to the REEL_CACHE_MB budget
@@ -170,14 +176,15 @@ async function clean(args: string[]): Promise<void> {
   }
 }
 
+/** Installed by a bare `reelgen setup`; `music-ai` is an optional add-on and only runs when named. */
 const SETUP_TARGETS = ['fonts', 'samples', 'analysis'] as const;
+const ADDONS = ['music-ai'] as const;
 
 async function setup(args: string[]): Promise<void> {
   const targets = args.length ? args : [...SETUP_TARGETS];
+  const known: readonly string[] = [...SETUP_TARGETS, ...ADDONS];
   for (const t of targets) {
-    if (!(SETUP_TARGETS as readonly string[]).includes(t)) {
-      throw new UsageError(`unknown setup target "${t}" (known: ${SETUP_TARGETS.join(', ')})`);
-    }
+    if (!known.includes(t)) throw new UsageError(`unknown setup target "${t}" (known: ${known.join(', ')})`);
   }
   const log = (msg: string) => console.log(msg);
   for (const t of targets) {
@@ -186,6 +193,7 @@ async function setup(args: string[]): Promise<void> {
       const paths = await ensureFonts(Object.keys(FONTS), log);
       for (const [id, path] of Object.entries(paths)) console.log(`${green('✓')} ${id.padEnd(18)} ${rel(path)}`);
     } else if (t === 'samples') await setupSamples(log);
+    else if (t === 'music-ai') await setupMusicAi(log);
     else await setupAnalysis(log);
     console.log(`${green('✓')} setup ${t} ${dim(secs(performance.now() - t0))}`);
   }

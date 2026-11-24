@@ -1,0 +1,53 @@
+{
+  "id": "retro-80s",
+  "name": "Retro 80s",
+  "families": ["high-energy", "textured"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "land-kick",
+    "camera": "static",
+    "layout": "center-stack",
+    "unit": "word",
+    "reveal": "neon-mix",
+    "motion": "punchy",
+    "axis": "none",
+    "material": "chrome",
+    "background": "synth-grid",
+    "transition": "flash-cut"
+  },
+  "params": {
+    "rhythm.kick": 0.008,
+    "layout.cap": 0.33,
+    "material.horizon": 1,
+    "material.period": 2.4,
+    "material.depth": 0.07,
+    "material.glow": 0.18,
+    "transition.flash": 0.45
+  },
+  "defaults": {
+    "palette": "synth-sunset",
+    "music": { "preset": "synthwave-drive", "bpm": 118 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.15,
+    "minTail": 0.6,
+    "entry": 0.55,
+    "endUnitBeats": 1,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

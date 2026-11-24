@@ -56,6 +56,8 @@ export { checkSamples, setupSamples, nodeSampleBank, SetupError, SAMPLE_DIR } fr
 export { cacheBudgetBytes, cacheUsage, CACHE_DIRS, DEFAULT_CACHE_MB, pruneCaches, touch } from './cache.ts';
 export type { CacheUsage, PruneResult } from './cache.ts';
 export { setupAnalysis, analyzeTrack, ANALYSIS_DIR, MODEL_PATH } from './analysis.ts';
+export { ACE_MODEL_DIR, aiClip, cachedMusicAi, generateMusicAi, MUSIC_AI_CACHE, musicAiInstalled, musicAiKey, musicAiReady, setupMusicAi } from './music-ai.ts';
+export type { MusicAiRequest, MusicAiResult } from './music-ai.ts';
 export { prepareMusic, finishAudio, mixStems, stereoSha, SAMPLE_RATE } from './audio.ts';
 export type { MusicInfo, MusicStage, AudioResult } from './audio.ts';
 export { fontCodepoints, gateGlyphs, specText } from './qa.ts';
@@ -112,6 +114,8 @@ export type RenderEvent =
   | { type: 'qa'; phase: Phase; result: GateResult }
   /** Music source after steps 1–3 (preset render, or track decode + analysis + grid). */
   | { type: 'music'; info: MusicInfo }
+  /** AI music generation (cache miss only): sidecar progress 0..1 and its stage. */
+  | { type: 'music-ai'; progress: number; stage: string }
   /** SFX stem from the page's sound cues (`enabled: false` when `spec.sfx` is off). */
   | { type: 'sfx'; enabled: boolean; count: number; byKind: Partial<Record<SoundKind, number>>; ms: number }
   | {
@@ -175,7 +179,7 @@ export interface Receipt {
   chromium: string;
   ffmpeg: string;
   audio: {
-    /** `preset lofi-jazz seed 1101`, `track it-had-to-be-you +12.3 s` or `none`. */
+    /** `preset lofi-jazz seed 1101`, `track it-had-to-be-you +12.3 s`, `ai seed 7 +0 s` or `none`. */
     source: string;
     /** `stereoSha` of the music stem, the SFX stem and the mastered mix. */
     music?: string;
@@ -190,6 +194,8 @@ export interface Receipt {
     normalization?: string;
     gainDb?: number;
     track?: { file: string; path: string; sha256: string; offset: number; fadeOut: number; covered: number };
+    /** AI music: the prompt, the cached clip and how it was obtained. */
+    ai?: { prompt: string; lyrics: boolean; seed: number; bpmHint: number | null; key: string; path: string; sha256: string; seconds: number; cached: boolean; generateMs: number; offset: number; fadeOut: number; covered: number };
     grid?: {
       bpm: number;
       beats: number;
@@ -277,7 +283,6 @@ export async function renderJobWith(
   const styleId = styles.job.recipe;
   const rec = recipe(styleId);
   const music = spec.music;
-  if (music.source === 'ai') throw new SpecError(`music source "ai" arrives in M7; use "preset", "track" or "none"`);
   const q = resolveQuality(spec.quality);
 
   // ── render order 1–3: music source → grid → cue sheet + envelopes ──
@@ -291,6 +296,7 @@ export async function renderJobWith(
     fps: q.fps,
     samples,
     defaultBpm: rec.defaults.music.bpm,
+    onProgress: (progress, stage) => emit({ type: 'music-ai', progress, stage }),
   });
   timings.music = ms(t);
   const { sheet } = stage;
@@ -607,7 +613,9 @@ function audioReceipt(info: MusicInfo, a: AudioResult, aac: Buffer): Receipt['au
       ? `preset ${info.preset} seed ${info.seed}`
       : info.source === 'track'
         ? `track ${info.file} +${info.offset} s`
-        : 'none';
+        : info.source === 'ai'
+          ? `ai seed ${info.seed} +${info.offset} s`
+          : 'none';
   return {
     source,
     ...a.hashes,
@@ -617,9 +625,28 @@ function audioReceipt(info: MusicInfo, a: AudioResult, aac: Buffer): Receipt['au
     ...(a.loudness ? { lufs: a.loudness.i, tp: a.loudness.tp } : {}),
     ...(a.normalization ? { normalization: a.normalization } : {}),
     ...(a.gainDb !== undefined ? { gainDb: a.gainDb } : {}),
-    ...(info.source === 'track'
+    ...(info.source === 'track' ? { track: { file: info.file, path: info.path, sha256: info.sha256, offset: info.offset, fadeOut: info.fadeOut, covered: info.covered } } : {}),
+    ...(info.source === 'ai'
       ? {
-          track: { file: info.file, path: info.path, sha256: info.sha256, offset: info.offset, fadeOut: info.fadeOut, covered: info.covered },
+          ai: {
+            prompt: info.prompt,
+            lyrics: info.lyrics,
+            seed: info.seed,
+            bpmHint: info.bpmHint,
+            key: info.generation.key,
+            path: info.path,
+            sha256: info.sha256,
+            seconds: info.generation.seconds,
+            cached: info.generation.cached,
+            generateMs: Math.round(info.generation.ms),
+            offset: info.offset,
+            fadeOut: info.fadeOut,
+            covered: info.covered,
+          },
+        }
+      : {}),
+    ...(info.source === 'track' || info.source === 'ai'
+      ? {
           grid: {
             bpm: info.bpm,
             beats: info.beats,

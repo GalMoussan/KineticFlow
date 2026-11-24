@@ -1,0 +1,55 @@
+{
+  "id": "risograph",
+  "name": "Risograph",
+  "families": ["textured"],
+  "energy": 3,
+  "background": "light",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "flush-stack",
+    "unit": "word",
+    "reveal": "swiss-mix",
+    "motion": "snappy",
+    "axis": "none",
+    "material": "riso",
+    "background": "paper-print",
+    "transition": "panel-wipe"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "rhythm.decay": 7,
+    "layout.cap": 0.32,
+    "layout.weight": 900,
+    "layout.rule": 1,
+    "background.halftone": 1,
+    "background.grain": 0.09,
+    "transition.panels": 2,
+    "transition.blur": 0
+  },
+  "defaults": {
+    "palette": "riso-fluoro",
+    "music": { "preset": "minimal-pop", "bpm": 112 },
+    "fonts": { "display": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.1,
+    "minTail": 0.6,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

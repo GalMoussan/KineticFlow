@@ -2,21 +2,13 @@
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Catalog, CatalogFont, CatalogStyle, CatalogTrait } from '@reel/api';
-import { MUSIC_PRESETS, PRESET_BPM } from '@reel/audio';
+import { PRESET_INFO } from '@reel/audio';
 import { FONTS, FORMATS, PALETTES, TEXT_ROLES, TRAIT_AXES, type FormatId, type SectionRole } from '@reel/core';
-import { checkSamples, FONT_DIR, MODEL_PATH, REPO } from '@reel/render';
+import { checkSamples, FONT_DIR, MODEL_PATH, musicAiReady, REPO } from '@reel/render';
 import { RECIPES } from '@reel/styles';
 import { TRAIT_META } from '@reel/traits';
 import { configuredProviders } from './llm/index.ts';
 import type { Store } from './store.ts';
-
-/** Default tempo per music preset (the presets declare only their design range). */
-export const PRESET_DEFAULT_BPM: Record<string, number> = {
-  'lofi-jazz': 100,
-  'synthwave-drive': 110,
-  'minimal-pop': 116,
-  'house-128': 124,
-};
 
 export const ROLES: SectionRole[] = ['title', ...TEXT_ROLES, 'datetime', 'location', 'list', 'stat', 'countdown', 'lyric', 'endcard'];
 
@@ -83,12 +75,13 @@ export function catalogFonts(store: Store): CatalogFont[] {
 }
 
 export async function setupState(): Promise<Catalog['setup']> {
-  const [fonts, samples, analysis] = await Promise.all([
+  const [fonts, samples, analysis, musicAi] = await Promise.all([
     Promise.all(Object.values(FONTS).map((f) => exists(join(FONT_DIR, f.file)))).then((xs) => xs.every(Boolean)),
     checkSamples().then(() => true, () => false),
     Promise.all([exists(join(REPO, 'sidecar/.venv/bin/python')), exists(MODEL_PATH)]).then((xs) => xs.every(Boolean)),
+    musicAiReady(),
   ]);
-  return { fonts, samples, analysis, llm: configuredProviders() };
+  return { fonts, samples, analysis, musicAi, llm: configuredProviders() };
 }
 
 export async function catalog(store: Store): Promise<Catalog> {
@@ -97,10 +90,7 @@ export async function catalog(store: Store): Promise<Catalog> {
     traits: catalogTraits(),
     palettes: { ...PALETTES },
     fonts: catalogFonts(store),
-    music: MUSIC_PRESETS.map((id) => {
-      const bpm = PRESET_BPM[id]!;
-      return { id, bpm, defaultBpm: PRESET_DEFAULT_BPM[id] ?? Math.round((bpm[0] + bpm[1]) / 2) };
-    }),
+    music: PRESET_INFO.map((p) => ({ ...p, bpm: [...p.bpm] as [number, number] })),
     formats: (Object.keys(FORMATS) as FormatId[]).map((id) => ({ id, w: FORMATS[id].w, h: FORMATS[id].h })),
     roles: ROLES,
     setup: await setupState(),
