@@ -105,6 +105,7 @@ export default defineReveal({
     }
     const ex = params.exit ? exitWindow(section) : null;
     if (ex) out.push({ t: ex.t0, until: ex.t1, kind: 'whoosh', weight: 0.4 });
-    return out;
+    // nothing in the first 0.6 s: the music is still fading in there (sfx gate)
+    return out.filter((c) => c.t >= 0.6 || c.kind === 'stinger');
   },
 });

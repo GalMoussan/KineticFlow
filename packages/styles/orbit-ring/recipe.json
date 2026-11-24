@@ -1,0 +1,52 @@
+{
+  "id": "orbit-ring",
+  "name": "Orbit Ring",
+  "families": ["path"],
+  "energy": 3,
+  "background": "dark",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "orbit-ring",
+    "unit": "grapheme",
+    "reveal": "orbit-settle",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "backdrop",
+    "transition": "handoff"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "background.light": 0.45,
+    "background.floor": 0.15,
+    "background.vignette": 0.4,
+    "background.seam": 1,
+    "transition.whoosh": 0.35
+  },
+  "defaults": {
+    "palette": "orbit-night",
+    "music": { "preset": "synthwave-drive", "bpm": 108 },
+    "fonts": { "display": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.45,
+    "minTail": 0.7,
+    "entry": 0.55,
+    "endUnitBeats": 0.5,
+    "endHold": 2.2,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

@@ -1,0 +1,2 @@
+/* city-map: one full-frame canvas under the camera, redrawn every frame (not frozen). */
+.city-map { position: absolute; left: 0; top: 0; }

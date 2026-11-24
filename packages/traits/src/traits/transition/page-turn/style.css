@@ -1,0 +1,2 @@
+/* page-turn: the paper edge and its shadow, between the outgoing layer and the incoming one. */
+.page-edge, .page-shade { position: absolute; top: 0; height: 100%; display: none; pointer-events: none; }

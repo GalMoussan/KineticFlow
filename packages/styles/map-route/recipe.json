@@ -1,0 +1,57 @@
+{
+  "id": "map-route",
+  "name": "Map Route",
+  "families": ["path", "narrative"],
+  "energy": 2,
+  "background": "light",
+  "signature": {
+    "module": "map-route",
+    "owns": ["layout", "reveal", "background"]
+  },
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "pan-turn",
+    "layout": "map-route",
+    "unit": "word",
+    "reveal": "map-drop",
+    "motion": "functional",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "city-map",
+    "transition": "camera-move"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "camera.drift": 0,
+    "camera.endDrift": 0,
+    "camera.introZoom": 1,
+    "transition.dip": 0.08,
+    "transition.turnDip": 0,
+    "background.vignette": 0.35
+  },
+  "defaults": {
+    "palette": "route-map",
+    "music": { "preset": "lofi-jazz", "bpm": 104 },
+    "fonts": { "display": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.45,
+    "minTail": 0.7,
+    "entry": 0.5,
+    "endUnitBeats": 0.5,
+    "endHold": 2.2,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

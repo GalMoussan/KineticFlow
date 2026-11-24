@@ -1,0 +1,54 @@
+{
+  "id": "list-stack",
+  "name": "List Stack",
+  "families": ["narrative", "dynamic-layout"],
+  "energy": 3,
+  "background": "dark",
+  "signature": {
+    "module": "list-stack",
+    "owns": ["layout", "reveal"]
+  },
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "list-stack",
+    "unit": "word",
+    "reveal": "stack-push",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "plain",
+    "transition": "fade-push"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "background.dots": 0.5,
+    "transition.dip": 0.35,
+    "transition.push": 0.08
+  },
+  "defaults": {
+    "palette": "stack-ink",
+    "music": { "preset": "minimal-pop", "bpm": 112 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.85,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "paper-fold",
+  "name": "Paper Fold",
+  "families": ["reveal", "narrative"],
+  "energy": 2,
+  "background": "dark",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "paper-sheet",
+    "unit": "word",
+    "reveal": "unfold",
+    "motion": "smooth",
+    "axis": "none",
+    "material": "glow-tint",
+    "background": "plain",
+    "transition": "handoff"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "material.glow": 0,
+    "background.grid": 0.28,
+    "transition.show": 0,
+    "transition.hide": 1,
+    "transition.whoosh": 0
+  },
+  "defaults": {
+    "palette": "paper-desk",
+    "music": { "preset": "lofi-jazz", "bpm": 104 },
+    "fonts": { "display": "heebo" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 0.5,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.35,
+    "minTail": 0.8,
+    "entry": 0.45,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

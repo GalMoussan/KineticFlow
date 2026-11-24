@@ -84,6 +84,6 @@ export default defineMaterial({
       if (cu?.part !== 'hl' || cu.at! < cs.bubbles[cu.b]!.at + 0.12) continue;
       out.push({ t: cu.at!, until: cu.at! + DRAW, kind: 'swipe', weight: 0.22, pan: host.pan(u, cu.at) });
     }
-    return out;
+    return out.filter((c) => c.t >= 0.6);
   },
 });

@@ -90,6 +90,38 @@ export const PALETTES: Record<string, ResolvedPalette> = {
   'launch-control': { bg: '#0A0B10', text: '#F3F0E8', accents: ['#FFB21E', '#FF5A1F', '#7FD8FF', '#FFE066'] },
   // dilemma-reveal: plum ink under a spotlight, cream type, one hot coral accent (seals, answer card), lilac numbers
   'dilemma-plum': { bg: '#170B1F', text: '#F6EEE6', accents: ['#FF3D6E', '#C9B6F2', '#FF3D6E'] },
+  // chat-bubbles: beige chat wallpaper, ink text, messenger-blue outgoing bubbles, white incoming (accent 3), coral / sun emphasis, ice read ticks
+  'chat-wall': { bg: '#E7DFD4', text: '#141A22', accents: ['#2468E8', '#D2364F', '#FFE45C', '#FFFFFF', '#BDEBFF'] },
+  // weight-wave: type-specimen paper, near-black ink, signal orange / ultramarine / spruce accents
+  'type-specimen': { bg: '#F1ECE2', text: '#141414', accents: ['#E0400C', '#2747F5', '#0E7C66'] },
+  // width-breath: pale sea mist, slate ink, teal / dusty rose / slate-blue accents
+  'breath-mist': { bg: '#E6ECEB', text: '#1D2B30', accents: ['#2F6F73', '#A8505F', '#4F63A0'] },
+  // particle-assemble: ember night, warm white type, gold / ember / ice particles
+  'ember-dust': { bg: '#0A0910', text: '#FFF3E0', accents: ['#FFB23F', '#FF6A45', '#7FD1FF'] },
+  // flow-field: deep current blue, sand type, sea-glass / apricot / periwinkle streamlines
+  'deep-current': { bg: '#0B1A26', text: '#EFE8D8', accents: ['#5FD4C4', '#F0A35E', '#9AB0FF'] },
+  // glitch-digital: dead-pixel black, white type, hot magenta / cyan / acid green
+  'glitch-acid': { bg: '#060608', text: '#F4F4F4', accents: ['#FF2D63', '#00E8FF', '#C6FF00'] },
+  // stacked-scroll: carbon black, bone type, acid lime / signal orange / periwinkle outlines
+  'scroll-acid': { bg: '#0E0E11', text: '#F2EFE6', accents: ['#C6FF3D', '#FF5A36', '#8E9BFF'] },
+  // credits-roll: projection black, warm white credits, gold / steel / terracotta highlights
+  'credits-noir': { bg: '#09090B', text: '#ECE6D8', accents: ['#E2B357', '#9FB4C7', '#D9825F'] },
+  // ticker-bands: studio black, signal yellow / red / sky / green / orange tape
+  'ticker-signal': { bg: '#141416', text: '#FFFFFF', accents: ['#FFD000', '#FF3B30', '#1EA7FF', '#2FD06F', '#FF7A00'] },
+  // infinite-zoom: dusk indigo void, cream type, coral / saffron / teal / violet / pink frames
+  'droste-dusk': { bg: '#151133', text: '#FFF4E6', accents: ['#FF6B57', '#FFC24B', '#36C5B8', '#9B7BFF', '#FF6FA8'] },
+  // paper-fold: sage cutting mat, cream paper, terracotta / petrol / plum inks
+  'paper-desk': { bg: '#3E5A57', text: '#F5EEDF', accents: ['#C4502B', '#2B6F8A', '#6A4C93', '#B7862A'] },
+  // editorial-magazine: warm newsprint, ink black, oxblood / navy / ochre / graphite
+  'magazine-paper': { bg: '#F5F0E6', text: '#1A1714', accents: ['#A8322A', '#1C4E80', '#8A6A2F', '#5C574F'] },
+  // ribbon-path: cream paper, indigo ink, vermilion / teal / saffron / violet ribbons
+  'ribbon-cream': { bg: '#FBF1E1', text: '#2A2250', accents: ['#E4572E', '#17807A', '#F2B33D', '#7A4FD0'] },
+  // orbit-ring: night-sky navy, star cream, amber / sky / rose / lavender orbits
+  'orbit-night': { bg: '#0B1026', text: '#F5EFE0', accents: ['#FFB547', '#6FD6FF', '#FF7A90', '#B7A6FF'] },
+  // tile-mosaic: ink field, cream letter faces, coral / gold / mint / sky / pink tiles
+  'mosaic-ink': { bg: '#12141A', text: '#F4EFE4', accents: ['#FF5C39', '#FFC83D', '#3DDC97', '#5AA2FF', '#FF4F93'] },
+  // map-route: tan paper, ink type, route red / park green / water blue / block brown
+  'route-map': { bg: '#E7D5B3', text: '#1A140E', accents: ['#C4372A', '#2F6B4A', '#2C5F86', '#8A5A32'] },
 };
 
 export type PaletteRef = string | ResolvedPalette;

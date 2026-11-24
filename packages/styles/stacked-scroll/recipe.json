@@ -1,0 +1,51 @@
+{
+  "id": "stacked-scroll",
+  "name": "Stacked Scroll",
+  "families": ["scrolling", "beat-synced"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "ramp-scroll",
+    "layout": "scroll-stack",
+    "unit": "word",
+    "reveal": "punch-in",
+    "motion": "snappy",
+    "axis": "none",
+    "material": "glow-tint",
+    "background": "plain",
+    "transition": "handoff"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "reveal.scale": 1.22,
+    "transition.show": 0.5,
+    "transition.hide": 0.5,
+    "transition.whoosh": 0
+  },
+  "defaults": {
+    "palette": "scroll-acid",
+    "music": { "preset": "house-128", "bpm": 124 },
+    "fonts": { "display": "noto-sans-hebrew" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 6,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.35,
+    "minTail": 0.9,
+    "entry": 0.35,
+    "endUnitBeats": 0.5,
+    "endHold": 2.5,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

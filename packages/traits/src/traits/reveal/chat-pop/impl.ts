@@ -28,10 +28,17 @@ export default defineReveal({
       u.data.reveal = { value: Number(digits) } satisfies Count;
     } else u.split = 'none'; // rows are laid out from whole measured items; nothing animates inside a bubble
   },
-  frame({ section, params }, t) {
+  frame({ host, section, params }, t) {
     const cs = chatOf(section);
     const m = section.motion;
     const ty = cs.typing;
+    // bubbles scrolled up past the top of the safe area fade away under the wallpaper's fade, whole bubble at once
+    const lift = section.layer.view.y - host.safe.cy - section.place.y;
+    const tops = new Map<number, number>();
+    for (const u of section.units) {
+      const cu = chatUnit(u);
+      if (cu && cu.b >= 0) tops.set(cu.b, Math.min(tops.get(cu.b) ?? Infinity, u.box.y));
+    }
     for (const u of section.units) {
       const cu = chatUnit(u);
       if (!cu) continue;
@@ -57,6 +64,10 @@ export default defineReveal({
       const st = b.at - POP_LEAD;
       // tails and avatars move on to the speaker's next bubble
       c.visible &&= t >= st && (cu.until === undefined || t < cu.until);
+      if (!c.visible) continue;
+      const kept = clamp01((tops.get(cu.b)! - lift - host.safe.top) / (0.9 * cs.F));
+      c.visible &&= kept > 0;
+      c.opacity *= kept;
       if (!c.visible) continue;
       const k = clamp01((t - st) / POP_DUR);
       if (b.kind === 'chip') {
@@ -113,6 +124,7 @@ export default defineReveal({
       for (let i = 1; i <= 3; i++) out.push({ t: b.at + (params.count * i) / 4, kind: 'tick', weight: 0.3, pitch: i, pan });
       out.push({ t: b.at + params.count, kind: 'pop', weight: 0.5, pitch: 6, pan });
     }
-    return out;
+    // nothing in the first 0.6 s: the music is still fading in there (sfx gate)
+    return out.filter((c) => c.t >= 0.6 || c.kind === 'stinger');
   },
 });

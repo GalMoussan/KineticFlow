@@ -1,0 +1,52 @@
+{
+  "id": "tile-mosaic",
+  "name": "Tile Mosaic",
+  "families": ["dynamic-layout", "high-energy"],
+  "energy": 4,
+  "background": "dark",
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "static",
+    "layout": "tile-board",
+    "unit": "grapheme",
+    "reveal": "tile-flip",
+    "motion": "snappy",
+    "axis": "none",
+    "material": "tile-ink",
+    "background": "tile-ripple",
+    "transition": "handoff"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "background.every": 2,
+    "background.sweep": 1.1,
+    "background.flip": 0.28,
+    "background.sound": 0.12,
+    "transition.whoosh": 0.2
+  },
+  "defaults": {
+    "palette": "mosaic-ink",
+    "music": { "preset": "house-128", "bpm": 120 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1.5,
+    "leadIn": 0.45,
+    "minTail": 0.7,
+    "entry": 0.45,
+    "endUnitBeats": 0.5,
+    "endHold": 2.2,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}

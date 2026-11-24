@@ -29,7 +29,7 @@ const closeM = (a: readonly number[], b: readonly number[], eps = 1e-9) => a.for
 
 const ch = (): Channels => ({
   tx: 0, ty: 0, sx: 1, sy: 1, rot: 0, skx: 0, opacity: 1, blur: 0, itx: 0, ity: 0, isx: 1, isy: 1, irot: 0, iskx: 0,
-  clip: 1, clipFrom: 'start', color: null, glow: 0, glowColor: null, split: 0, shadow: '', wght: 0, visible: true,
+  clip: 1, clipFrom: 'start', color: null, glow: 0, glowColor: null, split: 0, shadow: '', wght: 0, wdth: 0, visible: true,
 });
 const unit = (box: Unit['box'], origin: string): Unit => ({ box, origin, ch: ch() }) as unknown as Unit;
 

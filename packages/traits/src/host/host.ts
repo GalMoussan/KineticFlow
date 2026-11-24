@@ -129,6 +129,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
         id: t.actualBoundingBoxDescent / 100,
         fa: t.fontBoundingBoxAscent / 100,
         fd: t.fontBoundingBoxDescent / 100,
+        w: t.width / 100,
       };
       metricCache.set(key, m);
     }

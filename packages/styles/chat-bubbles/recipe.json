@@ -1,0 +1,53 @@
+{
+  "id": "chat-bubbles",
+  "name": "Chat Bubbles",
+  "families": ["narrative"],
+  "energy": 3,
+  "background": "light",
+  "signature": {
+    "module": "chat-bubbles",
+    "owns": ["camera", "layout", "reveal", "material"]
+  },
+  "traits": {
+    "rhythm": "beat-pulse",
+    "camera": "chat-scroll",
+    "layout": "chat-thread",
+    "unit": "word",
+    "reveal": "chat-pop",
+    "motion": "overshoot",
+    "axis": "none",
+    "material": "chat-ink",
+    "background": "chat-wallpaper",
+    "transition": "camera-move"
+  },
+  "params": {
+    "rhythm.kick": 0,
+    "transition.dip": 0,
+    "transition.turnDip": 0
+  },
+  "defaults": {
+    "palette": "chat-wall",
+    "music": { "preset": "minimal-pop", "bpm": 108 },
+    "fonts": { "display": "rubik" }
+  },
+  "constraints": {
+    "maxWordsPerSection": 8,
+    "formats": ["9:16", "1:1", "4:5", "16:9"],
+    "roles": [
+      "title", "tagline", "body", "teaser", "cta", "heading", "question", "answer", "quote",
+      "datetime", "location", "list", "stat", "countdown", "endcard"
+    ]
+  },
+  "choreography": {
+    "unitBeats": 1,
+    "shortUnitBeats": 0.5,
+    "moveBeats": 1,
+    "leadIn": 0.2,
+    "minTail": 0.6,
+    "entry": 0.6,
+    "endUnitBeats": 0.5,
+    "endHold": 2.6,
+    "introBeats": 0,
+    "outroBeats": 0
+  }
+}
