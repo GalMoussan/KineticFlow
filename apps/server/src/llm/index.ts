@@ -78,7 +78,8 @@ export function repairSection(raw: unknown, today: Date): Record<string, unknown
       break;
     default: {
       const text = str(r.text);
-      out = { role, text: text ? emphasizeLine(clip(text)) : undefined };
+      const sub = str(r.sub);
+      out = { role, text: text ? emphasizeLine(clip(text)) : undefined, ...(sub ? { sub: clip(sub) } : {}) };
     }
   }
   return Section.safeParse(out).success ? out : null;
@@ -89,6 +90,7 @@ const SECTION_SCHEMA: Schema = {
   properties: {
     role: { type: 'string', enum: ROLES.filter((r) => r !== 'endcard') },
     text: { type: 'string', description: 'text roles: the words shown, with *emphasis*' },
+    sub: { type: 'string', description: 'title/text roles, optional: a small line under the big words in the same frame (the detail that completes them)' },
     date: { type: 'string', description: 'datetime: YYYY-MM-DD' },
     time: { type: 'string', description: 'datetime: HH:MM (24 h)' },
     place: { type: 'string' },
@@ -123,6 +125,7 @@ function splitPrompt(lang: Lang, today: Date): string {
     `Roles: title (always first, ≤ 6 words); text roles ${TEXT_ROLES.join(', ')}; datetime {date, time}; location {place, city};`,
     `list {title, items ≤ 10}; stat {value, prefix, suffix, label}; countdown {from, to, label}. Do not add an endcard (added for you).`,
     `Keep text sections short (≤ 6 words where possible): split longer sentences into several sections.`,
+    `When a short headline is followed by its detail ("there is a prize" → what the prize is), put the detail in that section's "sub" (a small line under the big words) instead of a new section.`,
     `Mark the 1–2 most important words of every text section as *word* (asterisks).`,
     `Dates are ISO YYYY-MM-DD. Today is ${today.toISOString().slice(0, 10)}; a date without a year is its next occurrence. Times are HH:MM, 24 h.`,
     `The weekday is derived from the date: never write it. A line inviting people to act ("join", "come", "בואו") is a cta.`,

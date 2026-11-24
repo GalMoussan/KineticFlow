@@ -8,6 +8,7 @@ import { clamp01, lerp } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { countSteps, stepTimes } from '../../../lib/countdown.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'count' | 'slam' | 'drop' | 'pop';
@@ -52,6 +53,10 @@ export default defineReveal({
       Object.assign(data, { anim: 'count', texts, times, launch: st.mode === 'launch' });
       u.split = 'grapheme';
       u.hit = { t: u.at, amp: params.shake * S };
+      return;
+    }
+    if (u.kind === 'sub') {
+      data.anim = 'drop';
       return;
     }
     if (u.emphasis || u.tags.hero || u.kind === 'time') {
@@ -162,10 +167,16 @@ export default defineReveal({
   sounds({ host, section }) {
     const out: SoundCue[] = endcardStinger(section);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || u.deco === 'plate' || !Number.isFinite(u.at)) continue;
       const d = dataOf(u);
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (d.anim === 'count') {
         const n = d.times.length;
         d.times.forEach((ts, i) =>

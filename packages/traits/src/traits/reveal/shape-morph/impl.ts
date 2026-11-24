@@ -12,6 +12,7 @@ import { draw, overlay, svgEl, unitOutline, xform } from '../../../lib/morph/pag
 import { describe, fit, plainEntrance, prevSource, textUnits } from '../../../lib/morph/reveal.ts';
 import { mixHex } from '../../../lib/neon.ts';
 import { endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 /** Shape hold between pop and morph (s). */
@@ -171,9 +172,15 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     const st = state.get(section)!;
+    let si = 0;
     st.entries.forEach((x, i) => {
       const { start, e, f } = x.plan;
       const pan = host.pan(x.u, e);
+      if (x.u.kind === 'sub') {
+        const c = subLanding(e, si++, pan);
+        if (c) out.push(c);
+        return;
+      }
       // detail sounds stay soft: the music fades in under the first ones (sfx gate ≤ +6 dB over the music)
       out.push({ t: start + f * params.pop * 0.6, kind: 'pop', weight: 0.22 + 0.2 * sizeWeight(x.u, host.H, 0.1), pitch: Math.min(7, i), pan });
       out.push({ t: e, kind: 'shimmer', weight: x.u.tags.hero ? 0.5 : 0.22, pan });
@@ -181,7 +188,11 @@ export default defineReveal({
     if (section.window && st.exits.length) out.push({ t: section.window.t0, until: section.window.t0 + EXIT_MORPH + EXIT_FALL, kind: 'whoosh', weight: 0.4 });
     const outlined = new Set(st.entries.map((x) => x.u));
     for (const u of section.units) {
-      if (u.revealed && !outlined.has(u) && Number.isFinite(u.at)) out.push({ t: u.at, kind: 'pop', weight: 0.4, pan: host.pan(u) });
+      if (!(u.revealed && !outlined.has(u) && Number.isFinite(u.at))) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+      } else out.push({ t: u.at, kind: 'pop', weight: 0.4, pan: host.pan(u) });
     }
     // nothing in the first 0.6 s: the music's short-term loudness is still near silence there (sfx gate)
     return out.filter((c) => c.t >= 0.6 || c.kind === 'stinger');

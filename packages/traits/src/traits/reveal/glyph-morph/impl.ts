@@ -15,6 +15,7 @@ import { draw, morphable, overlay, scriptOf, svgEl, unitOutline, xform, type Uni
 import { mixHex } from '../../../lib/neon.ts';
 import { describe, plainEntrance, prevSource, textUnits } from '../../../lib/morph/reveal.ts';
 import { endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Src = 'prev' | 'chain' | 'line';
@@ -275,8 +276,14 @@ export default defineReveal({
   sounds({ host, section }) {
     const out: SoundCue[] = endcardStinger(section);
     const own = textUnits(section);
+    let si = 0;
     own.forEach((u, i) => {
       const p = u.data.reveal as Plan;
+      if (u.kind === 'sub') {
+        const c = subLanding(p.e, si++, host.pan(u, p.e));
+        if (c) out.push(c);
+        return;
+      }
       const w = u.tags.hero ? 0.6 : 0.25 + 0.3 * sizeWeight(u, host.H, 0.1);
       out.push({ t: p.e, kind: 'shimmer', weight: w, pitch: Math.min(6, i), pan: host.pan(u, p.e) });
     });
@@ -286,7 +293,11 @@ export default defineReveal({
       out.push({ t: section.window.t0, until, kind: 'whoosh', weight: 0.45 });
     }
     for (const u of section.units) {
-      if (u.revealed && !own.includes(u) && Number.isFinite(u.at)) out.push({ t: u.at, kind: 'pop', weight: 0.4, pan: host.pan(u) });
+      if (!(u.revealed && !own.includes(u) && Number.isFinite(u.at))) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+      } else out.push({ t: u.at, kind: 'pop', weight: 0.4, pan: host.pan(u) });
     }
     return out;
   },

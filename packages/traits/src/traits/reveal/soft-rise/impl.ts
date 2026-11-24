@@ -2,6 +2,7 @@ import type { SoundCue } from '@reel/core';
 import { clamp01, quart } from '@reel/runtime';
 import { defineReveal } from '../../../contract.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Data {
@@ -83,10 +84,16 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.75);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || u.item < 0 || !Number.isFinite(u.at)) continue;
       const d = u.data.reveal as Data;
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       const st = u.at - params.lead;
       if (d.anim === 'count') {
         for (let i = 1; i <= TICKS; i++) out.push({ t: st + (params.count * i) / (TICKS + 1), kind: 'tick', weight: 0.35, pitch: i, pan });

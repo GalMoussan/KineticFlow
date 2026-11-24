@@ -257,7 +257,13 @@ function SectionFields({ section, p, issues, patch }: { section: SectionInput; p
     }, `${p}.${key}`);
 
   if (isTextRole(section.role) && 'text' in section && section.role !== 'endcard') {
-    return <TextField text={section.text} path={`${p}.text`} issues={issues} onChange={(t, key) => set('text', t, key)} big={section.role === 'title'} />;
+    const sub = 'sub' in section ? (section.sub as string | undefined) : undefined;
+    return (
+      <div className="stack-sm">
+        <TextField text={section.text} path={`${p}.text`} issues={issues} onChange={(t, key) => set('text', t, key)} big={section.role === 'title'} />
+        <SubLine sub={sub} path={`${p}.sub`} issues={issues} onChange={(t, key) => set('sub', t, key)} />
+      </div>
+    );
   }
   switch (section.role) {
     case 'datetime': {
@@ -441,6 +447,62 @@ function SectionFields({ section, p, issues, patch }: { section: SectionInput; p
     default:
       return null;
   }
+}
+
+/**
+ * The small line under the big words, in the same frame (`section.sub`): "There's a prize" → what the prize is. An
+ * empty field stays open while typing; the spec only gets the key once there is text.
+ */
+function SubLine({ sub, path, issues, onChange }: { sub: string | undefined; path: string; issues: Map<string, string[]>; onChange: (t: string | undefined, key?: string) => void }) {
+  const [open, setOpen] = useState(sub !== undefined);
+  if (!open && sub === undefined) {
+    return (
+      <button type="button" className="btn ghost sm sub-add" onClick={() => setOpen(true)}>
+        <Icon name="plus" size={14} /> Small line underneath
+      </button>
+    );
+  }
+  const words = emphasisWords(sub ?? '');
+  return (
+    <div className="sub-line stack-sm">
+      <label className="field" data-path={path}>
+        <span className="field-label">
+          Small line underneath <span className="muted small">· same frame, smaller, lands word by word</span>
+        </span>
+        <div className="row gap align-center">
+          <input
+            className="grow"
+            dir="auto"
+            value={sub ?? ''}
+            placeholder="e.g. what the prize is"
+            autoFocus={sub === undefined}
+            onChange={(e) => onChange(e.target.value.trim() ? e.target.value : undefined)}
+          />
+          <button
+            type="button"
+            className="btn icon ghost sm"
+            aria-label="Remove the small line"
+            onClick={() => {
+              onChange(undefined, 'sub-rm');
+              setOpen(false);
+            }}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+        <Issue path={path} issues={issues} />
+      </label>
+      {words.length ? (
+        <div className="chips" dir="auto" aria-label="Click words to emphasise">
+          {words.map((w, i) => (
+            <button key={i} type="button" className={`chip word sm ${w.emphasis ? 'on' : ''}`} aria-pressed={w.emphasis} onClick={() => onChange(toggleEmphasis(sub ?? '', i), 'sub-emph')}>
+              {w.word}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function TextField({

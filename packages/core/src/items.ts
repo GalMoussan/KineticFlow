@@ -18,7 +18,9 @@ export type ItemKind =
   | 'list-item'
   | 'stat'
   | 'countdown'
-  | 'lyric';
+  | 'lyric'
+  /** A word of a title/text section's small line under the big words (`section.sub`). */
+  | 'sub';
 
 export interface Item {
   /** NFC text as it must appear on screen (empty for `logos`). */
@@ -78,7 +80,7 @@ export function sectionItems(section: ResolvedSection, spec: Pick<JobSpec, 'lang
     case 'question':
     case 'answer':
     case 'quote':
-      return words(section.text);
+      return [...words(section.text), ...(section.sub ? words(section.sub, 'sub') : [])];
     case 'datetime':
       return [
         item(weekday(section.date, spec.language), 'weekday'),

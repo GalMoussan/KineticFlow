@@ -2,6 +2,7 @@ import type { SoundCue } from '@reel/core';
 import { clamp01 } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Data {
@@ -66,10 +67,16 @@ export default defineReveal({
     const out: SoundCue[] = endcardStinger(section, 0.6);
     const rows = new Set<number>();
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || u.item < 0 || !Number.isFinite(u.at)) continue;
       const st = u.at - params.lead;
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (u.kind === 'logos') out.push({ t: st + 0.3, kind: 'pop', weight: 0.3, pan });
       else if (!rows.has(u.tags.line)) {
         rows.add(u.tags.line);

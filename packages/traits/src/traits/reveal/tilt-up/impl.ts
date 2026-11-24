@@ -10,6 +10,7 @@ import type { SoundCue } from '@reel/core';
 import { affine, clamp01 } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { digitParts, endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { det2, edgeOn, inv2, mul2, planeMap, rig, type Mat2, type Proj } from '../../../lib/spatial.ts';
 import { meta } from './meta.ts';
 
@@ -20,6 +21,7 @@ const LAND = 1 / (C + 1); // back-out first reaches 1 here (k), at overshoot 1
 const FRONT: Proj = { x: [1, 0, 0], y: [0, 1, 0] };
 
 function choose(u: Unit, role: string): Anim {
+  if (u.kind === 'sub') return 'word';
   if (u.deco === 'pin' || !u.text) return 'drop';
   if (u.tags.hero || u.tags.numeric || role === 'title' || role === 'cta') return 'letters';
   if (u.tags.ordinal >= 0) return u.tags.ordinal % 2 ? 'word' : 'letters';
@@ -84,11 +86,17 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const { anim } = u.data.reveal as { anim: Anim };
       const st = u.at - params.lead;
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       const land = st + LAND * params.duration;
       if (u.hit) out.push({ t: u.hit.t, kind: 'impact', weight: sizeWeight(u, host.H, 0.45), pan });
       else if (anim === 'drop') out.push({ t: st + LAND * 0.8 * params.duration, kind: 'pop', weight: 0.5, pitch: -3, pan });

@@ -9,7 +9,7 @@ export default defineRhythm({
   setup({ section }) {
     kicks.set(
       section,
-      section.units.filter((u) => u.item >= 0 && u.kind !== 'logos' && Number.isFinite(u.at)).map((u) => u.at),
+      section.units.filter((u) => u.item >= 0 && u.kind !== 'logos' && u.kind !== 'sub' && Number.isFinite(u.at)).map((u) => u.at),
     );
   },
   headroom({ section, params }) {

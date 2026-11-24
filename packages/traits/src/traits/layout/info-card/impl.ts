@@ -9,7 +9,7 @@ import { clamp01 } from '@reel/runtime';
 import { defineLayout, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge, pinSVG } from '../../../lib/deco.ts';
 import { mixHex, rgbOf } from '../../../lib/neon.ts';
-import { fitRows, packed, placeRows, row, rowDims, stackHeight, tok, type Block, type Tok } from '../../../lib/typeset.ts';
+import { appendSub, fitRows, packed, placeRows, row, rowDims, stackHeight, tok, type Block, type Tok } from '../../../lib/typeset.ts';
 import { meta } from './meta.ts';
 
 const GAP = 0.27; // word gap, em
@@ -58,11 +58,12 @@ export default defineLayout({
       const content = s.units.filter((u) => u.item >= 0);
       const of = (kinds: string[], wt: number): Tok[] => content.filter((u) => kinds.includes(u.kind)).map((u) => tok(u, wt));
       const words = () => content.filter((u) => u.kind === 'word').map((u) => tok(u, u.emphasis ? BOLD : BOOK));
+      const subs = () => content.filter((u) => u.kind === 'sub').map((u) => tok(u, Math.min(BOOK, 500)));
       switch (s.role) {
         case 'title': {
           const ws = content.filter((u) => u.kind === 'word');
           if (ws.length) ws.at(-1)!.tags.hero = true;
-          return [packed(1, ws.map((u) => tok(u, BOLD)))];
+          return appendSub([packed(1, ws.map((u) => tok(u, BOLD)))], subs());
         }
         case 'datetime':
           return [
@@ -85,7 +86,7 @@ export default defineLayout({
           return out;
         }
         default:
-          return [packed(TEXT, words())];
+          return appendSub([packed(TEXT, words())], subs());
       }
     }
 

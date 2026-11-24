@@ -8,6 +8,7 @@ import { clamp01, visualOrder } from '@reel/runtime';
 import { defineLayout, type Host, type Metrics, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
 import { applyPlace, exitSpan, flipAt, fontWeight, inkW, reflowSwipes, setText, WORD_GAP, type Placed } from '../../../lib/modules.ts';
+import { subScale } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 const BADGE = { logoH: 1, pad: 0.18, gap: 0.3, radius: 0.22 };
@@ -18,6 +19,7 @@ interface Item {
   u: Unit;
   m: Metrics;
   logo: boolean;
+  sub: boolean;
 }
 
 /** Line ends (indices), each line's width-filling font size, and the uniform factor that fits the stack. */
@@ -27,17 +29,62 @@ interface Lines {
   f: number;
 }
 
+/** Ink width and vertical extent of items [a, b). */
+function lineMetrics(items: readonly Item[], a: number, b: number): { w: number; ia: number; id: number } {
+  const ms = items.slice(a, b).map((it) => it.m);
+  return {
+    w: ms.reduce((q, m) => q + inkW(m), 0) + WORD_GAP * (b - a - 1),
+    ia: Math.max(...ms.map((m) => m.ia)),
+    id: Math.max(...ms.map((m) => m.id)),
+  };
+}
+
+/**
+ * Sub words are a suffix. The big words break exactly as they would alone; the suffix wraps to the frame at one
+ * small size (about 38% of the largest big line, never larger than the smallest) so the caption stays one calm size
+ * under them. The uniform fit then shrinks the whole stack into the safe height.
+ */
+function breakWithSub(items: readonly Item[], FW: number, FH: number, lead: number, per: number, subAt: number): Lines {
+  const head = items.slice(0, subAt);
+  const headSol = head.length ? breakLines(head, FW, FH, lead, per) : { breaks: [] as number[], S: [] as number[], f: 1 };
+  const cap = headSol.S.length ? subScale(headSol.S) : Math.min(FW, FH) * 0.12;
+  const breaks = headSol.breaks.slice();
+  const S = headSol.S.slice();
+  const heights: number[] = [];
+  for (let i = 0; i < headSol.breaks.length; i++) {
+    const a = i ? headSol.breaks[i - 1]! : 0;
+    const m = lineMetrics(head, a, headSol.breaks[i]!);
+    heights.push(headSol.S[i]! * (m.ia + m.id));
+  }
+  let a = subAt;
+  while (a < items.length) {
+    let b = a + 1;
+    const width = (end: number) => lineMetrics(items, a, end).w;
+    while (b < items.length && b - a < per && !items[b]!.logo && width(b + 1) * cap <= FW + 1e-4) b++;
+    const m = lineMetrics(items, a, b);
+    const size = items[a]!.logo ? Math.min(cap, FW / m.w, (0.2 * FH) / m.ia) : Math.min(cap, FW / m.w);
+    breaks.push(b);
+    S.push(size);
+    heights.push(size * (m.ia + m.id));
+    a = b;
+  }
+  const h = heights.reduce((q, lh, i) => q + lh + (i ? lead * Math.min(S[i]!, S[i - 1]!) : 0), 0);
+  return { breaks, S, f: h > 0 ? Math.min(1, FH / h) : 1 };
+}
+
 /**
  * Line breaks of `items` whose width-filling stack fills `FH` best (an overflowing stack shrinks to fit). The logo
  * badge, a line of its own, is capped at a fifth of the height and centred instead of filling the width.
+ * A sub suffix is wrapped aside so it cannot win the fill search as a stack of one-word lines.
  */
 function breakLines(items: readonly Item[], FW: number, FH: number, lead: number, per: number): Lines {
+  const subAt = items.findIndex((it) => it.sub);
+  if (subAt >= 0) return breakWithSub(items, FW, FH, lead, per, subAt);
   const n = items.length;
   const line = (a: number, b: number) => {
-    const ms = items.slice(a, b).map((it) => it.m);
-    const w = ms.reduce((q, m) => q + inkW(m), 0) + WORD_GAP * (b - a - 1);
-    const S = items[a]!.logo ? Math.min(FW / w, (0.2 * FH) / ms[0]!.ia) : FW / w;
-    return { S, h: S * (Math.max(...ms.map((m) => m.ia)) + Math.max(...ms.map((m) => m.id))) };
+    const m = lineMetrics(items, a, b);
+    const S = items[a]!.logo ? Math.min(FW / m.w, (0.2 * FH) / m.ia) : FW / m.w;
+    return { S, h: S * (m.ia + m.id) };
   };
   // a stack taller than FH is shrunk to fit (its lines then stop short of the width): it counts as FH²/h
   type Cand = { breaks: number[]; S: number[]; h: number; eff: number };
@@ -107,7 +154,10 @@ export default defineLayout({
     const LOGO: Metrics = { bl: 0, br: badge1.w, ia: badge1.h, id: 0, fa: 0, fd: 0 };
     for (const s of layer.sections) {
       const content = s.units.filter((u) => u.item >= 0);
-      if (s.role === 'title' && content.length) content.at(-1)!.tags.hero = true;
+      if (s.role === 'title') {
+        const ws = content.filter((u) => u.kind === 'word');
+        if (ws.length) ws.at(-1)!.tags.hero = true;
+      }
       const hi = host.zoomRange(s)[1] * 1.005;
       const m = 0.03 * Math.min(safe.w, safe.h);
       const Z = { x: safe.cx - safe.w / hi / 2 + m, y: safe.cy - safe.h / hi / 2 + m, w: safe.w / hi - 2 * m, h: safe.h / hi - 2 * m };
@@ -116,14 +166,19 @@ export default defineLayout({
 
       // weights from the hold's lines (solved at a middle weight first)
       const at = (wt: (u: Unit) => number): Item[] =>
-        content.map((u) => ({ u, logo: u.kind === 'logos', m: u.kind === 'logos' ? LOGO : host.metrics(u.text, wt(u), u.ltr) }));
+        content.map((u) => ({ u, logo: u.kind === 'logos', sub: u.kind === 'sub', m: u.kind === 'logos' ? LOGO : host.metrics(u.text, wt(u), u.ltr) }));
       const mid = fontWeight(host, 600);
       const first = breakLines(at(() => mid), Z.w, Z.h, params.lead, per);
       const wts = new Map<Unit, number>();
       first.breaks.forEach((b, i) => {
         const us = content.slice(i ? first.breaks[i - 1]! : 0, b);
         const g = us.reduce((q, u) => q + u.graphemes, 0) + us.length - 1;
-        for (const u of us) wts.set(u, u.emphasis || u.tags.hero || u.tags.numeric ? fontWeight(host, 900) : lineWeight(host, g, params.weights));
+        for (const u of us) {
+          wts.set(
+            u,
+            u.kind === 'sub' ? fontWeight(host, 400) : u.emphasis || u.tags.hero || u.tags.numeric ? fontWeight(host, 900) : lineWeight(host, g, params.weights),
+          );
+        }
       });
       const items = at((u) => wts.get(u)!);
 

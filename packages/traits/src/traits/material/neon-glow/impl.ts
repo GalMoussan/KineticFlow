@@ -50,6 +50,9 @@ function tone(host: Host, u: Unit): { fill: string; t: Tone } {
       return of(T, A(1));
     case 'list-title':
       return of(A(2), A(3));
+    case 'sub':
+      if (u.tags.ordinal < 0) return of(A(1), A(1));
+      break;
   }
   if (u.tags.ordinal >= 0) {
     const o = u.tags.ordinal % 4;
@@ -73,7 +76,7 @@ export default defineMaterial({
     if (!params.burst) return;
     const bursts: Burst[] = [];
     for (const u of section.units) {
-      const strong = u.hit || (u.item >= 0 && (u.tags.hero || u.tags.ordinal >= 0 || (u.tags.numeric && u.kind !== 'time')));
+      const strong = u.kind !== 'sub' && (u.hit || (u.item >= 0 && (u.tags.hero || u.tags.ordinal >= 0 || (u.tags.numeric && u.kind !== 'time'))));
       if (!strong || !Number.isFinite(u.at)) continue;
       const tn = u.data.material as Tone | undefined;
       const hue = hueOf(tn?.glow ?? host.accent(0, section));

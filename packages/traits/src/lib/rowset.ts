@@ -6,6 +6,7 @@
 import { visualOrder } from '@reel/runtime';
 import type { Host, Metrics, Section, Unit } from '../contract.ts';
 import { logoBadge, PIN_METRICS, pinSVG } from './deco.ts';
+import { blockFs, subScale, SUB_WEIGHT } from './subline.ts';
 
 /** Unit box padding around the ink, em. */
 export const PAD_X = 0.08;
@@ -108,6 +109,11 @@ export function roleBlocks(host: Host, s: Section, o: BlockOpts): Block[] {
       }
       flush();
     }
+  }
+  const subs = of('sub');
+  if (subs.length) {
+    const sw = weightOf(host, Math.min(W, SUB_WEIGHT));
+    out.push({ kind: 'pack', f: subScale(blockFs(out)), toks: subs.map((u) => tok(u, sw)) });
   }
   return out.filter((b) => b.kind === 'row' || b.toks.length);
 }

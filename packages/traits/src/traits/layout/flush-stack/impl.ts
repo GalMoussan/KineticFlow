@@ -13,6 +13,7 @@ import { visualOrder } from '@reel/runtime';
 import { defineLayout, type Metrics, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
 import { mixHex, rgbOf } from '../../../lib/neon.ts';
+import { blockFs, subScale } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 const PAD_X = 0.08; // unit box padding around the ink, em
@@ -158,6 +159,9 @@ export default defineLayout({
           flush();
         }
       }
+      const subs = of('sub');
+      // Past `F()`: a uniform stack would otherwise blow the caption up to the big size.
+      if (subs.length) out.push({ kind: 'pack', f: subScale(blockFs(out)), toks: subs });
       return [out];
     }
 

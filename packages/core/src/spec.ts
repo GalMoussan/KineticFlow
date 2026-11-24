@@ -40,9 +40,15 @@ const common = {
 
 export const TEXT_ROLES = ['tagline', 'body', 'teaser', 'cta', 'heading', 'question', 'answer', 'quote'] as const;
 
+/**
+ * Optional small line shown under a title/text section's big words, in the same frame (e.g. "There's a prize" → the
+ * prize). Its words land one by one after the big words (item kind `sub`) and animate with the section's style.
+ */
+const Sub = Text.optional();
+
 export const Section = z.discriminatedUnion('role', [
-  z.object({ ...common, role: z.literal('title'), text: Text }),
-  z.object({ ...common, role: z.enum(TEXT_ROLES), text: Text }),
+  z.object({ ...common, role: z.literal('title'), text: Text, sub: Sub }),
+  z.object({ ...common, role: z.enum(TEXT_ROLES), text: Text, sub: Sub }),
   z.object({ ...common, role: z.literal('datetime'), date: IsoDate, time: Time.optional() }),
   z.object({ ...common, role: z.literal('location'), place: Text, city: Text.optional() }),
   z.object({ ...common, role: z.literal('list'), title: Text.optional(), items: z.array(Text).min(1).max(10) }),

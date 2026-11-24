@@ -64,14 +64,17 @@ const isShort = (it: Item) => !it.emphasis && it.graphemes <= 3 && (it.kind === 
 
 /**
  * Landing offsets in half-beats relative to the section's first landing. A short word after another item takes
- * the off-beat slot; the next regular word still lands on the following beat.
+ * the off-beat slot; the next regular word still lands on the following beat. The small line under a section (`sub`
+ * items) lands a full slot after the big words, then word by word on the short (off-beat) cadence: a ripple.
  */
 function offsets(items: Item[], unit: number, short: number): number[] {
   const out: number[] = [];
   let beat = 0; // last regular (on-grid) landing
   items.forEach((it, i) => {
+    const prev = items[i - 1];
     if (i === 0) out.push(0);
-    else if (isShort(it) && !isShort(items[i - 1]!) && short < unit) out.push(beat + short);
+    else if (it.kind === 'sub' && prev?.kind === 'sub' && short < unit) out.push((beat += short));
+    else if (isShort(it) && !isShort(prev!) && short < unit) out.push(beat + short);
     else {
       beat += unit;
       out.push(beat);

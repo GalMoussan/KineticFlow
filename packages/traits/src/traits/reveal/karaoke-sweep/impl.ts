@@ -11,6 +11,7 @@ import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { inkRect } from '../../../lib/rowset.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 const IN = 0.45;
@@ -137,8 +138,14 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     const list = sung(section);
+    let si = 0;
     list.forEach((u, i) => {
       const w = sweepOf(section, list, i, params.lead, params.sweep);
+      if (u.kind === 'sub') {
+        const c = subLanding(w.t0, si++, host.pan(u));
+        if (c) out.push(c);
+        return;
+      }
       out.push({ t: w.t0, kind: params.ball ? 'tick' : 'pop', weight: u.emphasis ? 0.4 : 0.28, pitch: (i % 5) * 2, pan: host.pan(u) });
     });
     const ex = exitWindow(section);

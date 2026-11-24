@@ -2,6 +2,7 @@ import type { SoundCue } from '@reel/core';
 import { clamp01, quart } from '@reel/runtime';
 import { defineReveal, type Part, type Section, type Unit } from '../../../contract.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'rise' | 'fall' | 'slide' | 'grow' | 'pop' | 'odometer' | 'rule' | 'drop' | 'shape';
@@ -16,6 +17,7 @@ const MASKED: Partial<Record<Anim, true>> = { rise: true, fall: true, slide: tru
 const DIGIT = /^[0-9]$/;
 
 function choose(u: Unit, s: Section): Anim {
+  if (u.kind === 'sub') return 'rise';
   if (u.deco === 'rule' || u.deco === 'bar') return 'rule';
   if (u.deco === 'pin') return 'drop';
   if (u.item < 0) return 'shape';
@@ -200,11 +202,17 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const d = u.data.reveal as Data;
       const st = u.at - (u.item < 0 ? 0 : params.lead);
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (d.anim === 'odometer') {
         for (const q of columns.get(u) ?? []) out.push({ t: st + params.duration + q.j * 0.1, kind: 'tick', weight: 0.5, pitch: 2 * q.j, pan });
       } else if (d.anim === 'drop') out.push({ t: st + 0.4, kind: 'pop', weight: 0.6, pitch: -3, pan });

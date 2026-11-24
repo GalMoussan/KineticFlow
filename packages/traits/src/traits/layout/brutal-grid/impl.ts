@@ -81,23 +81,31 @@ export default defineLayout({
       const group = (k: number): Item[][] => {
         const out: Item[][] = [];
         let run: Item[] = [];
-        const flush = () => {
-          const n = Math.ceil(run.length / k);
+        let subRun: Item[] = [];
+        const flushRun = (src: Item[]) => {
+          if (!src.length) return;
+          const n = Math.ceil(src.length / k);
           for (let i = 0, j = 0; i < n; i++) {
-            const len = Math.floor(run.length / n) + (i < run.length % n ? 1 : 0);
-            out.push(run.slice(j, j + len));
+            const len = Math.floor(src.length / n) + (i < src.length % n ? 1 : 0);
+            out.push(src.slice(j, j + len));
             j += len;
           }
-          run = [];
         };
         for (const it of items) {
-          if (it.m) run.push(it);
-          else {
-            flush();
+          if (!it.m) {
+            flushRun(run);
+            flushRun(subRun);
+            run = [];
+            subRun = [];
             out.push([it]);
-          }
+          } else if (it.u.kind === 'sub') {
+            flushRun(run);
+            run = [];
+            subRun.push(it);
+          } else run.push(it);
         }
-        flush();
+        flushRun(run);
+        flushRun(subRun);
         return out;
       };
       const dimsOf = (g: Item[]) => ({
@@ -114,7 +122,15 @@ export default defineLayout({
         const score = Math.min(...S);
         if (!best || score > best.score * 1.08) best = { rows, S, score };
       }
-      const { rows, S } = best!;
+      const rows = best!.rows;
+      let S = best!.S;
+      if (rows.some((g) => g.some((it) => it.u.kind === 'sub'))) {
+        const big = S.filter((_, i) => rows[i]!.every((it) => it.u.kind !== 'sub'));
+        if (big.length) {
+          const cap = 0.4 * Math.min(...big);
+          S = S.map((s, i) => (rows[i]!.some((it) => it.u.kind === 'sub') ? Math.min(s, cap) : s));
+        }
+      }
       const tr = Math.max(3, 0.007 * m0) * params.rule;
       let y = top;
       let x0b = Infinity;
@@ -164,6 +180,7 @@ export default defineLayout({
         // giant cropped copies + their flash panels, in landing order
         for (const it of g) {
           const u = it.u;
+          if (u.kind === 'sub') continue;
           const m = it.m!;
           const n = landing++;
           const h1 = m.ia + m.id;

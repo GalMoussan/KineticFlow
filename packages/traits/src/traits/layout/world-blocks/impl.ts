@@ -59,7 +59,7 @@ interface W {
 }
 
 type Line =
-  | { kind: 'words'; align: Align; size: number; words: W[] }
+  | { kind: 'words'; align: Align; size: number; words: W[]; caption?: boolean }
   | { kind: 'quote'; q: 'open' | 'close'; size: number; at: number }
   | { kind: 'badge'; u: Unit };
 
@@ -231,6 +231,29 @@ export default defineLayout({
           break;
         default: {
           lines.push(...textLines(s, of('word')));
+          const subs = of('sub');
+          if (subs.length) {
+            let cur: Unit[] = [];
+            let n = 0;
+            const push = () => {
+              if (!cur.length) return;
+              lines.push({
+                kind: 'words',
+                align: 'start',
+                size: -1,
+                caption: true,
+                words: cur.map((u) => words(u, { wt: 500 })),
+              });
+              cur = [];
+              n = 0;
+            };
+            for (const u of subs) {
+              if (cur.length && n + u.graphemes + 1 > 16) push();
+              n += u.graphemes + (cur.length ? 1 : 0);
+              cur.push(u);
+            }
+            push();
+          }
           for (const u of of('logos')) lines.push({ kind: 'badge', u });
         }
       }
@@ -250,6 +273,21 @@ export default defineLayout({
       const placed: Unit[] = []; // decorations placed in line flow (their y is shifted with the words)
       let y = 0;
       const rules: { x0: number; x1: number; y: number; at: number; origin: string }[] = [];
+      let subS = 0;
+      if (b.lines.some((ln) => ln.kind === 'words' && ln.caption)) {
+        const big: number[] = [];
+        for (const ln of b.lines) {
+          if (ln.kind !== 'words' || ln.caption) continue;
+          if (ln.align) big.push(ln.size);
+          else {
+            for (const w of ln.words) w.mt = metricsOf(w);
+            big.push(justifiedSize(ln.words));
+          }
+        }
+        const minB = big.length ? Math.min(...big) : ACCENT_SIZE;
+        const maxB = big.length ? Math.max(...big) : ACCENT_SIZE;
+        subS = Math.min(minB, 0.38 * maxB);
+      }
       b.lines.forEach((ln, li) => {
         if (li) y += params.lead;
         if (ln.kind === 'quote') {
@@ -282,6 +320,7 @@ export default defineLayout({
         }
         const lw = ln.words;
         for (const w of lw) w.mt = metricsOf(w);
+        if (ln.caption && ln.size < 0) ln.size = Math.min(subS, alignedSize(lw, subS));
         let gap: number;
         if (ln.align) {
           for (const w of lw) w.size = ln.size;
@@ -307,7 +346,7 @@ export default defineLayout({
         // A line hugs its start edge (right in RTL) or, end-aligned, its end edge; pieces go left to right in UAX #9
         // visual order, so a run of LTR items inside an RTL line keeps reading left to right. The pin leads its line.
         const hugsRight = (ln.align === 'end') !== rtl;
-        let x = hugsRight ? BW / 2 - total : -BW / 2;
+        let x = ln.caption ? -total / 2 : hugsRight ? BW / 2 - total : -BW / 2;
         const order = visualOrder(lw.map((w) => (w.pin ? (rtl ? '\u200F' : '\u200E') : w.u.text)), host.dir);
         for (const i of order) {
           const w = lw[i]!;
@@ -317,7 +356,7 @@ export default defineLayout({
           x = w.x1 + gap;
         }
         ws.push(...lw);
-        if (ln.align) {
+        if (ln.align && !ln.caption) {
           const at = Math.max(...lw.map((w) => w.u.at)) + 0.12;
           const ry = base - Math.min(...lw.map((w) => w.ia)) * 0.42;
           const tx0 = Math.min(...lw.map((w) => w.x0));

@@ -4,6 +4,7 @@ import { defineReveal } from '../../../contract.ts';
 import { growFromBaseline, innerBaseline } from '../../../lib/eq.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 /** Letters of a unit settle within this long after its first letter starts, whatever their count. */
@@ -63,8 +64,14 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     let n = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+        continue;
+      }
       out.push({ t: u.at - params.lead + 0.6 * params.duration, kind: 'pop', weight: u.emphasis || u.tags.numeric ? 0.6 : 0.45, pitch: Math.min(9, 2 * n++), pan: host.pan(u) });
     }
     const ex = exitWindow(section);

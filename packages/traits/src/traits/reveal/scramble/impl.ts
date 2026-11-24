@@ -9,6 +9,7 @@ import { hash } from '@reel/runtime';
 import { defineReveal, type Part } from '../../../contract.ts';
 import { scriptOf, standIn } from '../../../lib/glyphs.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Data {
@@ -82,10 +83,16 @@ export default defineReveal({
   /** Up to 4 ticks per unit as cells lock (pitch rising along the word); emphasis and the hero land on a pop. */
   sounds({ host, section }) {
     const out: SoundCue[] = endcardStinger(section);
+    let si = 0;
     for (const u of section.units) {
       const d = u.data.reveal as Data | undefined;
       if (!d || u.item < 0) continue;
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(d.st, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       const n = u.parts.length;
       if (!n) {
         out.push({ t: d.st + d.pre, kind: 'pop', weight: 0.4, pan });

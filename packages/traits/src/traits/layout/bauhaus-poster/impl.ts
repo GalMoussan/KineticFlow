@@ -16,6 +16,7 @@ import { clamp01, lerp, visualOrder } from '@reel/runtime';
 import { defineLayout, type Metrics, type Unit } from '../../../contract.ts';
 import { logoBadge, PIN_METRICS, pinSVG } from '../../../lib/deco.ts';
 import { surface } from '../../../lib/bauhaus.ts';
+import { subScale } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Align = 'start' | 'end' | 'center';
@@ -167,6 +168,29 @@ export default defineLayout({
         const logos = of('logos');
         if (logos.length && lines.length) entries.push(R('short'));
         for (const u of logos) entries.push({ t: 'badge', u });
+      }
+
+      const subs = of('sub');
+      if (subs.length) {
+        const caps = entries.flatMap((e) => (e.t === 'line' ? [e.cap] : []));
+        const cap = subScale(caps);
+        const align: Align = role === 'title' || STACK[role] === 'start' || STACK[role] === 'alt' ? 'start' : 'center';
+        const made: LineE[] = [];
+        let cur: Unit[] = [];
+        let n = 0;
+        const push = () => {
+          if (cur.length) made.push(L(cur.map((u) => P(u, 500)), align, cap));
+          cur = [];
+          n = 0;
+        };
+        for (const u of subs) {
+          if (cur.length && n + 1 + u.graphemes > params.chars) push();
+          n += u.graphemes + (cur.length ? 1 : 0);
+          cur.push(u);
+        }
+        push();
+        if (role === 'title' && entries.at(-1)?.t === 'rule') entries.splice(entries.length - 1, 0, ...made);
+        else entries.push(...made);
       }
 
       // ── sizes at stack scale k (rules keep their thickness) ──

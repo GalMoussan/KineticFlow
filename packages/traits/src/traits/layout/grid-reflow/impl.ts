@@ -28,8 +28,9 @@ import {
   type Box,
   type Placed,
 } from '../../../lib/modules.ts';
+import { subScale } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
-import { solveGrid, type GridItem, type GridSpec } from './solve.ts';
+import { solveGrid, type GridItem, type GridLine, type GridSpec } from './solve.ts';
 
 /** Logo badge proportions per unit of logo height. */
 const BADGE = { logoH: 1, pad: 0.2, gap: 0.3 };
@@ -79,10 +80,11 @@ function itemsOf(host: Host, s: Section, rule: number): { u: Unit; m: Metrics | 
       const tile = tileOf(host, s, u, u.emphasis && !u.tags.hero && !u.tags.numeric ? nth++ : 0);
       const top = tile.fill ? 0 : rule;
       if (u.kind === 'logos') return { u, m: null, wt: 400, tile, it: { w1: badge.w, h1: badge.h, weight: 1.2, top } };
-      const strong = u.tags.hero || u.tags.numeric || u.emphasis;
-      const wt = fontWeight(host, strong ? 800 : u.kind === 'weekday' || u.kind === 'city' || u.kind === 'list-title' ? 500 : 700);
+      const sub = u.kind === 'sub';
+      const strong = !sub && (u.tags.hero || u.tags.numeric || u.emphasis);
+      const wt = fontWeight(host, sub ? 400 : strong ? 800 : u.kind === 'weekday' || u.kind === 'city' || u.kind === 'list-title' ? 500 : 700);
       const m = host.metrics(u.text, wt, u.ltr);
-      const weight = u.tags.hero ? 2 : strong ? 1.6 : u.graphemes <= 2 ? 0.5 : u.graphemes <= 3 ? 0.8 : 1;
+      const weight = sub ? 0.32 : u.tags.hero ? 2 : strong ? 1.6 : u.graphemes <= 2 ? 0.5 : u.graphemes <= 3 ? 0.8 : 1;
       return { u, m, wt, tile, it: { w1: inkW(m), h1: inkH(m), weight, top } };
     });
 }
@@ -92,7 +94,10 @@ export default defineLayout({
   layout({ host, layer, params }) {
     for (const s of layer.sections) {
       const content = s.units.filter((u) => u.item >= 0);
-      if (s.role === 'title' && content.length) content.at(-1)!.tags.hero = true;
+      if (s.role === 'title') {
+        const ws = content.filter((u) => u.kind === 'word');
+        if (ws.length) ws.at(-1)!.tags.hero = true;
+      }
       if (s.role === 'datetime' || s.role === 'stat' || s.role === 'countdown') {
         const v = content.find((u) => u.kind === 'date' || u.kind === 'stat' || u.kind === 'countdown');
         if (v) v.tags.hero = true;
@@ -109,18 +114,12 @@ export default defineLayout({
       const spec: GridSpec = { cols: G0.cols, rows: G0.rows, cw: G0.cw, rh: G0.rh, g: G0.g, pad };
       const rtl = s.dir === 'rtl';
 
-      const steps: Placed[][] = [];
-      for (let k = 0; k < n; k++) {
-        const lines = solveGrid(
-          items.slice(0, k + 1).map((r) => r.it),
-          spec,
-          per,
-        );
-        if (!lines) throw new Error(`grid-reflow: ${s.id} does not fit the ${G0.cols}×${G0.rows} grid`);
+      /** Paint `lines` centred in module-rows [top, top+rows). */
+      const paint = (lines: GridLine[], top: number, rows: number, placed: Placed[], line0: number, tag: boolean): number => {
         const used = lines.reduce((a, l) => a + l.rows, 0);
-        let row = Math.floor((G0.rows - used) / 2);
-        const placed: Placed[] = [];
-        lines.forEach((l, li) => {
+        let row = top + Math.floor((rows - used) / 2);
+        let li = line0;
+        for (const l of lines) {
           const idx = Array.from({ length: l.to - l.from + 1 }, (_, j) => l.from + j);
           const order = visualOrder(
             idx.map((i) => items[i]!.u.text || (rtl ? '\u200F' : '\u200E')),
@@ -138,10 +137,74 @@ export default defineLayout({
             const w = it.w1 * S;
             const x = rtl ? box.x + box.w - pad - w : box.x + pad;
             placed[i] = { box, S, x, y: box.y + pad + inset };
-            if (k === n - 1) items[i]!.u.tags.line = li;
+            if (tag) items[i]!.u.tags.line = li;
           }
           row += l.rows;
-        });
+          li++;
+        }
+        return li;
+      };
+      const steps: Placed[][] = [];
+      for (let k = 0; k < n; k++) {
+        const slice = items.slice(0, k + 1);
+        const subFrom = slice.findIndex((r) => r.u.kind === 'sub');
+        const placed: Placed[] = [];
+        if (subFrom <= 0) {
+          const lines = solveGrid(slice.map((r) => r.it), spec, per);
+          if (!lines) throw new Error(`grid-reflow: ${s.id} does not fit the ${G0.cols}×${G0.rows} grid`);
+          paint(lines, 0, G0.rows, placed, 0, k === n - 1);
+        } else {
+          const nSub = slice.length - subFrom;
+          const reserve = Math.min(
+            Math.max(1, Math.ceil(nSub / Math.max(1, Math.min(per, G0.cols)))),
+            Math.max(1, G0.rows - 2),
+          );
+          const bigSpec = { ...spec, rows: G0.rows - reserve };
+          const subSpec = { ...spec, rows: reserve };
+          const big = solveGrid(slice.slice(0, subFrom).map((r) => r.it), bigSpec, per);
+          const sub = solveGrid(slice.slice(subFrom).map((r) => r.it), subSpec, per);
+          const lines = big && sub
+            ? null
+            : solveGrid(slice.map((r) => r.it), spec, per);
+          if (big && sub) {
+            const tag = k === n - 1;
+            paint(big, 0, bigSpec.rows, placed, 0, tag);
+            // Equal columns, then one shared size, so a short word cannot outgrow the caption.
+            const evenCols = sub.map((l) => {
+              const count = l.to - l.from + 1;
+              const base = Math.floor(G0.cols / count);
+              let extra = G0.cols - base * count;
+              return {
+                ...l,
+                from: l.from + subFrom,
+                to: l.to + subFrom,
+                cols: Array.from({ length: count }, () => base + (extra-- > 0 ? 1 : 0)),
+              };
+            });
+            paint(evenCols, bigSpec.rows, reserve, placed, big.length, tag);
+            const bigS = placed.flatMap((p, i) => (items[i]!.u.kind === 'sub' || !items[i]!.m ? [] : [p.S]));
+            const fitted: number[] = [];
+            for (let i = subFrom; i < slice.length; i++) if (placed[i]) fitted.push(placed[i]!.S);
+            if (bigS.length && fitted.length) {
+              const even = Math.min(subScale(bigS), ...fitted);
+              for (let i = subFrom; i < slice.length; i++) {
+                const p = placed[i];
+                if (!p) continue;
+                const it = items[i]!.it;
+                const inset = tiles[i]!.fill ? 0 : rule;
+                const innerW = p.box.w - 2 * pad;
+                const innerH = p.box.h - 2 * pad - inset;
+                const w = it.w1 * even;
+                const h = it.h1 * even;
+                p.S = even;
+                p.x = p.box.x + pad + Math.max(0, (innerW - w) / 2);
+                p.y = p.box.y + pad + inset + Math.max(0, (innerH - h) / 2);
+              }
+            }
+          } else if (lines) {
+            paint(lines, 0, G0.rows, placed, 0, k === n - 1);
+          } else throw new Error(`grid-reflow: ${s.id} does not fit the ${G0.cols}×${G0.rows} grid`);
+        }
         steps.push(placed);
       }
 

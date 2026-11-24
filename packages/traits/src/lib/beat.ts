@@ -10,7 +10,7 @@ export interface BeatSection {
 
 /** `unit.data.layout`: solo copy, full-frame panel, recap band, or a recap row (the content unit itself). */
 export type BeatData =
-  | { kind: 'solo'; of: number; k: number }
+  | { kind: 'solo'; of: number; k: number; sub?: true }
   | { kind: 'panel' }
   | { kind: 'band'; of: number; k: number; row: number }
   | { kind: 'row'; k: number; row: number };

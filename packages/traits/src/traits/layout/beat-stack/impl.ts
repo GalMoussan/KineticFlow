@@ -72,9 +72,12 @@ export default defineLayout({
       // ── solos ──
       content.forEach((u, i) => {
         const r = rows[i]!;
-        const S = Math.min(FW / r.w1, (params.solo * FH) / r.h1);
+        const full = Math.min(FW / r.w1, (params.solo * FH) / r.h1);
+        const S = u.kind === 'sub' ? full * 0.38 : full;
         const solo = host.deco(s, { deco: 'solo', text: u.text, ltr: u.ltr, graphemes: u.graphemes, at: u.at, revealed: true, z: 2 });
-        solo.data.layout = { kind: 'solo', of: u.item, k: k0 + i } satisfies BeatData;
+        solo.data.layout = (u.kind === 'sub'
+          ? { kind: 'solo', of: u.item, k: k0 + i, sub: true }
+          : { kind: 'solo', of: u.item, k: k0 + i }) satisfies BeatData;
         if (!r.m) {
           const b = logoBadge(host, s, host.reel.logos, b1.w * S + 1, {
             logoH: BADGE.logoH * S, pad: BADGE.pad * S, gap: BADGE.gap * S, radius: BADGE.radius * S, ...badgeColors,
@@ -94,7 +97,14 @@ export default defineLayout({
 
       // ── recap rows: fitted to width, one common cap bisected so the stack fits the height ──
       const L = params.leading;
-      const S = fitColumn(rows, FW, FH, L, params.cap * FH);
+      let S = fitColumn(rows, FW, FH, L, params.cap * FH);
+      if (rows.some((r) => r.u.kind === 'sub')) {
+        const big = S.filter((_, i) => rows[i]!.u.kind !== 'sub');
+        if (big.length) {
+          const capS = 0.4 * Math.min(...big);
+          S = S.map((s, i) => (rows[i]!.u.kind === 'sub' ? Math.min(s, capS) : s));
+        }
+      }
       let y = cy - columnHeight(rows, S, L) / 2;
       const spans: { top: number; bottom: number }[] = [];
       let x0b = Infinity;
