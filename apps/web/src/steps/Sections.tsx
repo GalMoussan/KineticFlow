@@ -31,6 +31,8 @@ function Issue({ path, issues }: { path: string; issues: Map<string, string[]> }
 export function SectionList() {
   const s = useStudio();
   const [drag, setDrag] = useState<number | null>(null);
+  /** Index of the section an "Add section above" picker is open for. */
+  const [inserting, setInserting] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const sections = s.spec.sections;
   const issues = useIssues();
@@ -50,11 +52,13 @@ export function SectionList() {
     s.update((d) => ({ ...d, sections: d.sections.filter((_, j) => j !== i) }));
     s.toast('Section removed', { action: { label: 'Undo', run: s.undo } });
   };
-  const add = (role: SectionRole) => {
+  /** Inserts a new section at `at`, or (no `at`) before the end card so it stays last. */
+  const add = (role: SectionRole, at?: number) => {
     const end = sections.findIndex((x) => x.role === 'endcard');
-    const at = end >= 0 && role !== 'endcard' ? end : sections.length;
-    s.update((d) => ({ ...d, sections: [...d.sections.slice(0, at), newSection(role), ...d.sections.slice(at)] }));
-    requestAnimationFrame(() => s.select(['sections', at]));
+    const i = at ?? (end >= 0 && role !== 'endcard' ? end : sections.length);
+    s.update((d) => ({ ...d, sections: [...d.sections.slice(0, i), newSection(role), ...d.sections.slice(i)] }));
+    setInserting(null);
+    requestAnimationFrame(() => s.select(['sections', i]));
   };
 
   return (
@@ -65,7 +69,16 @@ export function SectionList() {
       </div>
       {sections.length === 0 ? <Empty title="No sections yet">Paste text above, or add a title section below.</Empty> : null}
       <ol className="section-list">
-        {sections.map((sec, i) => (
+        {sections.flatMap((sec, i) => [
+          <li key={`insert-${i}`} className="insert-slot">
+            {inserting === i ? (
+              <AddSection onAdd={(r) => add(r, i)} onCancel={() => setInserting(null)} label={`New section above section ${i + 1}:`} />
+            ) : (
+              <button className="insert-btn" aria-label={`Add a section above section ${i + 1}`} onClick={() => setInserting(i)}>
+                <Icon name="plus" size={14} /> Add section above
+              </button>
+            )}
+          </li>,
           <li
             key={i}
             className={`section-card ${drag === i ? 'dragging' : ''} ${over === i && drag !== null && drag !== i ? 'drop-target' : ''}`}
@@ -96,21 +109,21 @@ export function SectionList() {
                 setOver(null);
               }}
             />
-          </li>
-        ))}
+          </li>,
+        ])}
       </ol>
-      <AddSection onAdd={add} />
+      <AddSection onAdd={add} label="Add at the end:" />
     </div>
   );
 }
 
-function AddSection({ onAdd }: { onAdd: (r: SectionRole) => void }) {
+function AddSection({ onAdd, onCancel, label = 'Add:' }: { onAdd: (r: SectionRole) => void; onCancel?: () => void; label?: string }) {
   const { catalog } = useStudio();
   const roles = catalog.roles.length ? catalog.roles : (Object.keys(ROLE_LABELS) as SectionRole[]);
   const common: SectionRole[] = ['tagline', 'body', 'datetime', 'location', 'list', 'stat', 'cta'];
   return (
     <div className="add-section">
-      <span className="muted small">Add:</span>
+      <span className="muted small">{label}</span>
       {common
         .filter((r) => roles.includes(r))
         .map((r) => (
@@ -135,6 +148,11 @@ function AddSection({ onAdd }: { onAdd: (r: SectionRole) => void }) {
             </option>
           ))}
       </select>
+      {onCancel ? (
+        <button className="btn ghost sm" onClick={onCancel}>
+          Cancel
+        </button>
+      ) : null}
     </div>
   );
 }
