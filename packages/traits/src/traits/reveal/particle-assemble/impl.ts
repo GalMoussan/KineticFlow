@@ -12,6 +12,7 @@ import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { frameCanvas, groupToScreen } from '../../../lib/overlay.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Data {
@@ -153,16 +154,21 @@ export default defineReveal({
       const spark = host.accent(u.tags.hero ? 1 : 0, section);
       if (tin < 1) {
         const fade = 1 - tin;
-        const t0 = L - params.fly - params.spread;
+        // the small line gathers from close by, quicker and tighter (a calmer assemble)
+        const sub = u.kind === 'sub';
+        const fly = sub ? 0.6 * params.fly : params.fly;
+        const spread = sub ? 0.5 * params.spread : params.spread;
+        const reach = sub ? 0.3 * params.reach : params.reach;
+        const t0 = L - fly - spread;
         for (let pass = 0; pass < 2; pass++) {
           g.fillStyle = pass ? spark : col;
           for (let i = pass ? 0 : 1; i < n; i += pass ? SPARK : 1) {
             if (!pass && i % SPARK === 0) continue;
-            const k = (t - t0 - hash(i * 0.737 + u.id * 1.31) * params.spread) / params.fly;
+            const k = (t - t0 - hash(i * 0.737 + u.id * 1.31) * spread) / fly;
             if (k <= 0) continue;
             const e = k >= 1 ? 1 : 0.5 * m.enter(k) + 0.5 * m.inOut(k);
             const a0 = hash(i * 1.913 + u.id * 0.37) * TAU;
-            const r0 = params.reach * short * (0.45 + 0.55 * hash(i * 3.17 + u.id * 0.11));
+            const r0 = reach * short * (0.45 + 0.55 * hash(i * 3.17 + u.id * 0.11));
             const sx = cl.cx + Math.cos(a0) * r0;
             const sy = cl.cy + Math.sin(a0) * r0;
             const px = sx + (cl.x[i]! - sx) * e - cl.cx;
@@ -204,17 +210,23 @@ export default defineReveal({
   },
   /**
    * A riser while the first word gathers (not inside the music's fade-in), a pop per landing with the pitch rising
-   * through the section, a whoosh and a sparkle as the words blow apart.
+   * through the section, a light tick per sub word, a whoosh and a sparkle as the words blow apart.
    */
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.8);
-    const content = section.units.filter((u) => u.revealed && u.item >= 0 && Number.isFinite(u.at));
+    const content = section.units.filter((u) => u.revealed && u.item >= 0 && Number.isFinite(u.at) && u.kind !== 'sub');
     const first = content[0];
     const rise = first ? first.at - params.fly * 0.8 : -1;
     if (first && rise >= 0.6) out.push({ t: rise, until: first.at, kind: 'riser', weight: 0.3 });
     content.forEach((u, i) =>
       out.push({ t: u.at, kind: 'pop', weight: u.tags.hero || u.emphasis ? 0.55 : 0.38, pitch: Math.min(7, i), pan: host.pan(u) }),
     );
+    section.units
+      .filter((u) => u.revealed && u.item >= 0 && Number.isFinite(u.at) && u.kind === 'sub')
+      .forEach((u, i) => {
+        const c = subLanding(u.at, i, host.pan(u));
+        if (c) out.push(c);
+      });
     const ex = exitWindow(section);
     if (ex) {
       out.push({ t: ex.t0, until: ex.t0 + Math.min(params.exit, ex.t1 - ex.t0), kind: 'whoosh', weight: 0.42 });

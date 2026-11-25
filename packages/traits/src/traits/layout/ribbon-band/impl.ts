@@ -7,8 +7,10 @@
  */
 import { defineLayout, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
-import type { Pt } from '../../../lib/pathtext.ts';
-import { fitRows, packed, placeRows, row, tok, type Block, type Tok } from '../../../lib/typeset.ts';
+import { mixHex } from '../../../lib/neon.ts';
+import { fitWithSub, type Pt } from '../../../lib/pathtext.ts';
+import { SUB_WEIGHT, subUnits } from '../../../lib/subline.ts';
+import { packed, placeRows, row, tok, type Block, type Row, type RowRect, type Tok } from '../../../lib/typeset.ts';
 import { meta } from './meta.ts';
 
 const GAP = 0.28; // word gap, em
@@ -25,6 +27,8 @@ export interface Ribbon {
   color: string;
   /** Darker edge colour. */
   edge: string;
+  /** The sub lines' companion band (thinner, pale; its words land calmer). Absent on big rows. */
+  sub?: true;
 }
 
 /** `section.data.layout`. */
@@ -95,7 +99,9 @@ export default defineLayout({
 
     for (const s of layer.sections) {
       const hi = host.zoomRange(s)[1] * 1.005;
-      const { rows, size } = fitRows(host, blocks(s), {
+      // sub words (title / text roles): a smaller line of their own under the big rows
+      const subs = subUnits(s.units).map((u) => tok(u, u.emphasis ? SUB_WEIGHT + 200 : SUB_WEIGHT));
+      const { rows, size, sub } = fitWithSub(host, blocks(s), subs, {
         w: FIT_W / hi,
         h: FIT_H / hi,
         cap: CAP / hi,
@@ -120,7 +126,33 @@ export default defineLayout({
       const ltr = s.dir === 'ltr';
       const sigma = ltr ? -1 : 1; // travel direction along the straight run
       const V = params.swoop * H;
-      const ribbons: Ribbon[] = rows.map((r, i) => {
+      // one ribbon per big row, plus one companion band holding every sub line
+      const subbed = rows.length > sub;
+      const swoops = (i: number, y: number, half: number, x0: number, x1: number): Pick<Ribbon, 'entry' | 'exit'> => {
+        const middle = rows.length % 2 === 1 && i === (rows.length - 1) / 2;
+        const rank = Math.min(1, Math.abs(y - safe.cy) / (safe.h / 2));
+        const away = y < safe.cy ? -1 : 1;
+        const clampY = (v: number) => Math.max(-0.15 * H, Math.min(1.15 * H, v));
+        // with a sub line the big bands all fan upwards (the top one reaching furthest) and the sub band arcs below,
+        // so the companion band never crosses a big one
+        const vIn = subbed ? (i < sub ? -V * (1 + (0.6 * (sub - 1 - i)) / Math.max(1, sub - 1)) : V) : middle ? V : away * V * (1 + 0.6 * rank);
+        const vOut = !subbed && middle ? -V : vIn;
+        const m = half + 0.06 * W;
+        // entry: from the end side's frame edge onto the straight run
+        const xe = ltr ? x1 : x0;
+        const P0 = { x: ltr ? W + m : -m, y: clampY(y + vIn) };
+        const dxIn = Math.abs(P0.x - xe);
+        const entry: Ribbon['entry'] = [P0, { x: P0.x + sigma * 0.35 * dxIn, y: P0.y }, { x: xe - sigma * 0.5 * dxIn, y }, { x: xe, y }];
+        const xs = ltr ? x0 : x1;
+        const Q3 = { x: ltr ? -m : W + m, y: clampY(y + vOut) };
+        const dxOut = Math.abs(Q3.x - xs);
+        const exit: Ribbon['exit'] = [{ x: xs, y }, { x: xs + sigma * 0.5 * dxOut, y }, { x: Q3.x - sigma * 0.35 * dxOut, y: Q3.y }, Q3];
+        return { entry, exit };
+      };
+      // with a sub line each big band's straight run also spans the bands above it, so the upward swoops nest
+      let outL = Infinity;
+      let outR = -Infinity;
+      const ribbons: Ribbon[] = rows.slice(0, sub).map((r, i) => {
         const rc = rects[i]!;
         const S = size * r.f;
         if (r.kind === 'box') {
@@ -147,30 +179,45 @@ export default defineLayout({
         else r.u.data.layout = { ink, row: i } satisfies RibbonUnit;
         const y = (rc.top + rc.bottom) / 2;
         const half = (rc.bottom - rc.top) / 2 + PAD * S;
-        const x0 = rc.x0 - 1.4 * PAD * S;
-        const x1 = rc.x1 + 1.4 * PAD * S;
-        const middle = rows.length % 2 === 1 && i === (rows.length - 1) / 2;
-        const rank = Math.min(1, Math.abs(y - safe.cy) / (safe.h / 2));
-        const away = y < safe.cy ? -1 : 1;
-        const clampY = (v: number) => Math.max(-0.15 * H, Math.min(1.15 * H, v));
-        const vIn = middle ? V : away * V * (1 + 0.6 * rank);
-        const vOut = middle ? -V : vIn;
-        const m = half + 0.06 * W;
-        // entry: from the end side's frame edge onto the straight run
-        const xe = ltr ? x1 : x0;
-        const P0 = { x: ltr ? W + m : -m, y: clampY(y + vIn) };
-        const dxIn = Math.abs(P0.x - xe);
-        const entry: Ribbon['entry'] = [P0, { x: P0.x + sigma * 0.35 * dxIn, y: P0.y }, { x: xe - sigma * 0.5 * dxIn, y }, { x: xe, y }];
-        const xs = ltr ? x0 : x1;
-        const Q3 = { x: ltr ? -m : W + m, y: clampY(y + vOut) };
-        const dxOut = Math.abs(Q3.x - xs);
-        const exit: Ribbon['exit'] = [{ x: xs, y }, { x: xs + sigma * 0.5 * dxOut, y }, { x: Q3.x - sigma * 0.35 * dxOut, y: Q3.y }, Q3];
+        let x0 = rc.x0 - 1.4 * PAD * S;
+        let x1 = rc.x1 + 1.4 * PAD * S;
+        if (subbed) {
+          x0 = Math.min(x0, outL - 0.6 * half);
+          x1 = Math.max(x1, outR + 0.6 * half);
+          outL = x0;
+          outR = x1;
+        }
+        const { entry, exit } = swoops(i, y, half, x0, x1);
         return { entry, exit, y, half, color, edge: `color-mix(in srgb, ${color} 72%, ${s.palette.text})` };
       });
+      if (subbed) ribbons.push(subBand(s, rows.slice(sub), rects.slice(sub), size, sub, swoops));
       s.place = { x: 0, y: 0, rot: 0 };
       s.frame = { x: safe.cx, y: safe.cy, r: 0, s: 1 };
       s.bounds = null;
       s.data.layout = { size, rows: ribbons } satisfies RibbonSection;
+    }
+
+    /**
+     * The sub lines' companion band: a pale tint of the next accent, one band round all the lines, the ink the
+     * palette's text (or bg, whichever reads better on the tint); emphasised sub words take the accent that reads
+     * best on it.
+     */
+    function subBand(s: Section, rows: Row[], rects: RowRect[], size: number, i: number, swoops: (i: number, y: number, half: number, x0: number, x1: number) => Pick<Ribbon, 'entry' | 'exit'>): Ribbon {
+      const S = size * rows[0]!.f;
+      const { bg, text, accents } = s.palette;
+      const color = mixHex(host.accent(i + s.index, s), bg, 0.72);
+      const ink = contrast(text, color) >= contrast(bg, color) ? text : bg;
+      const best = [...accents].sort((a, b) => contrast(b, color) - contrast(a, color))[0];
+      const loud = best && contrast(best, color) >= 3 ? best : ink;
+      for (const r of rows) if (r.kind === 'text') for (const x of r.toks) x.u.data.layout = { ink: x.u.emphasis ? loud : ink, row: i } satisfies RibbonUnit;
+      const top = rects[0]!.top;
+      const bottom = rects.at(-1)!.bottom;
+      const y = (top + bottom) / 2;
+      const half = (bottom - top) / 2 + PAD * S;
+      const x0 = Math.min(...rects.map((r) => r.x0)) - 1.4 * PAD * S;
+      const x1 = Math.max(...rects.map((r) => r.x1)) + 1.4 * PAD * S;
+      const { entry, exit } = swoops(i, y, half, x0, x1);
+      return { entry, exit, y, half, color, edge: `color-mix(in srgb, ${color} 80%, ${text})`, sub: true };
     }
   },
 });

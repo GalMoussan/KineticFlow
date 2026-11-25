@@ -4,7 +4,7 @@
  * box), a cubic Hermite for C1 camera paths, and HTML escaping for marquee runs. Page-side only.
  */
 import type { Host, Section } from '../contract.ts';
-import { chooseRows, lightDark, placeRows, roleBlocks, stackSize, type Row, type RowGeom, type StackOpts } from './rowset.ts';
+import { chooseRowsSub, lightDark, placeRows, roleBlocks, stackSize, type Row, type RowGeom, type StackOpts } from './rowset.ts';
 
 export type Fit = StackOpts['fit'];
 
@@ -28,12 +28,15 @@ export function stackOpts(host: Host, s: Section, fit: Fit, o: BlockOpts): Stack
   return { gap: 0.26, leading: o.leading, headroom: 0, fit, cap: o.cap, hi: o.hi ?? host.zoomRange(s)[1] * 1.005, align: 'center' };
 }
 
-/** The section's rows (role blocks, k words per packed row as center-stack chooses them) and their base size in `fit`. */
+/**
+ * The section's rows (role blocks, k words per packed row as center-stack chooses them; a sub line wrapped under them)
+ * and their base size in `fit`.
+ */
 export function blockRows(host: Host, s: Section, fit: Fit, o: BlockOpts): { rows: Row[]; size: number; so: StackOpts } {
   const so = stackOpts(host, s, fit, o);
   const blocks = roleBlocks(host, s, { plain: o.plain, wt: o.wt ?? 900, pin: o.pin ?? true });
   const wide = fit.x1 - fit.x0 > 1.3 * (fit.y1 - fit.y0);
-  return { ...chooseRows(host, blocks, so, wide), so };
+  return { ...chooseRowsSub(host, blocks, so, wide), so };
 }
 
 /** Places `rows` centred in `so.fit` (badge colours from the palette); sets units, place, frame and bounds. */
@@ -162,4 +165,14 @@ export function bandTimes(
   const fade1 = scroll1;
   const fade0 = Math.max(scroll0, fade1 - 0.32);
   return { scroll0, scroll1, fade0, fade1 };
+}
+
+/**
+ * The hold start ticker-bands locks on. With a sub line the lock lands just before the first sub word, so the sub
+ * words land one by one on the locked plate; without one it is the section's hold start.
+ */
+export function bandHold(s: Section): number {
+  let first = Number.POSITIVE_INFINITY;
+  for (const u of s.units) if (u.item >= 0 && u.kind === 'sub' && u.at < first) first = u.at;
+  return first < s.timing.holdStart ? Math.max(s.timing.in, first - 0.06) : s.timing.holdStart;
 }

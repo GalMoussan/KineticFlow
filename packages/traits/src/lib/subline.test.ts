@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SUB_OF_BIG, subLanding, subScale, subUnits } from './subline.ts';
+import { SUB_OF_BIG, subLanding, subScale, subUnits, wrapSub } from './subline.ts';
 
 test('subScale is 38% of the largest big line and never above the smallest', () => {
   assert.equal(subScale([]), SUB_OF_BIG);
@@ -40,4 +40,14 @@ test('subLanding is a rising tick and silent before 0.6s', () => {
   assert.ok(c);
   assert.ok(c.weight <= 0.35);
   assert.equal(c.pitch, 8);
+});
+
+test('wrapSub uses the fewest lines and balances them', () => {
+  assert.deepEqual(wrapSub([], 1, 10), []);
+  assert.deepEqual(wrapSub([3, 3, 3], 1, 20), [[0, 1, 2]]);
+  // greedy at 10 would give [0,1] [2] … balanced keeps 2 lines but evens them
+  assert.deepEqual(wrapSub([4, 4, 4, 4], 1, 14), [[0, 1], [2, 3]]);
+  assert.deepEqual(wrapSub([2, 2, 2, 2, 2], 1, 9), [[0, 1, 2], [3, 4]]);
+  // a word wider than the line sits alone
+  assert.deepEqual(wrapSub([12, 2, 2], 1, 8), [[0], [1, 2]]);
 });

@@ -2,7 +2,12 @@ import type { SoundCue } from '@reel/core';
 import { clamp01 } from '@reel/runtime';
 import { defineReveal } from '../../../contract.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
+
+/** Sub words fade up into their slot at their own landing: rise (em of the word) and span (s). */
+const SUB_RISE = 0.35;
+const SUB_SPAN = 0.32;
 
 export default defineReveal({
   meta,
@@ -17,15 +22,27 @@ export default defineReveal({
     const k = section.motion.enter(clamp01((t - start) / Math.max(0.05, dur)));
     for (const u of section.units) {
       if (!u.revealed) continue;
-      u.ch.opacity *= k;
-      u.ch.visible &&= k > 0.004;
+      let o = k;
+      if (u.item >= 0 && u.kind === 'sub') {
+        const ks = section.motion.enter(clamp01((t - (u.at - 0.06)) / SUB_SPAN));
+        o *= ks;
+        u.ch.ity += Math.round((1 - ks) * SUB_RISE * u.font.size);
+      }
+      u.ch.opacity *= o;
+      u.ch.visible &&= o > 0.004;
     }
   },
-  /** One lock as the credit arrives, never during the music's fade-in. The layout owns the roll whooshes. */
-  sounds({ section }) {
+  /** One lock as the credit arrives, never during the music's fade-in; a light tick per sub word. The layout owns the roll whooshes. */
+  sounds({ host, section }) {
     const cues: SoundCue[] = endcardStinger(section);
     const t = Math.max(section.timing.in, 0.62);
     if (t < section.timing.holdEnd) cues.push({ t, kind: 'pop', weight: 0.32, pitch: 1, section: section.id });
+    let si = 0;
+    for (const u of section.units) {
+      if (!u.revealed || u.item < 0 || u.kind !== 'sub' || !Number.isFinite(u.at)) continue;
+      const c = subLanding(u.at, si++, host.pan(u));
+      if (c) cues.push(c);
+    }
     return cues;
   },
 });

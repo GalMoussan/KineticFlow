@@ -105,8 +105,10 @@ export default defineAxis({
       if (!tb) continue;
       const e = m.inOut(clamp01((t - (u.at - LEAD)) / params.entry));
       const phase = (t - t0) / period - params.lag * Math.max(0, u.tags.line);
-      const held = params.depth * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase));
-      let b = 1 - e + e * held;
+      // the small line under the big words inhales from half-narrow and breathes at a third of the depth
+      const sub = u.kind === 'sub';
+      const held = (sub ? 0.35 : 1) * params.depth * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase));
+      let b = (sub ? 0.5 : 1) * (1 - e) + e * held;
       b += (1 - b) * out;
       if (out > 0) u.ch.opacity *= 1 - out;
       if (b < 1e-3) continue;

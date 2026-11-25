@@ -4,11 +4,13 @@
  * decoration of the next card: fill, border, and a scaled copy of its words (item < 0, so QA ignores it). The last
  * card has no hole. Preview pieces hide at `out`, the frame the real next layer becomes visible.
  */
-import type { Section, Host } from '../../../contract.ts';
+import { visualOrder } from '@reel/runtime';
+import type { Section, Host, Metrics, Unit } from '../../../contract.ts';
 import { defineLayout } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
 import { placeBlock, stackOpts } from '../../../lib/scroll.ts';
-import { chooseRows, placeTok, roleBlocks } from '../../../lib/rowset.ts';
+import { chooseRowsSub, placeTok, roleBlocks } from '../../../lib/rowset.ts';
+import { SUB_OF_BIG, SUB_WEIGHT, subUnits, wrapSub } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Box {
@@ -71,7 +73,7 @@ function placeBig(host: Host, s: Section, fit: Fit, cap: number, plain: number, 
   s.place = { x: 0, y: 0, rot: 0 };
   s.frame = { x: host.safe.cx, y: host.safe.cy, r: 0, s: 1 };
   if (!blocks.length || fit.y1 - fit.y0 < 24 || fit.x1 - fit.x0 < 24) return;
-  const { rows, size } = chooseRows(host, blocks, so, false);
+  const { rows, size } = chooseRowsSub(host, blocks, so, false);
   placeBlock(host, s, rows, size, so);
   for (const u of s.units) if (u.item >= 0) u.z = 3;
 }
@@ -94,7 +96,7 @@ function paintHole(host: Host, s: Section, next: Section, hole: Box, nest: numbe
 
 /** Decoration copy of `next`'s words (and logos, when it is a closed end card). Not a content unit. */
 function placePreview(host: Host, s: Section, next: Section, fit: Fit): void {
-  const words = next.units.filter((u) => u.item >= 0 && !!u.text && u.kind !== 'logos');
+  const words = next.units.filter((u) => u.item >= 0 && !!u.text && u.kind !== 'logos' && u.kind !== 'sub');
   const logos = next.units.some((u) => u.kind === 'logos') && host.reel.logos.length > 0;
   const width = fit.x1 - fit.x0;
   const height = fit.y1 - fit.y0;
@@ -102,10 +104,14 @@ function placePreview(host: Host, s: Section, next: Section, fit: Fit): void {
   const wt = 700;
   const gap = 0.14;
   const ms = words.map((u) => host.metrics(u.text, wt, u.ltr));
-  const width1 = Math.max(1, ...ms.map((m) => m.bl + m.br));
-  const height1 = ms.reduce((a, m) => a + m.ia + m.id, 0) + gap * Math.max(0, words.length - 1);
+  const bigW = Math.max(1, ...ms.map((m) => m.bl + m.br));
+  const bigH = ms.reduce((a, m) => a + m.ia + m.id, 0) + gap * Math.max(0, words.length - 1);
   const logoShare = logos ? (words.length ? 0.36 : 0.86) : 0;
   const textH = height * (1 - logoShare) - (logos && words.length ? 0.04 * height : 0);
+  // a wide hole lets the caption spread as wide as the big words would be at full height
+  const cap = miniCaption(host, subUnits(next.units), Math.max(bigW, (0.9 * bigH * width) / Math.max(1, textH)));
+  const width1 = cap ? Math.max(bigW, cap.w) : bigW;
+  const height1 = cap ? bigH + cap.h : bigH;
   const S = words.length ? Math.max(1, Math.min(width / width1, Math.max(1, textH) / Math.max(0.01, height1))) : 0;
   const blockH = S * height1;
   const cx = (fit.x0 + fit.x1) / 2;
@@ -124,6 +130,21 @@ function placePreview(host: Host, s: Section, next: Section, fit: Fit): void {
     placeTok(u, m, cx - inkW / 2, top + m.ia * S, S, wt);
     top += (m.ia + m.id + gap) * S;
   });
+  if (cap) {
+    // the loop already stepped one word gap past the last big word
+    top += (CAP_GAP - gap) * S;
+    const fs = SUB_OF_BIG * S;
+    for (const line of cap.lines) {
+      const base = top + line.ia * fs;
+      let x = cx - (line.w * fs) / 2;
+      for (const { src, m } of line.toks) {
+        const u = host.deco(s, { deco: 'mini-word', text: src.text, ltr: src.ltr, revealed: true, color: s.palette.text, z: 1 });
+        placeTok(u, m, x, base, fs, SUB_WEIGHT);
+        x += (m.bl + m.br + SUB_GAP) * fs;
+      }
+      top = base + (line.id + SUB_LEADING) * fs;
+    }
+  }
   if (!logos) return;
   const b = logoBadge(host, s, host.reel.logos, width, {
     logoH: height * logoShare * 0.7,
@@ -137,6 +158,43 @@ function placePreview(host: Host, s: Section, next: Section, fit: Fit): void {
   const u = host.deco(s, { deco: 'mini-logo', revealed: true, z: 1, mount: b.mount, mountKey: b.key });
   u.box = { x: cx - b.w / 2, y: fit.y1 - b.h - 2, w: b.w, h: b.h };
   u.innerStyle = { width: `${b.w.toFixed(2)}px`, height: `${b.h.toFixed(2)}px` };
+}
+
+/** Gap between the miniature's big words and its caption (em of the big words); word gap and leading (em of the sub). */
+const CAP_GAP = 0.24;
+const SUB_GAP = 0.28;
+const SUB_LEADING = 0.16;
+
+interface CaptionLine {
+  /** Tokens in visual order. */
+  toks: { src: Unit; m: Metrics }[];
+  /** Width, ink ascent and descent (em of the sub). */
+  w: number;
+  ia: number;
+  id: number;
+}
+
+/**
+ * The next card's sub line for the miniature: balanced lines no wider than `maxW` (em of the big words; or its widest
+ * sub word), each in visual order. Width and height (with the gap above) in em of the big words; null without a sub.
+ */
+function miniCaption(host: Host, subs: readonly Unit[], maxW: number): { w: number; h: number; lines: CaptionLine[] } | null {
+  const words = subs.filter((u) => !!u.text);
+  if (!words.length) return null;
+  const ms = words.map((u) => host.metrics(u.text, SUB_WEIGHT, u.ltr));
+  const ws = ms.map((m) => m.bl + m.br);
+  const dir = words[0]!.section.dir;
+  const lines = wrapSub(ws, SUB_GAP, Math.max(maxW / SUB_OF_BIG, ...ws)).map((ix): CaptionLine => {
+    const order = visualOrder(ix.map((i) => words[i]!.text), dir).map((k) => ix[k]!);
+    return {
+      toks: order.map((i) => ({ src: words[i]!, m: ms[i]! })),
+      w: ix.reduce((a, i) => a + ws[i]!, 0) + SUB_GAP * (ix.length - 1),
+      ia: Math.max(...ix.map((i) => ms[i]!.ia)),
+      id: Math.max(...ix.map((i) => ms[i]!.id)),
+    };
+  });
+  const h = lines.reduce((a, l) => a + l.ia + l.id, 0) + SUB_LEADING * (lines.length - 1);
+  return { w: SUB_OF_BIG * Math.max(...lines.map((l) => l.w)), h: CAP_GAP + SUB_OF_BIG * h, lines };
 }
 
 function panel(

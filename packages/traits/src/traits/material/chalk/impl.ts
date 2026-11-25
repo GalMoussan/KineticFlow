@@ -31,7 +31,8 @@ export default defineMaterial({
   setup({ host, section, params }) {
     if (!params.puffs) return;
     for (const u of [...section.units]) {
-      if (u.item < 0 || !u.inkBox || !u.text || !Number.isFinite(u.at)) continue;
+      // the small line under the big words writes without dust puffs (its landing is the reveal's light tick)
+      if (u.item < 0 || !u.inkBox || !u.text || !Number.isFinite(u.at) || u.kind === 'sub') continue;
       const S = u.font.size;
       const end = (section.dir === 'rtl') === !u.ltr;
       const x = u.box.x + u.textAt.x + u.inkBox.x + (end ? 0 : u.inkBox.w);

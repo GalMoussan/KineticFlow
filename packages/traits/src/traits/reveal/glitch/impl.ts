@@ -15,6 +15,7 @@ import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { frameCanvas, groupToScreen } from '../../../lib/overlay.ts';
 import { endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Data {
@@ -73,6 +74,16 @@ function stateAt(u: Unit, s: Section, bursts: number[], params: P, t: number): S
   }
   // Holds are the real text only: no slices, split, stutter or blocks.
   if (t >= s.timing.holdStart) return null;
+  if (u.kind === 'sub') {
+    // the small line: a short, faint stutter-in, then the real text (no shock, no after-shock bursts)
+    const sst = u.at - 0.5 * params.lead;
+    if (t < sst) return 'hidden';
+    if (t >= u.at) return null;
+    const step = Math.floor((t - sst) * rate);
+    const k = step / rate / (0.5 * params.lead);
+    const n = 100 + step;
+    return { I: 0.35 * (1 - 0.6 * k), n, blank: hash(n * 3.1 + u.id * 0.7) < 0.12 * (1 - k) };
+  }
   if (t < st) return 'hidden';
   if (t < u.at) {
     const step = Math.floor((t - st) * rate);
@@ -194,10 +205,12 @@ export default defineReveal({
         put(el, 'color', rc < 0.12 * I ? a1 : rc < 0.22 * I ? a2 : color);
         put(el, 'text-shadow', sp >= 1 ? `${sp}px 0 var(--split-a), ${-sp}px 0 var(--split-b)` : 'none');
       }
+      // sub words: band shifts and split only, no datamosh blocks and no canvas macroblocks or tear lines
+      const sub = u.kind === 'sub';
       for (let b = 0; b < BLOCKS; b++) {
         const el = cp.els[K + b]!;
         const seed = n * 6.1 + b * 3.3 + u.id;
-        if (blank || hash(seed) >= params.blocks * I * 0.9) {
+        if (blank || sub || hash(seed) >= params.blocks * I * 0.9) {
           put(el, 'visibility', 'hidden');
           put(el, 'transform', 'none');
           put(el, 'clip-path', 'none');
@@ -218,7 +231,7 @@ export default defineReveal({
         put(el, 'color', b ? a0 : color);
         put(el, 'text-shadow', 'none');
       }
-      if (blank || params.blocks <= 0) continue;
+      if (blank || sub || params.blocks <= 0) continue;
       // colour macroblocks and tear lines over the word
       const q = Math.max(8, Math.round(S / 7));
       const ox = u.box.x + u.textAt.x - pad;
@@ -255,10 +268,14 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.85);
     let i = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || u.item < 0 || !Number.isFinite(u.at)) continue;
       const pan = host.pan(u);
-      if (u.tags.hero || u.emphasis || section.role === 'title' || section.role === 'cta') {
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+      } else if (u.tags.hero || u.emphasis || section.role === 'title' || section.role === 'cta') {
         out.push({ t: u.at, kind: 'impact', weight: sizeWeight(u, host.H, 0.4), pan });
       } else out.push({ t: u.at, kind: 'tick', weight: 0.45, pitch: (i++ % 4) * 2, pan });
     }

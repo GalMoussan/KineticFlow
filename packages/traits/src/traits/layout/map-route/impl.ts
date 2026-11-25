@@ -6,13 +6,17 @@ import { defineLayout, type Host, type Section, type Unit } from '../../../contr
 import { logoBadge, pinSVG } from '../../../lib/deco.ts';
 import { STREET, measure, routeThrough, waypoints, type Pt } from '../../../lib/map.ts';
 import { mixHex, rgba } from '../../../lib/neon.ts';
-import { fitRows, packed, placeRows, row, tok, type Block, type Tok } from '../../../lib/typeset.ts';
+import { SUB_WEIGHT, subScale, wrapSub } from '../../../lib/subline.ts';
+import { advanceOf, fitRows, inkOf, packed, placeRows, row, stackHeight, tok, wordGap, type Block, type Row, type Tok } from '../../../lib/typeset.ts';
 import { meta } from './meta.ts';
 
 const GAP = 0.2;
 const LEAD = 0.28;
 const MARGIN = 10;
 const PIN_GAP = 16;
+/** Caption (sub line): leading between its lines and the space above it, × its size. */
+const CAP_LEAD = 0.3;
+const CAP_GAP = 0.8;
 
 /** `layer.data.layout`. Geometry and clocks only — no text metrics. */
 export interface MapLayout {
@@ -187,6 +191,11 @@ function placeBadge(host: Host, s: Section, u: Unit, x: number, y: number, w: nu
 
 function placeText(host: Host, s: Section, words: Unit[], box: Box): void {
   if (box.w < 16 || box.h < 16 || !words.length) return;
+  const subs = words.filter((u) => u.kind === 'sub');
+  if (subs.length) {
+    placeWithCaption(host, s, words.filter((u) => u.kind !== 'sub'), subs, box);
+    return;
+  }
   const blocks = cover(words, blocksFor(s, words));
   const live = blocks.filter((b) => (b.kind === 'row' ? b.row.kind === 'box' || b.row.toks.length : b.toks.length));
   if (!live.length) return;
@@ -210,6 +219,45 @@ function placeText(host: Host, s: Section, words: Unit[], box: Box): void {
     leading: LEAD,
     wordSpace: true,
   });
+}
+
+/**
+ * The big words fitted as `placeText` fits them, then the sub words as a caption under them in the same card: at
+ * `subScale` of the big lines, the text face at `SUB_WEIGHT`, balanced lines with measured word spaces. The big
+ * block's height shrinks until both fit; the pair is centred in the card's text box.
+ */
+function placeWithCaption(host: Host, s: Section, big: Unit[], subs: Unit[], box: Box): void {
+  const live = cover(big, blocksFor(s, big)).filter((b) => (b.kind === 'row' ? b.row.kind === 'box' || b.row.toks.length : b.toks.length));
+  const toks = subs.map((u) => tok(u, u.emphasis ? 700 : SUB_WEIGHT, 'text'));
+  const adv = toks.map((t) => advanceOf(inkOf(host, t)));
+  const space = wordGap(host, toks);
+  const opt = { left: box.x, width: box.w, align: 'center' as const, dir: s.dir, gap: GAP, wordSpace: true };
+  let h = box.h;
+  for (let i = 0; ; i++) {
+    let rows: Row[] = [];
+    let size = 12;
+    let bigH = 0;
+    let sizes = [12];
+    if (live.length) {
+      const fit = fitRows(host, live, { w: box.w, h, cap: 0.22 * Math.min(box.w, box.h), gap: GAP, leading: LEAD, wide: box.w >= box.h, wordSpace: true });
+      rows = fit.rows;
+      size = Number.isFinite(fit.size) && fit.size >= 1 ? fit.size : 12;
+      bigH = stackHeight(host, rows, GAP, LEAD, true) * size;
+      sizes = rows.map((r) => r.f * size);
+    }
+    const Ss = subScale(sizes);
+    const lines: Row[] = wrapSub(adv, space, box.w / Ss).map((ix) => ({ kind: 'text', f: 1, toks: ix.map((j) => toks[j]!) }));
+    const gap = rows.length ? CAP_GAP * Ss : 0;
+    const capH = stackHeight(host, lines, GAP, CAP_LEAD, true) * Ss;
+    const next = Math.min(h, bigH) * 0.92;
+    if (bigH + gap + capH <= box.h || i >= 14 || next < 16) {
+      const top = box.y + Math.max(0, (box.h - bigH - gap - capH) / 2);
+      if (rows.length) placeRows(host, rows, size, { ...opt, top, leading: LEAD });
+      placeRows(host, lines, Ss, { ...opt, top: top + bigH + gap, leading: CAP_LEAD });
+      return;
+    }
+    h = next;
+  }
 }
 
 function blocksFor(s: Section, words: Unit[]): Block[] {

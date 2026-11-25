@@ -23,6 +23,7 @@ import {
 } from '../../../lib/chat.ts';
 import { pinSVG } from '../../../lib/deco.ts';
 import { mixHex } from '../../../lib/neon.ts';
+import { SUB_WEIGHT, subScale, subUnits, wrapSub } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 // sizes in multiples of the thread's base text size F (rows: of the row's own size)
@@ -43,6 +44,9 @@ const TYPE_H = 1.32;
 const SCROLL = 0.42; // seconds per scroll
 const ANCHOR = 0.3; // newest bubble's bottom above the safe-area bottom
 const HEAD = 0.25; // kept free under the safe-area top
+// a message with a sub line: the message text grows into a headline, the sub is a caption under it
+const SUB_BIG = 1.5; // big words × this when the bubble has a sub
+const SUB_GAP = 0.14; // extra space above the caption, × the big rows' size
 
 interface Word {
   u: Unit;
@@ -56,6 +60,8 @@ interface Row {
   S: number;
   w: number;
   desc: number;
+  /** Extra space above this row (the caption under a message's text). */
+  gap?: number;
 }
 
 /** A piece of a bubble in bubble coordinates (origin: the bubble rect's top-left). */
@@ -207,7 +213,7 @@ export default defineLayout({
         let base = y;
         let prevDesc = -1;
         rows.forEach((r, li) => {
-          base += prevDesc < 0 ? ASC * r.S : prevDesc + LEAD * r.S + ASC * r.S;
+          base += prevDesc < 0 ? ASC * r.S : prevDesc + LEAD * r.S + ASC * r.S + (r.gap ?? 0);
           prevDesc = r.desc * r.S;
           let x = center ? xL + (iw - r.w) / 2 : rtl ? xL + iw - r.w : xL;
           for (const i of visualOrder(r.words.map((w) => w.u.text), host.dir)) {
@@ -422,11 +428,27 @@ export default defineLayout({
             });
           default: {
             const title = s.role === 'title';
-            const ws = us.map((u, i) => {
-              if (title && i === us.length - 1) u.tags.hero = true;
-              return word(u, title ? 1.25 * F : F, title || u.emphasis ? 700 : 400);
+            const subs = subUnits(us);
+            const big = subs.length ? us.filter((u) => u.kind !== 'sub') : us;
+            const k = subs.length ? SUB_BIG : 1;
+            const ws = big.map((u, i) => {
+              if (title && i === big.length - 1) u.tags.hero = true;
+              return word(u, (title ? 1.25 * F : F) * k, title || u.emphasis ? 700 : 400);
             });
-            return [compose(s, 'msg', side, wrap(ws, maxInner), { title, ...range(us) })];
+            const rows = wrap(ws, maxInner);
+            if (subs.length) {
+              // caption: balanced lines at ~38% of the message text, no heavier than its lightest word
+              const bigS = rows.map((r) => r.S);
+              const S = subScale(bigS);
+              const wt = Math.min(SUB_WEIGHT, ...ws.map((w) => w.wt));
+              const sw = subs.map((u) => word(u, S, wt));
+              wrapSub(sw.map((w) => w.w), WGAP * S, maxInner).forEach((ix, li) => {
+                const words = ix.map((i) => sw[i]!);
+                const w = words.reduce((a, x) => a + x.w, 0) + (words.length - 1) * WGAP * S;
+                rows.push({ words, S, w, desc: DESC, ...(li ? {} : { gap: SUB_GAP * Math.min(...bigS) }) });
+              });
+            }
+            return [compose(s, 'msg', side, rows, { title, ...range(us) })];
           }
         }
       });

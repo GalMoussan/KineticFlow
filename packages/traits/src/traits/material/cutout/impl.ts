@@ -39,7 +39,8 @@ export default defineMaterial({
     if (!params.tape) return;
     const tape = rgba(mixHex(section.palette.bg, '#FFFFFF', 0.6), 0.72);
     for (const u of [...section.units]) {
-      if (u.item < 0 || !u.inkBox || !u.text || !Number.isFinite(u.at)) continue;
+      // the small line under the big words is pasted without tape (its landing is the reveal's light tick)
+      if (u.item < 0 || !u.inkBox || !u.text || !Number.isFinite(u.at) || u.kind === 'sub') continue;
       const S = u.font.size;
       const end = hash(u.item * 3 + section.index * 11) < 0.5;
       const x = u.box.x + u.textAt.x + u.inkBox.x + (end ? u.inkBox.w : 0);

@@ -42,6 +42,42 @@ export function blockFs(blocks: readonly { kind: string; f?: number; row?: { kin
   return fs;
 }
 
+/** Greedy line count of `widths` (logical order) at line width `maxW`; a word wider than `maxW` sits alone. */
+function greedy(widths: readonly number[], gap: number, maxW: number): number[][] {
+  const lines: number[][] = [];
+  let line: number[] = [];
+  let w = 0;
+  widths.forEach((wi, i) => {
+    if (line.length && w + gap + wi > maxW) {
+      lines.push(line);
+      line = [];
+      w = 0;
+    }
+    w += (line.length ? gap : 0) + wi;
+    line.push(i);
+  });
+  if (line.length) lines.push(line);
+  return lines;
+}
+
+/**
+ * Balanced wrap of the sub words into as few lines as fit `maxW` (indices, logical order per line): the fewest lines
+ * the greedy wrap needs, then the narrowest width that keeps that count, so lines come out near-equal instead of a
+ * long line and a widow. `widths` and `gap` are in one unit (px or em at the sub size).
+ */
+export function wrapSub(widths: readonly number[], gap: number, maxW: number): number[][] {
+  if (!widths.length) return [];
+  const n = greedy(widths, gap, maxW).length;
+  let lo = Math.max(...widths);
+  let hi = Math.max(lo, maxW);
+  for (let it = 0; it < 30; it++) {
+    const mid = (lo + hi) / 2;
+    if (greedy(widths, gap, mid).length <= n) hi = mid;
+    else lo = mid;
+  }
+  return greedy(widths, gap, hi);
+}
+
 /**
  * One light tick for sub word `i` (0-based among the section's sub words).
  * Null before 0.6 s. Weight rises 0.18 → 0.35; pitch rises by 2 up to 8.

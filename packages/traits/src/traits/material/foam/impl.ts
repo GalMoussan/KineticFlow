@@ -12,7 +12,9 @@ interface Foam {
   seed: number;
 }
 
-const foamed = (u: Unit) => u.item >= 0 && !!u.inkBox && !!u.text && Number.isFinite(u.at) && (u.tags.hero || u.emphasis || u.tags.numeric);
+/** Key words get a foam blob; the small line under the big words never does (calm, one tick per sub word). */
+const foamed = (u: Unit) =>
+  u.item >= 0 && !!u.inkBox && !!u.text && Number.isFinite(u.at) && u.kind !== 'sub' && (u.tags.hero || u.emphasis || u.tags.numeric);
 
 export default defineMaterial({
   meta,

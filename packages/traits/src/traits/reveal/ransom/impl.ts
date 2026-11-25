@@ -3,6 +3,7 @@ import { clamp01, hash, lerp } from '@reel/runtime';
 import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Params = { lead: number; duration: number; stagger: number; spin: number; size: number; exit: number };
@@ -39,8 +40,14 @@ export default defineReveal({
       const { st, stg } = plan(section, u, params);
       c.visible &&= t >= st;
       const S = u.font.size || host.H * 0.1;
-      // the slap: from `size` × and a spin down to rest with the motion's overshoot
+      // the slap: from `size` × and a spin down to rest with the motion's overshoot. The small line under the big
+      // words is pasted on gently: a little larger at most, a third of the spin, no bounce.
+      const sub = u.kind === 'sub';
       const slap = (k: number, key: number) => {
+        if (sub) {
+          const e = m.enter(k);
+          return { s: lerp(1 + 0.35 * (params.size - 1), 1, e), rot: (1 - e) * side(key) * params.spin * 0.35, o: clamp01(k * 3) };
+        }
         const e = Math.max(0, m.bounce(k, 2.2));
         return { s: lerp(params.size, 1, Math.min(1, e)) * (e > 1 ? 1 - 0.25 * (e - 1) : 1), rot: (1 - m.enter(k)) * side(key) * params.spin, o: clamp01(k * 5) };
       };
@@ -89,12 +96,21 @@ export default defineReveal({
     const ex = params.exit ? exitWindow(section) : null;
     return ex && ex.t0 < t1 && ex.t1 >= t0 ? ex : null;
   },
-  /** Each word slaps down with a pop (pitch climbing), a few letter ticks inside it, the hero lands as an impact. */
+  /**
+   * Each word slaps down with a pop (pitch climbing), a few letter ticks inside it, the hero lands as an impact; a
+   * sub word is one light tick.
+   */
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     let n = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
+      if (u.kind === 'sub' && u.item >= 0) {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+        continue;
+      }
       const { st, stg } = plan(section, u, params);
       const hit = st + HIT * params.duration;
       const pan = host.pan(u);

@@ -177,7 +177,8 @@ export default defineAxis({
       let w = floor + (base - floor) * swell;
       let dip = 0;
       for (const c of fronts) dip += Math.exp(-(((q - c) / sigma) ** 2));
-      w -= params.depth * Math.min(1, dip) * amp * swell;
+      // the small line under the big words only swells in; the beat waves run through the big words
+      if (u.kind !== 'sub') w -= params.depth * Math.min(1, dip) * amp * swell;
       if (kx > 0) {
         const drain = m.inOut(clamp01(kx * (1 + SPREAD) - q * SPREAD));
         w -= (w - floor) * drain;
