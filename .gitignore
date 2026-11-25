@@ -10,6 +10,7 @@ assets/models/
 sidecar/.venv/
 sidecar/music-ai/.venv/
 sidecar/music-ai/.cache/
+sidecar/sketch/.venv/
 .env
 .DS_Store
 spikes/**/out/*.mp4

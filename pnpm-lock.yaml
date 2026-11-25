@@ -136,6 +136,9 @@ importers:
       esbuild:
         specifier: ^0.25.12
         version: 0.25.12
+      perfect-freehand:
+        specifier: 1.2.2
+        version: 1.2.2
       playwright:
         specifier: ^1.65.1
         version: 1.65.1
@@ -677,6 +680,9 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  perfect-freehand@1.2.2:
+    resolution: {integrity: sha512-eh31l019WICQ03pkF3FSzHxB8n07ItqIQ++G5UV8JX0zVOXzgTGCqnRR0jJ2h9U8/2uW4W4mtGJELt9kEV0CFQ==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -1131,6 +1137,8 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.33.0
 
   nanoid@3.3.20: {}
+
+  perfect-freehand@1.2.2: {}
 
   picocolors@1.1.1: {}
 

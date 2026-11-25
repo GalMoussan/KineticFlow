@@ -11,10 +11,11 @@
     "@reel/runtime": "workspace:*",
     "@reel/styles": "workspace:*",
     "@reel/timing": "workspace:*",
+    "@reel/traits": "workspace:*",
     "esbuild": "^0.25.12",
+    "perfect-freehand": "1.2.2",
     "playwright": "^1.65.1",
-    "pngjs": "^7.0.0",
-    "@reel/traits": "workspace:*"
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "@types/pngjs": "^6.0.5"

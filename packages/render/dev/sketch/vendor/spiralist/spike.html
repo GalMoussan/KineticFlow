@@ -1,0 +1,167 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>spiralist spike</title>
+<script type="module">
+let extractLines, buildStyled, rasterize, processTone, buildField, buildContour;
+try {
+const linesMod = await import('./js/lineart/lines.js');
+const stylesMod = await import('./js/lineart/styles.js');
+const toneMod = await import('./js/tone.js');
+const freeMod = await import('./js/freeline.js');
+extractLines = linesMod.extractLines;
+buildStyled = stylesMod.buildStyled;
+rasterize = toneMod.rasterize;
+processTone = toneMod.processTone;
+buildField = toneMod.buildField;
+buildContour = freeMod.buildContour;
+} catch (e) {
+  window.__spikeError = String(e && e.stack || e);
+  window.__spikeReady = true;
+  throw e;
+}
+
+const STRIDE = 7;
+
+function iz(n) {
+  const r = Math.round(n);
+  return r === 0 ? 0 : r;
+}
+
+/** Arc-length subsample of a STRIDE-7 geometry down to maxPts [x, y] pairs in circle units. */
+function sampleGeom(geom, maxPts) {
+  const n = geom.n | 0;
+  const d = geom.data;
+  const out = [];
+  if (n < 1) return out;
+  if (n === 1) return [[d[0], d[1]]];
+  const total = d[(n - 1) * STRIDE + 3];
+  const count = Math.min(n, maxPts);
+  if (!(total > 0) || n <= maxPts) {
+    for (let i = 0; i < n; i++) out.push([d[i * STRIDE], d[i * STRIDE + 1]]);
+    return out;
+  }
+  let i = 0;
+  for (let k = 0; k < count; k++) {
+    const want = (k / (count - 1)) * total;
+    while (i < n - 2 && d[(i + 1) * STRIDE + 3] < want) i++;
+    const s0 = d[i * STRIDE + 3];
+    const s1 = d[(i + 1) * STRIDE + 3];
+    const span = s1 - s0;
+    const t = span > 1e-8 ? Math.min(1, Math.max(0, (want - s0) / span)) : 0;
+    const x = d[i * STRIDE] + (d[(i + 1) * STRIDE] - d[i * STRIDE]) * t;
+    const y = d[i * STRIDE + 1] + (d[(i + 1) * STRIDE + 1] - d[i * STRIDE + 1]) * t;
+    out.push([x, y]);
+  }
+  return out;
+}
+
+/** Circle-unit samples → one integer stroke in a box that matches the photo's aspect. */
+function toStroke(samples, imgW, imgH) {
+  const m = Math.max(imgW, imgH);
+  const boxW = Math.max(1, Math.min(1000, Math.round(1000 * imgW / m)));
+  const boxH = Math.max(1, Math.min(1000, Math.round(1000 * imgH / m)));
+  const x0 = -imgW / m, x1 = imgW / m, y0 = -imgH / m, y1 = imgH / m;
+  const pts = [];
+  for (const [x, y] of samples) {
+    const X = (x - x0) / (x1 - x0);
+    const Y = (y - y0) / (y1 - y0);
+    // Drop the white letterbox. A frame line around the photo is not the subject.
+    if (X < -0.004 || X > 1.004 || Y < -0.004 || Y > 1.004) continue;
+    const q = [iz(Math.min(1, Math.max(0, X)) * boxW), iz(Math.min(1, Math.max(0, Y)) * boxH)];
+    const prev = pts[pts.length - 1];
+    if (prev && prev[0] === q[0] && prev[1] === q[1]) continue;
+    pts.push(q);
+  }
+  return { pts, box: [boxW, boxH] };
+}
+
+function num(timings, key) {
+  const v = timings && timings[key];
+  return typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null;
+}
+
+window.runSpike = async function runSpike(opts) {
+  const img = new Image();
+  img.src = opts.dataUrl;
+  await img.decode();
+  const imgW = img.naturalWidth || img.width;
+  const imgH = img.naturalHeight || img.height;
+  const crop = {
+    x: 0.5,
+    y: 0.5,
+    zoom: Math.min(imgW, imgH) / Math.max(imgW, imgH),
+    rotation: 0,
+  };
+  const out = { width: imgW, height: imgH };
+
+  const tM = performance.now();
+  const lines = await extractLines(img, crop, {
+    detail: opts.matisseDetail,
+    size: 512,
+    engine: 'model',
+    backend: 'wasm',
+    face: true,
+    silhouette: false,
+  });
+  const linesMs = performance.now() - tM;
+  if (lines.engine !== 'model' || lines.modelError) {
+    throw new Error('informative-drawings did not run (' + lines.engine + '): ' + (lines.modelError || 'no error'));
+  }
+  // A repeat call on the same image reuses the worker's ink cache (timings.cached, no backend field).
+  if (!lines.timings || (!lines.timings.cached && lines.timings.backend !== 'wasm')) {
+    throw new Error('expected wasm backend, got ' + (lines.timings && lines.timings.backend));
+  }
+  const tB = performance.now();
+  const matisse = buildStyled('matisse', lines, {
+    seed: opts.seed,
+    sheetMm: 210,
+    wobble: 0.3,
+    hatch: 0,
+    silhouette: false,
+  });
+  const buildMs = performance.now() - tB;
+  const matisseStroke = toStroke(sampleGeom(matisse, 6000), imgW, imgH);
+  out.matisse = {
+    pts: matisseStroke.pts,
+    box: matisseStroke.box,
+    info: {
+      backend: lines.timings.backend,
+      engine: lines.engine,
+      modelLoadMs: num(lines.timings, 'modelLoad'),
+      inferenceMs: num(lines.timings, 'inference'),
+      faceMs: num(lines.timings, 'face'),
+      linesMs: Math.round(linesMs),
+      buildMs: Math.round(buildMs),
+      geomN: matisse.n | 0,
+      extractedStrokes: (lines.strokes || []).length,
+      cached: !!lines.timings.cached,
+    },
+  };
+
+  const tC = performance.now();
+  const raster = rasterize(img, crop, 640);
+  const tone = processTone(raster, {});
+  const field = buildField(raster, tone.L, { rings: opts.contourRings, flip: false });
+  const contour = buildContour(
+    field,
+    { rings: opts.contourRings, seed: opts.seed, wobble: 0 },
+    { shape: 'square', x: -0.82, y: -0.82, seed: opts.seed },
+    {},
+  );
+  const contourMs = performance.now() - tC;
+  const contourStroke = toStroke(sampleGeom(contour, 6000), imgW, imgH);
+  out.contour = {
+    pts: contourStroke.pts,
+    box: contourStroke.box,
+    info: {
+      engine: 'contour',
+      contourMs: Math.round(contourMs),
+      geomN: contour.n | 0,
+      rings: opts.contourRings,
+    },
+  };
+  return out;
+};
+
+window.__spikeReady = true;
+</script>
