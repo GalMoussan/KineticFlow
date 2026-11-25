@@ -8,12 +8,15 @@
 import { defineLayout, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
 import { mixHex } from '../../../lib/neon.ts';
-import { fitRows, packed, row, rowDims, setLine, tok, type Block, type Tok } from '../../../lib/typeset.ts';
+import { fitRows, inkOf, packed, row, rowDims, setLine, stackHeight, tok, type Block, type Row, type Tok } from '../../../lib/typeset.ts';
+import { blockFs, SUB_WEIGHT, subScale, subUnits, wrapSub } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 const GAP = 0.27; // word gap, em
 const TAB_GAP = 0.32; // between the numeral tab and the item text, em
 const BADGE = { logoH: 0.9, pad: 0.2, gap: 0.3 }; // in base sizes
+const SUB_MUTE = 0.22; // caption (sub) ink: the palette text this far towards the background
+const SUB_ROOM = 0.7; // a caption may wrap wider than the slabs, up to this share of the fit width
 
 /** One row of the stack, as the reveal needs it. */
 export interface StackRow {
@@ -98,15 +101,50 @@ export default defineLayout({
         extraH: 2 * PAD,
         wide: true,
       });
-      const rows = fit.rows.map((r) => (r.kind === 'text' && !r.indent && r.toks[0]!.u.kind !== 'list-title' ? { ...r, indent: 2 * PAD } : r));
+      const rows: Row[] = fit.rows.map((r) => (r.kind === 'text' && !r.indent && r.toks[0]!.u.kind !== 'list-title' ? { ...r, indent: 2 * PAD } : r));
       // refit with the packs' padding counted (the size can only shrink)
       const widest = Math.max(...rows.map((r) => rowDims(host, r, GAP).w));
-      const size = Math.min(fit.size, FIT_W / hi / widest);
+      let size = Math.min(fit.size, FIT_W / hi / widest);
+      // sub: plain caption lines under the stack (balanced, at subScale), then the size refitted to all rows
+      const subs = subUnits(s.units);
+      if (subs.length) {
+        const f = subScale(blockFs(bs));
+        const toks = subs.map((u) => tok(u, SUB_WEIGHT));
+        const ws = toks.map((t) => {
+          const m = inkOf(host, t);
+          return (m.bl + m.br) * f;
+        });
+        for (const ix of wrapSub(ws, GAP * f, Math.max(widest, (SUB_ROOM * FIT_W) / hi / size))) {
+          rows.push({ kind: 'text', f, toks: ix.map((i) => toks[i]!) });
+        }
+        const w = Math.max(...rows.map((r) => rowDims(host, r, GAP).w));
+        const h = stackHeight(host, rows, GAP, params.gap + 2 * PAD) + 2 * PAD;
+        size = Math.min(size, FIT_W / hi / w, FIT_H / hi / h);
+      }
 
       const kindOf = (r: (typeof rows)[number]) =>
-        r.kind === 'box' ? 'badge' : r.toks[0]!.u.kind === 'list-title' ? 'header' : r.toks[0]!.u.kind === 'list-item' ? 'item' : 'slab';
+        r.kind === 'box'
+          ? 'badge'
+          : r.toks[0]!.u.kind === 'list-title'
+            ? 'header'
+            : r.toks[0]!.u.kind === 'list-item'
+              ? 'item'
+              : r.toks[0]!.u.kind === 'sub'
+                ? 'sub'
+                : 'slab';
       const slabW = Math.max(...rows.filter((r) => kindOf(r) === 'slab' || kindOf(r) === 'item').map((r) => rowDims(host, r, GAP).w * size), 0);
       const slabX = safe.cx - slabW / 2;
+      // caption block: start-aligned with the slab text above when it fits inside the slabs, else centred
+      let subL = 0;
+      let subR = 0;
+      if (subs.length) {
+        const subW = Math.max(...rows.filter((r) => kindOf(r) === 'sub').map((r) => rowDims(host, r, GAP).w * size));
+        const inset = PAD * size * rows.filter((r) => kindOf(r) !== 'sub').at(-1)!.f;
+        const inside = slabW > 0 && subW <= slabW - 2 * inset;
+        subL = inside ? slabX + inset : safe.cx - subW / 2;
+        subR = inside ? slabX + slabW - inset : safe.cx + subW / 2;
+      }
+      const subInk = mixHex(s.palette.text, s.palette.bg, SUB_MUTE);
       const lead = (a: number, b: number) => ((params.gap + 2 * PAD) * size * (a + b)) / 2;
       // total height, to centre the stack
       let total = 0;
@@ -130,6 +168,17 @@ export default defineLayout({
         const kind = kindOf(r);
         const units: Unit[] = r.kind === 'box' ? [r.u] : r.toks.map((x) => x.u);
         const at = Math.min(...units.map((u) => u.at));
+        if (kind === 'sub' && r.kind === 'text') {
+          // a plain caption line; each word lands on its own (no stack row, no push)
+          const lineW = d.w * size;
+          const left = rtl ? subR - lineW : subL;
+          setLine(host, r.toks, s.dir, left, y + d.ia * size, S, GAP, i);
+          for (const u of units) u.data.layout = { row: -1, ...(u.emphasis ? {} : { ink: subInk }) } satisfies StackUnit;
+          x0b = Math.min(x0b, left);
+          x1b = Math.max(x1b, left + lineW);
+          y += (d.ia + d.id) * size;
+          return;
+        }
         let top = y;
         let bottom = y + (d.ia + d.id) * size;
         if (r.kind === 'box') {

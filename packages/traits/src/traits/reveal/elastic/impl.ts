@@ -3,6 +3,7 @@ import { clamp01 } from '@reel/runtime';
 import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'drop' | 'jelly' | 'spring';
@@ -16,6 +17,7 @@ interface Params {
 }
 
 function choose(u: Unit): Anim {
+  if (u.kind === 'sub') return 'drop';
   if (u.kind === 'logos' || u.tags.numeric || !u.text) return 'spring';
   if ((u.emphasis || u.tags.hero) && u.graphemes > 1) return 'jelly';
   return 'drop';
@@ -88,6 +90,11 @@ export default defineReveal({
         const { sx, sy } = spring(t, st, params);
         c.isx *= sx;
         c.isy *= sy;
+      } else if (u.kind === 'sub') {
+        const k = clamp01((t - st) / Math.max(0.05, params.fall));
+        const e = section.motion.enter(k);
+        c.ity -= (1 - e) * 0.4 * S;
+        c.opacity *= e;
       } else if (anim === 'drop' || !n) {
         const l = land(t, u.at, 1.4 * S, params);
         c.ity += l.dy;
@@ -117,10 +124,16 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.75);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const { anim } = u.data.reveal as { anim: Anim };
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (anim === 'jelly' && u.parts.length > 1) {
         const stg = staggerOf(u.parts.length, params);
         out.push({ t: u.at, kind: 'pop', weight: 0.55, pitch: Math.min(7, k), pan });

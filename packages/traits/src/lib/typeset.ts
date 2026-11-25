@@ -6,6 +6,7 @@
  */
 import { visualOrder } from '@reel/runtime';
 import type { Host, Metrics, Unit } from '../contract.ts';
+import { blockFs, subScale } from './subline.ts';
 
 /** One unit on a line, with the weight (and font slot) it is set in. */
 export interface Tok {
@@ -158,6 +159,16 @@ export type Block = { kind: 'row'; row: Row } | { kind: 'pack'; f: number; toks:
 
 export const row = (f: number, toks: Tok[], indent = 0, track = 0): Block => ({ kind: 'row', row: { kind: 'text', f, toks, indent, track } });
 export const packed = (f: number, toks: Tok[]): Block => ({ kind: 'pack', f, toks });
+
+/**
+ * Packs `subs` under the rows already in `blocks`, at `subScale` of those rows.
+ * Returns the same array when `subs` is empty (no-sub geometry stays the caller's).
+ */
+export function appendSub(blocks: Block[], subs: readonly Tok[]): Block[] {
+  if (!subs.length) return blocks;
+  blocks.push(packed(subScale(blockFs(blocks)), [...subs]));
+  return blocks;
+}
 
 /**
  * As `center-stack`: ⌈m/k⌉ rows of near-equal length (longer rows first); in runs of small words a word of ≤ 3

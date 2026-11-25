@@ -60,18 +60,23 @@ function sidesOf(s: Section): { a: Unit[]; b: Unit[]; vs: Unit | null } {
     case 'endcard':
       return two(of('word'), of('logos'));
     default: {
-      if (content.length < 2) return { a: content, b: [], vs: null };
+      const subs = content.filter((u) => u.kind === 'sub');
+      const body = subs.length ? content.filter((u) => u.kind !== 'sub') : content;
+      if (body.length < 2) return { a: subs.length ? [...body, ...subs] : content, b: [], vs: null };
       // the split point that balances the two sides' graphemes (first on ties)
-      const total = content.reduce((q, u) => q + u.graphemes, 0);
+      const total = body.reduce((q, u) => q + u.graphemes, 0);
       let best = 1;
       let acc = 0;
       let bestD = Infinity;
-      for (let k = 1; k < content.length; k++) {
-        acc += content[k - 1]!.graphemes;
+      for (let k = 1; k < body.length; k++) {
+        acc += body[k - 1]!.graphemes;
         const d = Math.abs(total - 2 * acc);
         if (d < bestD) [best, bestD] = [k, d];
       }
-      return { a: content.slice(0, best), b: content.slice(best), vs: null };
+      const a = body.slice(0, best);
+      const b = body.slice(best);
+      if (subs.length) (b.length ? b : a).push(...subs);
+      return { a, b, vs: null };
     }
   }
 }
@@ -90,7 +95,10 @@ export default defineLayout({
     const wide = safe.w > 1.3 * safe.h;
     for (const s of layer.sections) {
       const content = s.units.filter((u) => u.item >= 0);
-      if (s.role === 'title' && content.length) content.at(-1)!.tags.hero = true;
+      if (s.role === 'title') {
+        const ws = content.filter((u) => u.kind === 'word');
+        if (ws.length) ws.at(-1)!.tags.hero = true;
+      }
       const { a, b, vs } = sidesOf(s);
       const split = b.length > 0;
       const hi = host.zoomRange(s)[1] * 1.005;
@@ -200,15 +208,38 @@ export default defineLayout({
             font: { family: 'display', size: S, weight: 900 },
           });
         }
-        if (!text.length) return;
-        const wts = text.map((u) => fontWeight(host, u.emphasis || u.tags.hero || u.tags.numeric ? 900 : u.kind === 'weekday' || u.kind === 'city' || u.kind === 'list-title' ? 600 : 800));
-        const ms = text.map((u, i) => host.metrics(u.text, wts[i]!, u.ltr));
-        const f = fitLines(ms, z.w, z.h, s.role === 'list' ? 5 : 4);
-        placeLines(text, ms, wts, { ...f, S: Math.min(f.S, CAP) }, z, 'center', 'middle', s.dir);
-        const pop = host.accent(2, s);
-        for (const u of text) {
-          const strong = u.emphasis || u.tags.hero;
-          u.data.layout = { ink: strong && contrastOf(pop, fill) >= 2.5 ? pop : contrastOf(p.text, fill) >= contrastOf(p.bg, fill) ? p.text : p.bg };
+        const small = text.filter((u) => u.kind === 'sub');
+        const big = small.length ? text.filter((u) => u.kind !== 'sub') : text;
+        const zone = small.length ? { ...z, h: z.h * 0.78 } : z;
+        if (!big.length && !small.length) return;
+        const paint = (us: Unit[]) => {
+          const pop = host.accent(2, s);
+          for (const u of us) {
+            const strong = u.emphasis || u.tags.hero;
+            u.data.layout = { ink: strong && contrastOf(pop, fill) >= 2.5 ? pop : contrastOf(p.text, fill) >= contrastOf(p.bg, fill) ? p.text : p.bg };
+          }
+        };
+        if (big.length) {
+          const wts = big.map((u) => fontWeight(host, u.emphasis || u.tags.hero || u.tags.numeric ? 900 : u.kind === 'weekday' || u.kind === 'city' || u.kind === 'list-title' ? 600 : 800));
+          const ms = big.map((u, i) => host.metrics(u.text, wts[i]!, u.ltr));
+          const f = fitLines(ms, zone.w, zone.h, s.role === 'list' ? 5 : 4);
+          placeLines(big, ms, wts, { ...f, S: Math.min(f.S, CAP) }, zone, 'center', 'middle', s.dir);
+          paint(big);
+          if (small.length) {
+            const band = { x: z.x, y: z.y + z.h * 0.78, w: z.w, h: z.h * 0.22 };
+            const sw = small.map(() => fontWeight(host, 400));
+            const sms = small.map((u, i) => host.metrics(u.text, sw[i]!, u.ltr));
+            const sf = fitLines(sms, band.w, band.h, 3);
+            const bigS = Math.min(f.S, CAP);
+            placeLines(small, sms, sw, { ...sf, S: Math.min(sf.S, 0.42 * bigS) }, band, 'center', 'middle', s.dir);
+            paint(small);
+          }
+        } else if (small.length) {
+          const sw = small.map(() => fontWeight(host, 400));
+          const sms = small.map((u, i) => host.metrics(u.text, sw[i]!, u.ltr));
+          const sf = fitLines(sms, z.w, z.h, 3);
+          placeLines(small, sms, sw, { ...sf, S: Math.min(sf.S, CAP * 0.42) }, z, 'center', 'middle', s.dir);
+          paint(small);
         }
       };
       typeset(a, zA, fillA);

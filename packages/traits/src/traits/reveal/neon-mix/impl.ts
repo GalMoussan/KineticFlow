@@ -8,6 +8,7 @@ import { clamp01, hash, lerp } from '@reel/runtime';
 import { defineReveal, type Part, type Section, type Unit } from '../../../contract.ts';
 import { EXITS, exitWindow } from '../../../lib/neon.ts';
 import { digitParts, endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'slam' | 'rise' | 'drop' | 'track' | 'pop' | 'scramble' | 'slot';
@@ -17,6 +18,7 @@ const REF = 0.4; // `duration` at which the lengths below are reel9's
 const EM = 280; // reel9's typical font size: px effects (blur, split) scale with size / EM
 
 function choose(u: Unit, s: Section): Anim {
+  if (u.kind === 'sub') return 'rise';
   if (u.deco === 'pin') return 'drop';
   if (u.kind === 'logos' || !u.text) return 'rise';
   if (u.tags.hero) return 'pop';
@@ -203,11 +205,17 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const sp = params.duration / REF;
     const out: SoundCue[] = endcardStinger(section);
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const { anim } = u.data.reveal as { anim: Anim };
       const st = u.at - params.lead;
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       const n = u.parts.length;
       if (u.hit) out.push({ t: u.hit.t, kind: 'impact', weight: sizeWeight(u, host.H, 0.5), pan });
       else if (anim === 'pop') out.push({ t: u.at, kind: 'pop', weight: 0.65, pan });

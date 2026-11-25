@@ -10,6 +10,7 @@ import { defineReveal, type Unit } from '../../../contract.ts';
 import { along, fieldOf, streamline } from '../../../lib/flow.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Data {
@@ -75,28 +76,33 @@ export default defineReveal({
       }
       const n = u.parts.length;
       const stg = staggerOf(n, params.stagger);
+      // the small line drifts in over a shorter stretch of its streamline, quicker, with less tilt and blur
+      const sub = u.kind === 'sub';
+      const Du = sub ? 0.6 * D : D;
+      const reach = sub ? 0.35 : 1;
+      const calm = sub ? 0.5 : 1;
       const land0 = u.at + params.lead - (n - 1) * stg;
-      c.visible &&= t >= land0 - D;
+      c.visible &&= t >= land0 - Du;
       const stgx = n > 1 ? Math.min(0.03, (0.4 * exDur) / (n - 1)) : 0;
       u.parts.forEach((p, j) => {
         const i = p.index;
         const pc = p.ch;
-        const k = clamp01((t - (land0 + i * stg - D)) / D);
+        const k = clamp01((t - (land0 + i * stg - Du)) / Du);
         const e = k >= 1 ? 1 : 0.55 * m.enter(k) + 0.45 * m.inOut(k);
         let along1: { x: number; y: number; a: number } | null = null;
         let dx = 0;
         let dy = 0;
         if (e < 1) {
           const back = L.back[j]!;
-          along1 = along(back, (1 - e) * L.steps);
+          along1 = along(back, (1 - e) * L.steps * reach);
           dx = along1.x - back[0]!;
           dy = along1.y - back[1]!;
           // heading downstream = upstream tangent turned around; tilt by how far the flow turns from its mean
           let turn = along1.a + Math.PI - bias;
           turn -= Math.round(turn / (2 * Math.PI)) * 2 * Math.PI;
-          pc.rot += Math.max(-params.tilt, Math.min(params.tilt, turn * DEG * 0.5)) * (1 - e);
+          pc.rot += Math.max(-params.tilt, Math.min(params.tilt, turn * DEG * 0.5)) * (1 - e) * calm;
           pc.opacity *= clamp01(k * 3);
-          pc.blur += (1 - e) * 2.5;
+          pc.blur += (1 - e) * 2.5 * calm;
         }
         if (ex && t >= ex.t0) {
           const kx = clamp01((t - ex.t0 - (n - 1 - i) * stgx) / Math.max(1e-3, exDur - (n - 1) * stgx));
@@ -118,12 +124,18 @@ export default defineReveal({
     const ex = exitWindow(section);
     return ex && ex.t0 < t1 && ex.t1 >= t0 ? { ...ex, d: Math.min(params.exit, ex.t1 - ex.t0) } : null;
   },
-  /** A soft shimmer per landing (pitch rising through the section), a breath of wind on exits. */
+  /** A soft shimmer per landing (pitch rising through the section), a light tick per sub word, a breath of wind on exits. */
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.7);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || u.item < 0 || !Number.isFinite(u.at)) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at + params.lead, si++, host.pan(u));
+        if (c) out.push(c);
+        continue;
+      }
       const accent = u.tags.hero || u.emphasis;
       out.push({ t: u.at + params.lead, kind: 'shimmer', weight: accent ? 0.42 : 0.28, pitch: Math.min(7, k++), pan: host.pan(u) });
     }

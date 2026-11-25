@@ -36,7 +36,8 @@ export default defineMaterial({
     const n = Math.round(params.sparkles);
     if (!n) return;
     for (const u of [...section.units]) {
-      if (u.item < 0 || !u.inkBox || !u.text || !Number.isFinite(u.at) || !(u.tags.hero || u.emphasis)) continue;
+      // sparkles stay on the big key words; an emphasised sub word is candy-coloured only
+      if (u.item < 0 || !u.inkBox || !u.text || !Number.isFinite(u.at) || !(u.tags.hero || u.emphasis) || u.kind === 'sub') continue;
       const S = u.font.size;
       const ib = u.inkBox;
       const x0 = u.box.x + u.textAt.x + ib.x;

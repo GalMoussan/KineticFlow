@@ -21,7 +21,7 @@ const SETTLE = 0.3;
 const shifts = new WeakMap<Unit, number[]>();
 
 /** How strongly a unit follows the bass: the hero fully, emphasised units at 65 %, the rest not at all. */
-const strength = (u: Unit) => (u.item < 0 || !u.text ? 0 : u.tags.hero ? 1 : u.emphasis || u.tags.ordinal >= 0 ? 0.65 : 0);
+const strength = (u: Unit) => (u.item < 0 || !u.text || u.kind === 'sub' ? 0 : u.tags.hero ? 1 : u.emphasis || u.tags.ordinal >= 0 ? 0.65 : 0);
 
 /** The section that owns t for the stage kick: [prev.out, out), the last one to the end. */
 const owns = (s: Section, t: number) => t >= (s.prev?.timing.out ?? -Infinity) && (t < s.timing.out || !s.next);

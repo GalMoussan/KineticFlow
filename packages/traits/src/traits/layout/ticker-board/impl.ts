@@ -5,7 +5,7 @@
  */
 import { defineLayout, type Host, type Section } from '../../../contract.ts';
 import { inkOn, safeFit } from '../../../lib/rowset.ts';
-import { bandTimes, centerPhrase, centredBlock, easeOut3, smoothstep, span01 } from '../../../lib/scroll.ts';
+import { bandHold, bandTimes, centerPhrase, centredBlock, easeOut3, smoothstep, span01 } from '../../../lib/scroll.ts';
 import { meta } from './meta.ts';
 
 interface Band {
@@ -26,9 +26,10 @@ interface Plate {
 
 const ANGLES = [22, -16];
 
+/** The marquee runs the big words only; a sub line stays the small caption on the plate. */
 function phraseOf(s: Section): string {
   return s.units
-    .filter((u) => u.item >= 0 && u.text)
+    .filter((u) => u.item >= 0 && u.text && u.kind !== 'sub')
     .map((u) => u.text)
     .join('   ');
 }
@@ -51,7 +52,7 @@ export default defineLayout({
       const cap = Math.min(params.cap * (fit.x1 - fit.x0), 0.7 * (fit.y1 - fit.y0));
       centredBlock(host, s, fit, { cap, plain: params.plain, leading: params.leading });
       for (const u of s.units) if (u.item >= 0) u.z = 2;
-      const times = bandTimes(s.timing.in, s.timing.holdStart, s.window);
+      const times = bandTimes(s.timing.in, bandHold(s), s.window);
       const plate = host.deco(s, {
         deco: 'plate',
         box: { x: plateX, y: plateY, w: plateW, h: plateH },

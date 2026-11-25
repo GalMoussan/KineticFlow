@@ -2,6 +2,7 @@ import type { SoundCue } from '@reel/core';
 import { clamp01, quart } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { digitParts, endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'count' | 'roll' | 'drop' | 'pop' | 'grow' | 'fade';
@@ -99,11 +100,17 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.8);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const d = u.data.reveal as Data;
       const st = startOf(u, params.lead);
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (d.anim === 'grow' && u.deco === 'bar-fill') out.push({ t: st, until: st + params.count, kind: 'riser', weight: 0.24, pan });
       if (u.item < 0) continue;
       if (d.anim === 'count') {

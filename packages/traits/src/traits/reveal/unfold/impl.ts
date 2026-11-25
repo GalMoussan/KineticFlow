@@ -1,12 +1,15 @@
 import type { SoundCue } from '@reel/core';
 import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
-import { foldK, foldWindows } from '../../../lib/scroll.ts';
+import { foldK, foldWindows, smoothstep, span01 } from '../../../lib/scroll.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 /** Emphasis cycles the three dark desk inks. Body stays near-black. Gold is too light on the cream sheet. */
 const INKS = ['#C4502B', '#2B6F8A', '#6A4C93'];
 const BODY = '#1C1714';
+/** A sub word unfolds downwards (clip from the top) at its own landing over SUB_SPAN s, once the sheet is flat. */
+const SUB_SPAN = 0.28;
 
 function ink(s: Section, u: Unit): string {
   if (u.tags.hero || u.emphasis) return INKS[s.index % 3]!;
@@ -34,15 +37,28 @@ export default defineReveal({
       u.ch.color = ink(section, u);
       u.ch.visible &&= flat;
       if (!flat) u.ch.opacity *= 0;
+      else if (u.item >= 0 && u.kind === 'sub') {
+        const ks = smoothstep(span01(t, Math.max(u.at - 0.06, w.open1), Math.max(u.at - 0.06, w.open1) + SUB_SPAN));
+        u.ch.clip = Math.min(u.ch.clip, ks);
+        u.ch.clipFrom = 'top';
+        u.ch.opacity *= Math.min(1, 0.25 + ks);
+        u.ch.visible &&= ks > 0.004;
+      }
     }
   },
-  sounds({ section, params }) {
+  sounds({ host, section, params }) {
     const w = windows(section);
     const cues: SoundCue[] = endcardStinger(section);
     if (params.swipe > 0 && w.open0 >= 0.62 && w.open1 > w.open0) {
       cues.push({ t: w.open0, until: w.open1, kind: 'swipe', weight: params.swipe, section: section.id });
     }
     if (params.lock > 0 && w.open1 >= 0.62) cues.push({ t: w.open1, kind: 'pop', weight: params.lock, pitch: 2, section: section.id });
+    let si = 0;
+    for (const u of section.units) {
+      if (!u.revealed || u.item < 0 || u.kind !== 'sub' || !Number.isFinite(u.at)) continue;
+      const c = subLanding(u.at, si++, host.pan(u));
+      if (c) cues.push(c);
+    }
     return cues;
   },
 });

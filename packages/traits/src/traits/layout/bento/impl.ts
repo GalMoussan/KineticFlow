@@ -142,7 +142,10 @@ export default defineLayout({
     };
     for (const s of layer.sections) {
       const content = s.units.filter((u) => u.item >= 0);
-      if (s.role === 'title' && content.length) content.at(-1)!.tags.hero = true;
+      if (s.role === 'title') {
+        const ws = content.filter((u) => u.kind === 'word');
+        if (ws.length) ws.at(-1)!.tags.hero = true;
+      }
       for (const u of content) if (u.kind === 'date' || u.kind === 'stat' || u.kind === 'countdown') u.tags.hero = true;
 
       const hi = host.zoomRange(s)[1] * 1.005;
@@ -155,6 +158,12 @@ export default defineLayout({
 
       // icon tiles fill out sparse sections
       const groups = groupsOf(s);
+      const subs = content.filter((u) => u.kind === 'sub');
+      if (subs.length) {
+        const hostG = [...groups].reverse().find((g) => g.kind === 'run' || g.kind === 'hero');
+        if (hostG) hostG.units.push(...subs);
+        else groups.push({ kind: 'run', units: subs, weight: 0.7 });
+      }
       const icons = Math.min(Math.round(params.icons), groups.length <= 3 ? 2 : groups.length <= 5 ? 1 : 0);
       const glyphs: Glyph[] =
         s.role === 'location' ? ['pin', 'arrow'] : s.role === 'datetime' ? ['clock', 'spark'] : (['spark', 'arrow', 'ring'] as Glyph[]).slice(s.index % 3).concat(['spark', 'arrow']);
@@ -165,7 +174,12 @@ export default defineLayout({
       const wts = new Map<Unit, number>();
       const mt = (u: Unit) => host.metrics(u.text, wts.get(u)!, u.ltr);
       for (const t of tiles) {
-        for (const u of t.units) wts.set(u, fontWeight(host, t.kind === 'hero' ? 800 : u.kind === 'weekday' || u.kind === 'city' || u.kind === 'list-title' ? 500 : 700));
+        for (const u of t.units) {
+          wts.set(
+            u,
+            fontWeight(host, u.kind === 'sub' ? 400 : t.kind === 'hero' ? 800 : u.kind === 'weekday' || u.kind === 'city' || u.kind === 'list-title' ? 500 : 700),
+          );
+        }
       }
       const px = (w: number, h: number) => ({ w: w * G.cw + (w - 1) * G.g - 2 * pad, h: h * G.rh + (h - 1) * G.g - 2 * pad });
       /** Font size in a `w × h` cell tile and the share of the tile's inside its content covers. */
@@ -236,9 +250,29 @@ export default defineLayout({
           return;
         }
         if (t.kind === 'icon') return;
-        const ms = t.units.map(mt);
+        const small = t.units.filter((u) => u.kind === 'sub');
+        if (!small.length) {
+          const ms = t.units.map(mt);
+          for (const u of t.units) u.data.layout = { ink };
+          placeLines(t.units, ms, t.units.map((u) => wts.get(u)!), fitLines(ms, inner.w, inner.h), inner, 'start', t.kind === 'hero' ? 'bottom' : 'top', s.dir);
+          return;
+        }
+        const bigU = t.units.filter((u) => u.kind !== 'sub');
+        const topH = inner.h * 0.68;
+        const top = { x: inner.x, y: inner.y, w: inner.w, h: topH };
+        const bot = { x: inner.x, y: inner.y + topH, w: inner.w, h: inner.h - topH };
+        if (bigU.length) {
+          const bms = bigU.map(mt);
+          const bf = fitLines(bms, top.w, top.h);
+          placeLines(bigU, bms, bigU.map((u) => wts.get(u)!), bf, top, 'start', t.kind === 'hero' ? 'bottom' : 'top', s.dir);
+          const sms = small.map(mt);
+          const sf = fitLines(sms, bot.w, bot.h, 3);
+          placeLines(small, sms, small.map((u) => wts.get(u)!), { ...sf, S: Math.min(sf.S, 0.42 * bf.S) }, bot, 'start', 'middle', s.dir);
+        } else {
+          const sms = small.map(mt);
+          placeLines(small, sms, small.map((u) => wts.get(u)!), fitLines(sms, inner.w, inner.h, 3), inner, 'start', 'middle', s.dir);
+        }
         for (const u of t.units) u.data.layout = { ink };
-        placeLines(t.units, ms, t.units.map((u) => wts.get(u)!), fitLines(ms, inner.w, inner.h), inner, 'start', t.kind === 'hero' ? 'bottom' : 'top', s.dir);
       });
 
       // re-pack from the previous bento section, or pop the tiles in before the first landing

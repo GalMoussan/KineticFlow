@@ -7,7 +7,7 @@
  */
 import { defineLayout, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
-import { fitRows, packed, placeRows, row, stackHeight, tok, type Block, type Tok } from '../../../lib/typeset.ts';
+import { appendSub, fitRows, packed, placeRows, row, stackHeight, tok, type Block, type Tok } from '../../../lib/typeset.ts';
 import { meta } from './meta.ts';
 
 const GAP = 0.3; // word gap, em
@@ -48,11 +48,12 @@ export default defineLayout({
       const content = s.units.filter((u) => u.item >= 0);
       const of = (...kinds: string[]) => content.filter((u) => kinds.includes(u.kind)).map((u) => t(u));
       const label = (toks: Tok[]) => (toks.length ? [row(LABEL, toks, 0, TR)] : []);
+      const subs = () => content.filter((u) => u.kind === 'sub').map((u) => t(u, Math.min(WT, 500)));
       switch (s.role) {
         case 'title': {
           const ws = content.filter((u) => u.kind === 'word');
           if (ws.length) ws.at(-1)!.tags.hero = true;
-          return [packed(1, ws.map((u) => t(u)))];
+          return appendSub([packed(1, ws.map((u) => t(u)))], subs());
         }
         case 'datetime':
           return [...label(of('weekday')), ...of('date').map((x) => row(1, [x])), ...of('time').map((x) => row(0.5, [x]))];
@@ -71,7 +72,7 @@ export default defineLayout({
           return out;
         }
         default:
-          return [packed(TEXT, of('word'))];
+          return appendSub([packed(TEXT, of('word'))], subs());
       }
     }
 

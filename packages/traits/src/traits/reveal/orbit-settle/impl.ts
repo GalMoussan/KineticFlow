@@ -9,8 +9,14 @@ import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { partCentre, ride, type Pt } from '../../../lib/pathtext.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import type { OrbitRow, OrbitSection, OrbitUnit } from '../../layout/orbit-ring/impl.ts';
 import { meta } from './meta.ts';
+
+/** Sub words: a quicker settle from a short arc (turns), fading in over the first share of it. */
+const SUB_TRAVEL = 0.75;
+const SUB_SWEEP = 0.08;
+const SUB_FADE = 0.4;
 
 interface Item {
   ch: { tx: number; ty: number; rot: number };
@@ -58,10 +64,14 @@ export default defineReveal({
     for (const u of section.units) {
       const items = riders.get(u);
       if (!items) continue;
-      const st = u.at - params.travel;
+      const calm = u.kind === 'sub';
+      const travel = calm ? SUB_TRAVEL * params.travel : params.travel;
+      const st = u.at - travel;
       u.ch.visible &&= t >= st;
       if (t < st) continue;
-      const enter = section.motion.enter(clamp01((t - st) / params.travel));
+      const k = clamp01((t - st) / travel);
+      if (calm && k < SUB_FADE && !exiting) u.ch.opacity *= k / SUB_FADE;
+      const enter = section.motion.enter(k);
       const e = exiting ? 1 - section.motion.exit(ke) : enter;
       const rowDraw = shown.get(items[0]!.row) ?? 0;
       shown.set(items[0]!.row, Math.max(rowDraw, e));
@@ -73,7 +83,7 @@ export default defineReveal({
         if (!ring) continue;
         const spin = (ring.y < d.cy ? 1 : -1) * (section.dir === 'rtl' ? -1 : 1);
         const rest = Math.atan2(ring.y - d.cy, 0) + (it.home.x - ring.cx) / ring.r;
-        const theta = rest + (1 - orbitK) * sweep * spin;
+        const theta = rest + (1 - orbitK) * (calm ? SUB_SWEEP * Math.PI * 2 : sweep) * spin;
         const ang = (theta + Math.PI / 2) * (1 - settle);
         ride(it.ch, it.home, 0, {
           x: d.cx + ring.r * Math.cos(theta) * (1 - settle) + it.home.x * settle,
@@ -97,8 +107,14 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.7);
     const rows = new Set<number>();
+    let s = 0;
     for (const u of section.units) {
       if (u.item < 0 || !Number.isFinite(u.at)) continue;
+      if (u.kind === 'sub') {
+        const cue = subLanding(u.at, s++, host.pan(u));
+        if (cue) out.push(cue);
+        continue;
+      }
       const row = rowOf(u);
       const pan = host.pan(u);
       const st = Math.max(0.6, u.at - params.travel);

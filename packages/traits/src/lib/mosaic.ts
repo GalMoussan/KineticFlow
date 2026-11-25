@@ -45,6 +45,22 @@ export interface TileRun {
   mask: string;
   /** Glyph colour (read by `material: tile-ink`). */
   ink: string;
+  /** Sub words: `col`, `row`, `cols` count small tiles (`mini` per board cell side), and the letter face colour. */
+  mini?: number;
+  face?: string;
+}
+
+/**
+ * `section.data.layout.strip` of a tile-board section with a sub line: board rows `row … row + rows − 1`, columns
+ * `0 … cols − 1`, cut into `k × k` small tiles (grout `g`, corner radius `r`, whole px). The reveal draws them.
+ */
+export interface TileStrip {
+  row: number;
+  rows: number;
+  cols: number;
+  k: number;
+  g: number;
+  r: number;
 }
 
 /** Background timing params shared with the reveal (the reveal reads the background's defaults if it has none). */

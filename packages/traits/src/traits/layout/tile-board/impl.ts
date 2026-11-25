@@ -9,11 +9,20 @@
 import { hash, visualOrder } from '@reel/runtime';
 import { defineLayout, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
-import type { MosaicGrid, TileRun } from '../../../lib/mosaic.ts';
+import { mix, type MosaicGrid, type TileRun, type TileStrip } from '../../../lib/mosaic.ts';
+import { SUB_WEIGHT, subScale, subUnits, wrapSub } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Block = { kind: 'flow'; us: Unit[] } | { kind: 'line'; u: Unit } | { kind: 'badge'; u: Unit };
-type Row = { kind: 'text'; us: Unit[]; len: number } | { kind: 'badge'; u: Unit; cols: number } | { kind: 'blank' };
+/** `sub`: the sub words' lines on a strip of `rows` board rows cut into SUB_K × SUB_K small tiles; `len` in board cells. */
+type Row =
+  | { kind: 'text'; us: Unit[]; len: number }
+  | { kind: 'badge'; u: Unit; cols: number }
+  | { kind: 'blank' }
+  | { kind: 'sub'; lines: Unit[][]; rows: number; len: number };
+
+/** Small tiles per board cell side on the sub strip (a sub glyph of ~38% of the big one fills its small tile alike). */
+const SUB_K = 3;
 
 /** Logo tile: rows of cells, padding and gap between logos (× pitch). */
 const BADGE = { rows: 2, pad: 0.24, gap: 0.3 };
@@ -38,7 +47,7 @@ function blocksOf(s: Section): Block[] {
     case 'endcard':
       return [...flow(of('word')), ...of('logos').map((u): Block => ({ kind: 'badge', u }))];
     default:
-      return flow(content);
+      return flow(content.filter((u) => u.kind !== 'sub'));
   }
 }
 
@@ -63,6 +72,7 @@ export default defineLayout({
       // the logo tile's width in cells at any pitch (logos 2 rows tall less padding, shrunk to the board if needed)
       const badgeCols = Math.max(1, Math.ceil((BADGE.rows - 2 * BADGE.pad) * aspect + BADGE.gap * Math.max(0, logos.length - 1) + 2 * BADGE.pad - 1e-6));
       const blocks = blocksOf(s);
+      const subs = subUnits(s.units);
 
       const rowsFor = (C: number, blank: boolean): Row[] | null => {
         const rows: Row[] = [];
@@ -92,10 +102,17 @@ export default defineLayout({
             if (cur.length) push({ kind: 'text', us: cur, len: w });
           }
         }
+        if (subs.length) {
+          // the sub line right under the big rows (no blank row), wrapped in small cells, words one small cell apart
+          const lines = wrapSub(subs.map(len), 1, SUB_K * C);
+          const wide = Math.max(...lines.map((l) => l.reduce((a, i) => a + len(subs[i]!), 0) + l.length - 1));
+          if (wide > SUB_K * C) return null;
+          rows.push({ kind: 'sub', lines: lines.map((l) => l.map((i) => subs[i]!)), rows: Math.ceil(lines.length / SUB_K), len: Math.ceil(wide / SUB_K) });
+        }
         return rows;
       };
-      const widthOf = (rows: Row[]) => Math.max(1, ...rows.map((r) => (r.kind === 'text' ? r.len : r.kind === 'badge' ? r.cols : 0)));
-      const heightOf = (rows: Row[]) => rows.reduce((a, r) => a + (r.kind === 'badge' ? BADGE.rows : 1), 0);
+      const widthOf = (rows: Row[]) => Math.max(1, ...rows.map((r) => (r.kind === 'text' || r.kind === 'sub' ? r.len : r.kind === 'badge' ? r.cols : 0)));
+      const heightOf = (rows: Row[]) => rows.reduce((a, r) => a + (r.kind === 'badge' ? BADGE.rows : r.kind === 'sub' ? r.rows : 1), 0);
 
       const hi = host.zoomRange(s)[1] * 1.005;
       const FW = (safe.w - 2) / hi;
@@ -116,7 +133,8 @@ export default defineLayout({
       const airy = best(true);
       const fit = airy.p >= (1 - params.lead) * tight.p ? airy : tight;
       const { rows } = fit;
-      const p = Math.max(8, Math.floor(fit.p));
+      // a sub strip needs whole-pixel small tiles: the pitch a multiple of SUB_K
+      const p = subs.length ? Math.max(3 * SUB_K, SUB_K * Math.floor(fit.p / SUB_K)) : Math.max(8, Math.floor(fit.p));
       const g = Math.max(2, Math.round(params.grout * p));
       const face = p - g;
 
@@ -124,6 +142,7 @@ export default defineLayout({
       const ref = host.metrics(dir === 'rtl' ? 'ש' : 'H', WT, dir !== 'rtl');
       let S = params.font * p;
       for (const u of masks.keys()) {
+        if (u.kind === 'sub') continue;
         for (const gr of graphemes(u.text.replace(/\s+/gu, ''))) {
           const m = host.metrics(gr, WT, u.ltr);
           const gw = m.bl + m.br;
@@ -137,6 +156,31 @@ export default defineLayout({
       S = Math.round(S * 100) / 100;
       const by = p / 2 + (ref.ia * S) / 2; // baseline inside a cell
 
+      // sub glyphs: subScale of the big glyph, smaller if a grapheme would leave its small tile
+      const q = p / SUB_K;
+      const gq = Math.max(1, Math.round(params.grout * q));
+      const faceQ = q - gq;
+      let Ss = 0;
+      let byQ = 0;
+      if (subs.length) {
+        const refQ = host.metrics(dir === 'rtl' ? 'ש' : 'H', SUB_WEIGHT, dir !== 'rtl');
+        Ss = subScale([1]) * S;
+        for (const u of subs) {
+          for (const gr of graphemes(u.text.replace(/\s+/gu, ''))) {
+            const m = host.metrics(gr, SUB_WEIGHT, u.ltr);
+            const gw = m.bl + m.br;
+            if (gw > 0) Ss = Math.min(Ss, (0.84 * faceQ) / gw);
+            const up = m.ia - refQ.ia / 2;
+            const down = m.id + refQ.ia / 2;
+            if (up > 0) Ss = Math.min(Ss, (0.44 * faceQ) / up);
+            if (down > 0) Ss = Math.min(Ss, (0.44 * faceQ) / down);
+          }
+        }
+        Ss = Math.round(Ss * 100) / 100;
+        byQ = q / 2 + (refQ.ia * Ss) / 2;
+      }
+      let strip: TileStrip | null = null;
+
       const Cb = widthOf(rows);
       const Rb = heightOf(rows);
       const ox = Math.round(safe.cx - (Cb * p) / 2);
@@ -148,6 +192,40 @@ export default defineLayout({
       for (const r of rows) {
         if (r.kind === 'blank') {
           rr += 1;
+          continue;
+        }
+        if (r.kind === 'sub') {
+          // small cells: column / row indices in q-pitch units from the board origin
+          const top = rr * SUB_K + Math.floor((SUB_K * r.rows - r.lines.length) / 2);
+          r.lines.forEach((ln, li) => {
+            const order = visualOrder(ln.map((u) => u.text), dir).map((i) => ln[i]!);
+            const n0 = ln.reduce((a, u) => a + len(u), 0) + ln.length - 1;
+            let col = dir === 'rtl' ? Math.ceil((SUB_K * Cb - n0) / 2) : Math.floor((SUB_K * Cb - n0) / 2);
+            const row = top + li;
+            for (const u of order) {
+              const mask = masks.get(u)!;
+              const n = mask.length;
+              const m = host.metrics(u.text, SUB_WEIGHT, u.ltr);
+              const mid = Ss / 2 + ((m.fa - m.fd) * Ss) / 2;
+              const textAt = { x: 0, y: byQ - mid };
+              Object.assign(u, {
+                box: { x: ox + col * q, y: oy + row * q, w: n * q, h: q },
+                textAt,
+                inkBox: { x: gq / 2 - textAt.x, y: gq / 2 - textAt.y, w: n * q - gq, h: faceQ },
+                baseline: oy + row * q + byQ,
+                font: { family: 'display', size: Ss, weight: SUB_WEIGHT },
+              });
+              u.tags.line = line;
+              // secondary face: the letter face dimmed towards the grout; emphasised words on the first accent
+              const face = u.emphasis ? host.accent(0, s) : mix(s.palette.text, 78, s.palette.bg);
+              u.data.layout = { col, row, cols: n, rows: 1, mask, ink, mini: SUB_K, face } satisfies TileRun;
+              col += n + 1;
+            }
+            line++;
+          });
+          for (let j = 0; j < r.rows; j++) for (let i = 0; i < Cb; i++) occ.push(i, rr + j);
+          strip = { row: rr, rows: r.rows, cols: Cb, k: SUB_K, g: gq, r: Math.max(1, Math.round(0.12 * q)) };
+          rr += r.rows;
           continue;
         }
         if (r.kind === 'badge') {
@@ -209,7 +287,7 @@ export default defineLayout({
       s.place = { x: 0, y: 0, rot: 0 };
       s.frame = { x: safe.cx, y: safe.cy, r: 0, s: 1 };
       s.bounds = { x0: ox, y0: oy, x1: ox + Cb * p, y1: oy + Rb * p };
-      s.data.layout = { p, cols: Cb, rows: Rb };
+      s.data.layout = strip ? { p, cols: Cb, rows: Rb, strip } : { p, cols: Cb, rows: Rb };
       if (si) return;
       // the layer's grid (one section per layer: tile-board is not a world layout)
       const corners = [

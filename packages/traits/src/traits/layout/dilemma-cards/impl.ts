@@ -6,6 +6,7 @@
  */
 import { defineLayout, type Section, type Unit } from '../../../contract.ts';
 import { connectorIndex, type DilemmaUnit } from '../../../lib/dilemma.ts';
+import { blockFs, subScale, SUB_WEIGHT } from '../../../lib/subline.ts';
 import { mixHex, rgba } from '../../../lib/neon.ts';
 import {
   chooseRows,
@@ -47,13 +48,15 @@ function textBlocks(units: Unit[], plain: number, wt: number): Block[] {
     if (run.length) out.push({ kind: 'pack', f: plain, toks: run });
     run = [];
   };
-  for (const u of units) {
+  const subs = units.filter((u) => u.kind === 'sub');
+  for (const u of subs.length ? units.filter((u) => u.kind !== 'sub') : units) {
     if (u.emphasis) {
       flush();
       out.push({ kind: 'row', row: { kind: 'text', f: 1, toks: [{ u, wt }] } });
     } else run.push({ u, wt });
   }
   flush();
+  if (subs.length) out.push({ kind: 'pack', f: subScale(blockFs(out).length ? blockFs(out) : [plain]), toks: subs.map((u) => ({ u, wt: Math.min(wt, SUB_WEIGHT) })) });
   return out;
 }
 
@@ -111,11 +114,14 @@ export default defineLayout({
       };
       for (const u of content) u.data.layout = { kind: 'text', surface: fill } satisfies DilemmaUnit;
 
-      const ci = s.role in SEALED ? connectorIndex(content) : -1;
+      const body = content.some((u) => u.kind === 'sub') ? content.filter((u) => u.kind !== 'sub') : content;
+      const ci = s.role in SEALED ? connectorIndex(body) : -1;
       if (ci > 0) {
         // ── two options ──
-        const A = content.slice(0, ci);
-        const B = content.slice(ci + 1);
+        const A = body.slice(0, ci);
+        const B = body.slice(ci + 1);
+        const subs = content.filter((u) => u.kind === 'sub');
+        if (subs.length) (B.length ? B : A).push(...subs);
         const vs = content[ci]!;
         const inner = inset(fit, p * hi);
         // options are the point of the section: every word at full size

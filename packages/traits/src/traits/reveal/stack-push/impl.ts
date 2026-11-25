@@ -2,6 +2,7 @@ import type { SoundCue } from '@reel/core';
 import { clamp01 } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding, subUnits } from '../../../lib/subline.ts';
 import type { StackData, StackUnit } from '../../layout/list-stack/impl.ts';
 import { meta } from './meta.ts';
 
@@ -62,7 +63,13 @@ export default defineReveal({
       out.push({ t: row.at, kind: 'pop', weight: numbered ? 0.55 : 0.38, pitch: Math.min(7, r), pan });
     });
     if (!rows.length) {
-      for (const u of section.units) if (u.item >= 0 && Number.isFinite(u.at)) out.push({ t: u.at, kind: 'pop', weight: 0.35, pan: host.pan(u) });
+      for (const u of section.units) if (u.item >= 0 && u.kind !== 'sub' && Number.isFinite(u.at)) out.push({ t: u.at, kind: 'pop', weight: 0.35, pan: host.pan(u) });
+    }
+    // caption (sub) words: one light tick each
+    let si = 0;
+    for (const u of subUnits(section.units)) {
+      const c = subLanding(u.at, si++, host.pan(u));
+      if (c) out.push(c);
     }
     // nothing in the first 0.6 s: the music is still fading in there (sfx gate)
     return out.filter((c) => c.t >= 0.6 || c.kind === 'stinger');

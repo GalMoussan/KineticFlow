@@ -10,6 +10,7 @@ import { clamp01, hash } from '@reel/runtime';
 import { defineReveal, type Part, type Section, type Unit } from '../../../contract.ts';
 import { scriptOf, standIn } from '../../../lib/glyphs.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Typed {
@@ -92,7 +93,7 @@ export default defineReveal({
         return;
       }
       const n = u.parts.length;
-      const glitch = (u.emphasis || u.tags.hero) && params.glitch > 0 ? params.glitch : 0;
+      const glitch = u.kind === 'sub' ? 0 : (u.emphasis || u.tags.hero) && params.glitch > 0 ? params.glitch : 0;
       const limit = Math.min(starts.slice(i + 1).find((x) => x > st) ?? Infinity, hold - glitch - 0.05);
       const step = Math.min(params.rate, Math.max(0.004, (limit - st) / n));
       const end = st + n * step;
@@ -155,11 +156,17 @@ export default defineReveal({
   /** Up to 4 key clicks per typed unit, a glitch shimmer per emphasis, a print pop per logo badge. */
   sounds({ host, section }) {
     const out: SoundCue[] = endcardStinger(section);
+    let si = 0;
     for (const u of section.units) {
       const d = u.data.reveal as Data | undefined;
       if (!d || u.item < 0) continue;
       const pan = host.pan(u);
       if (d.kind === 'print') out.push({ t: d.st, kind: 'pop', weight: 0.4, pan });
+      if (u.kind === 'sub') {
+        const c = subLanding(d.st, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (d.kind !== 'type') continue;
       const m = Math.min(4, d.n);
       const picks = [...new Set(Array.from({ length: m }, (_, j) => Math.round((j * (d.n - 1)) / Math.max(1, m - 1))))];

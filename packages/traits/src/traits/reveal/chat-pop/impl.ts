@@ -1,8 +1,9 @@
 import type { SoundCue } from '@reel/core';
 import { clamp01, quart } from '@reel/runtime';
 import { defineReveal } from '../../../contract.ts';
-import { chatOf, chatUnit, POP_DUR, POP_LEAD, scaleAbout } from '../../../lib/chat.ts';
+import { chatOf, chatUnit, originOf, POP_DUR, POP_LEAD, scaleAbout } from '../../../lib/chat.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 /** Count-up target of a stat / countdown number. */
@@ -17,6 +18,9 @@ const DOT_AIR = 0.42;
 /** Typing indicator in / out. */
 const TYPE_IN = 0.25;
 const TYPE_OUT = 0.1;
+/** Caption (sub) words: each pops in on its own landing, small and soft. */
+const SUB_LEAD = 0.1;
+const SUB_DUR = 0.32;
 
 export default defineReveal({
   meta,
@@ -79,6 +83,16 @@ export default defineReveal({
         c.opacity *= clamp01(k * 5);
         scaleAbout(u, Math.max(0.001, m.bounce(k, params.overshoot * (b.kind === 'card' ? 1.25 : 1))), b.px, b.py);
       }
+      if (u.kind === 'sub') {
+        // a calm little pop about the word's own centre, rising a hair
+        const ks = clamp01((t - u.at + SUB_LEAD) / SUB_DUR);
+        c.visible &&= ks > 0;
+        if (!c.visible) continue;
+        c.opacity *= clamp01(ks * 3);
+        const [ox, oy] = originOf(u);
+        scaleAbout(u, 0.6 + 0.4 * m.bounce(ks, 0.9), ox, oy);
+        c.ty += (1 - m.enter(ks)) * 0.3 * u.font.size;
+      }
       const count = u.data.reveal as Count | undefined;
       if (!count) continue;
       const kc = clamp01((t - b.at) / params.count);
@@ -117,7 +131,14 @@ export default defineReveal({
       const weight = b.title || b.kind === 'card' ? 0.55 : 0.45;
       out.push({ t: b.at, kind: 'pop', weight, pitch: (b.side === 'out' ? 4 : -1) + Math.min(4, i), pan });
     });
+    // caption words: one light tick each, nothing else
+    let si = 0;
     for (const u of section.units) {
+      if (u.kind === 'sub' && u.item >= 0 && chatUnit(u)) {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+        continue;
+      }
       if (!u.data.reveal) continue;
       const b = cs.bubbles[chatUnit(u)!.b]!;
       const pan = host.pan(u, b.at);

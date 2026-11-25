@@ -8,13 +8,14 @@ import type { SoundCue } from '@reel/core';
 import { clamp01, hash } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { digitParts, endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { originPx, rig } from '../../../lib/spatial.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'word' | 'letters';
 
 const choose = (u: Unit, role: string): Anim =>
-  u.text && (u.tags.hero || u.tags.numeric || role === 'title' || role === 'cta') ? 'letters' : 'word';
+  u.kind === 'sub' ? 'word' : u.text && (u.tags.hero || u.tags.numeric || role === 'title' || role === 'cta') ? 'letters' : 'word';
 
 export default defineReveal({
   meta,
@@ -71,9 +72,15 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (u.hit) out.push({ t: u.hit.t, kind: 'impact', weight: sizeWeight(u, host.H, 0.45), pan });
       else if (u.tags.numeric && u.parts.length) {
         digitParts(u)

@@ -17,6 +17,7 @@ import { draw, overlay, svgEl, unitOutline } from '../../../lib/morph/page.ts';
 import { describe, fit, plainEntrance, prevSource, textUnits } from '../../../lib/morph/reveal.ts';
 import { mixHex } from '../../../lib/neon.ts';
 import { endcardStinger, sizeWeight } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 /** Exit: letters → droplets, then the drip (s). */
@@ -218,10 +219,16 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     const st = state.get(section)!;
+    let si = 0;
     st.entries.forEach((x, i) => {
       const { start, e, f } = x.plan;
       const tS = start + f * params.rise;
       const pan = host.pan(x.u, e);
+      if (x.u.kind === 'sub') {
+        const c = subLanding(e, si++, pan);
+        if (c) out.push(c);
+        return;
+      }
       out.push({ t: start, until: tS, kind: 'whoosh', weight: 0.2, pan });
       out.push({ t: tS, kind: 'pop', weight: 0.25 + 0.3 * sizeWeight(x.u, host.H, 0.1), pitch: Math.min(7, i) - 2, pan });
       if (x.u.tags.hero || x.u.emphasis) out.push({ t: e, kind: 'shimmer', weight: 0.4, pan });
@@ -229,7 +236,11 @@ export default defineReveal({
     if (section.window && st.melts.length) out.push({ t: section.window.t0 + MELT, until: section.window.t0 + MELT + DRIP, kind: 'whoosh', weight: 0.35 });
     const outlined = new Set(st.entries.map((x) => x.u));
     for (const u of section.units) {
-      if (u.revealed && !outlined.has(u) && Number.isFinite(u.at)) out.push({ t: u.at, kind: 'pop', weight: 0.4, pan: host.pan(u) });
+      if (!(u.revealed && !outlined.has(u) && Number.isFinite(u.at))) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+      } else out.push({ t: u.at, kind: 'pop', weight: 0.4, pan: host.pan(u) });
     }
     return out;
   },

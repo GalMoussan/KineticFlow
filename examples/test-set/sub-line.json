@@ -1,0 +1,62 @@
+{
+  "id": "ts-sub-line",
+  "language": "he",
+  "contentType": "event",
+  "sections": [
+    {
+      "role": "title",
+      "text": "ערב *חידון* בקפה",
+      "sub": "נבחרת מול נבחרת, שש שאלות"
+    },
+    {
+      "role": "teaser",
+      "text": "יש *פרס*!",
+      "sub": "ספר חתום ושני כרטיסים להופעה"
+    },
+    {
+      "role": "datetime",
+      "date": "2026-12-01",
+      "time": "19:30"
+    },
+    {
+      "role": "location",
+      "place": "בית החאן",
+      "city": "קרית שמונה"
+    },
+    {
+      "role": "cta",
+      "text": "בואו *לשחק*",
+      "sub": "כולל Wi-Fi וקפה חופשי"
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "kinetic-quote",
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "lofi-jazz",
+    "bpm": 100,
+    "seed": 1101
+  },
+  "duration": 26,
+  "formats": [
+    "9:16",
+    "1:1",
+    "4:5",
+    "16:9"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}

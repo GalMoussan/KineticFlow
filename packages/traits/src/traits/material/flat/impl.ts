@@ -26,7 +26,7 @@ export default defineMaterial({
         ? swiped(u.tags.ordinal)
           ? section.palette.text
           : host.accent(0, section)
-        : u.tags.align === 'end' || u.kind === 'time' || u.kind === 'city'
+        : u.tags.align === 'end' || u.kind === 'time' || u.kind === 'city' || u.kind === 'sub'
           ? host.accent(1, section)
           : section.palette.text;
   },

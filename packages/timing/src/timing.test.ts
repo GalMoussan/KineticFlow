@@ -52,6 +52,18 @@ test('a short word takes the off-beat and the next word returns to the beat', ()
   assert.ok(Math.abs(b! - a! - H) < 1e-9 && Math.abs(c! - a! - 2 * H) < 1e-9);
 });
 
+test('a sub line lands after the big words, word by word on the off-beat, in the same section', () => {
+  const spec = structuredClone(example);
+  const i = spec.sections.findIndex((s: { role: string }) => s.role === 'teaser');
+  spec.sections[i].sub = 'ספרים, קפה ומתנות';
+  const s = buildCueSheet({ spec: JobSpec.parse(spec), choreography, bpm: 100, fps: 30 }).sections[i]!;
+  assert.deepEqual(s.items.map((it) => it.kind), ['word', 'word', 'sub', 'sub', 'sub']);
+  const at = s.items.map((it) => it.at);
+  assert.ok(Math.abs(at[2]! - at[1]! - 2 * H) < 1e-9, 'first sub word one full slot after the big words');
+  assert.ok(Math.abs(at[3]! - at[2]! - H) < 1e-9 && Math.abs(at[4]! - at[3]! - H) < 1e-9, 'then on the off-beat');
+  assert.ok(at[4]! < s.timing.holdStart + 1e-9, 'every sub word lands before the hold');
+});
+
 test('too much text for the duration is a TimingError naming the needed length', () => {
   const long = { ...example, duration: 12 };
   assert.throws(

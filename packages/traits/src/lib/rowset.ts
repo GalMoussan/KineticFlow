@@ -6,6 +6,7 @@
 import { visualOrder } from '@reel/runtime';
 import type { Host, Metrics, Section, Unit } from '../contract.ts';
 import { logoBadge, PIN_METRICS, pinSVG } from './deco.ts';
+import { blockFs, subScale, SUB_WEIGHT, wrapSub } from './subline.ts';
 
 /** Unit box padding around the ink, em. */
 export const PAD_X = 0.08;
@@ -108,6 +109,11 @@ export function roleBlocks(host: Host, s: Section, o: BlockOpts): Block[] {
       }
       flush();
     }
+  }
+  const subs = of('sub');
+  if (subs.length) {
+    const sw = weightOf(host, Math.min(W, SUB_WEIGHT));
+    out.push({ kind: 'pack', f: subScale(blockFs(out)), toks: subs.map((u) => tok(u, sw)) });
   }
   return out.filter((b) => b.kind === 'row' || b.toks.length);
 }
@@ -215,6 +221,28 @@ export function chooseRows(host: Host, blocks: Block[], o: StackOpts, wide: bool
   const best = Math.max(...tries.map((x) => x.size));
   const near = tries.filter((x) => x.size >= keep * best);
   return wide ? near.at(-1)! : near[0]!;
+}
+
+/**
+ * `chooseRows` for blocks whose last pack may be the sub line (`roleBlocks` appends it). The big rows are chosen as if
+ * the sub were absent; the sub words then wrap into balanced lines (`wrapSub`) no wider than the big block, or than
+ * `share` of the fit width at the big rows' size when the block is narrow, and the base size is refitted to all
+ * rows. Without sub units this is `chooseRows` exactly.
+ */
+export function chooseRowsSub(host: Host, blocks: Block[], o: StackOpts, wide: boolean, minK = 1, keep = 0.92, share = 0.86): { rows: Row[]; size: number } {
+  const last = blocks.at(-1);
+  if (!last || last.kind !== 'pack' || last.toks[0]?.u.kind !== 'sub' || blocks.length < 2) return chooseRows(host, blocks, o, wide, minK, keep);
+  const big = chooseRows(host, blocks.slice(0, -1), o, wide, minK, keep);
+  const bigW = Math.max(...big.rows.map((r) => rowDims(host, r, o.gap).w));
+  const room = (share * (o.fit.x1 - o.fit.x0)) / (big.size * o.hi);
+  const f = last.f;
+  const ws = last.toks.map((t) => {
+    const m = tokMetrics(host, t);
+    return (m.bl + m.br) * f;
+  });
+  const lines = wrapSub(ws, o.gap * f, Math.max(bigW, room));
+  const rows: Row[] = [...big.rows, ...lines.map((ix): Row => ({ kind: 'text', f, toks: ix.map((i) => last.toks[i]!) }))];
+  return { rows, size: stackSize(host, rows, o) };
 }
 
 /** Places one text token: ink left edge `x0`, baseline `base`, font size `S` (unit box padded around the ink). */

@@ -3,6 +3,7 @@ import { clamp01 } from '@reel/runtime';
 import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import type { BrutalData } from '../../../lib/brutal.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 const kind = (u: Unit) => (u.data.layout as BrutalData | undefined)?.kind;
@@ -60,8 +61,14 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     out.push({ t: section.timing.in, kind: 'tick', weight: 0.35, pitch: -4 });
+    let si = 0;
     for (const u of section.units) {
       if (u.item < 0 || !Number.isFinite(u.at)) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+        continue;
+      }
       const fl = flashOf(section, u.item, params.flash);
       if (fl > 0) out.push({ t: u.at, kind: 'impact', weight: u.emphasis || u.tags.numeric ? 0.85 : 0.7 });
       out.push({ t: u.at + fl, kind: 'tick', weight: 0.4, pan: host.pan(u, u.at + fl) });

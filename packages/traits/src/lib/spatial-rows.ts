@@ -5,6 +5,7 @@
  */
 import { visualOrder } from '@reel/runtime';
 import type { Host, Metrics, Section, Unit } from '../contract.ts';
+import { blockFs, subScale, SUB_WEIGHT } from './subline.ts';
 
 export interface Tok {
   u: Unit;
@@ -85,6 +86,8 @@ export function sectionBlocks(s: Section, plain = 0.72): Block[] {
       flush();
     }
   }
+  const subs = of('sub');
+  if (subs.length) out.push({ kind: 'pack', f: subScale(blockFs(out)), toks: subs.map((u) => tok(u, SUB_WEIGHT)) });
   return out.filter((b) => b.kind === 'row' || b.toks.length);
 }
 

@@ -8,6 +8,8 @@ import { meta } from './meta.ts';
 const coloursOf = new WeakMap<Section, ChatColours>();
 /** Highlight pills draw over this long from their word's landing. */
 const DRAW = 0.35;
+/** Caption (sub) words: the message ink this far towards the bubble fill. */
+const SUB_MUTE = 0.28;
 
 export default defineMaterial({
   meta,
@@ -35,7 +37,13 @@ export default defineMaterial({
         break;
       }
       case 'text':
-        u.color = u.emphasis ? C.emph(cu.side) : u.kind === 'city' ? C.muted(cu.side) : C.text(cu.side);
+        u.color = u.emphasis
+          ? C.emph(cu.side)
+          : u.kind === 'city'
+            ? C.muted(cu.side)
+            : u.kind === 'sub'
+              ? mixHex(C.text(cu.side), C.fill(cu.side), SUB_MUTE)
+              : C.text(cu.side);
         break;
       default:
     }
@@ -46,7 +54,7 @@ export default defineMaterial({
     const C = coloursOf.get(section)!;
     for (const u of [...section.units]) {
       const cu = chatUnit(u);
-      if (u.item < 0 || !cu || cu.part !== 'text' || !u.emphasis || u.tags.numeric || !u.inkBox) continue;
+      if (u.item < 0 || !cu || cu.part !== 'text' || !u.emphasis || u.tags.numeric || !u.inkBox || u.kind === 'sub') continue;
       const S = u.font.size;
       const x = u.box.x + u.textAt.x + u.inkBox.x - 0.12 * S;
       const hl = host.deco(section, {

@@ -2,6 +2,7 @@ import type { SoundCue } from '@reel/core';
 import { clamp01, lerp } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { digitParts, endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 type Anim = 'mask' | 'slide' | 'drop' | 'scale' | 'letters' | 'slot';
@@ -9,6 +10,7 @@ const EMPHASIS: Anim[] = ['scale', 'drop', 'letters'];
 const MASKED: Partial<Record<Anim, true>> = { mask: true, slide: true, letters: true, slot: true };
 
 function choose(u: Unit): Anim {
+  if (u.kind === 'sub') return 'mask';
   if (u.deco === 'pin' || u.tags.hero) return 'drop';
   if (u.kind === 'date' || u.kind === 'stat' || u.kind === 'countdown') return 'slot';
   if (u.kind === 'weekday' || u.kind === 'city' || u.tags.align === 'start') return 'slide';
@@ -72,10 +74,16 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     let k = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const { anim } = u.data.reveal as { anim: Anim };
       const pan = host.pan(u);
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (anim === 'slot') {
         const st = u.at - params.lead;
         // the back-ease of each part first reaches its line ≈ 0.3 s after its start

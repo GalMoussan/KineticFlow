@@ -16,6 +16,7 @@ import { visualOrder } from '@reel/runtime';
 import { defineLayout, type Metrics, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
 import { NEON_PIN_METRICS, neonPinSVG } from '../../../lib/neon.ts';
+import { blockFs, subScale, SUB_WEIGHT } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 const GAP = 0.26; // word gap inside a row, em
@@ -142,6 +143,8 @@ export default defineLayout({
           flush();
         }
       }
+      const subs = of('sub');
+      if (subs.length) out.push({ kind: 'pack', f: subScale(blockFs(out)), toks: subs.map((u) => tok(u, SUB_WEIGHT)) });
       return out.filter((b) => b.kind === 'row' || b.toks.length);
     }
 

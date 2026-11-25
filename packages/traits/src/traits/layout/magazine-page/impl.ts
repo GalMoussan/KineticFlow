@@ -10,7 +10,8 @@
 import { bidi, visualOrder } from '@reel/runtime';
 import { defineLayout, type Host, type Metrics, type Section, type Unit } from '../../../contract.ts';
 import { logoBadge } from '../../../lib/deco.ts';
-import { advanceOf, fitRows, inkOf, packed, placeRows, row, setLine, tok, type Block, type Row } from '../../../lib/typeset.ts';
+import { SUB_WEIGHT, subScale, wrapSub } from '../../../lib/subline.ts';
+import { advanceOf, fitRows, inkOf, packed, placeRows, row, setLine, stackHeight as rowsHeight, tok, wordGap, type Block, type Row } from '../../../lib/typeset.ts';
 import { meta } from './meta.ts';
 
 const GAP = 0.22;
@@ -23,6 +24,10 @@ const EMPH_WT = 650;
 const FLOOR = 11;
 const COL_GAP = 22;
 const SHORT = new Set(['title', 'cta', 'endcard']);
+/** Standfirst (sub line): leading between its lines and the space above it, × its size. */
+const SUB_LEAD = 0.34;
+const SUB_GAP = 0.85;
+const HEAD_MAX = 4;
 
 /** `unit.data.layout`. `drop` is set only on the word whose first grapheme is the drop cap. */
 interface MagLayout {
@@ -105,7 +110,9 @@ export default defineLayout({
         placeBadge(host, s, logos[0]!, left, content.y + content.h - reserve, width, reserve);
       }
       const cap = (params.cap * Math.min(safe.w, safe.h)) / z;
-      placeRole(host, s, words, box, cap);
+      const subs = words.filter((u) => u.kind === 'sub');
+      if (subs.length) withStandfirst(host, s, words.filter((u) => u.kind !== 'sub'), subs, box, cap);
+      else placeRole(host, s, words, box, cap);
       if (s.role === 'title') {
         const ws = words.filter((u) => u.kind === 'word');
         if (ws.length) ws.at(-1)!.tags.hero = true;
@@ -241,6 +248,51 @@ function placeRole(host: Host, s: Section, words: Unit[], box: Rect, cap: number
     default:
       if (SHORT.has(s.role)) headline(host, s, words, box, cap);
       else article(host, s, words, box, cap);
+  }
+}
+
+/**
+ * The big words as `placeRole` sets them, then the sub words as a standfirst right under them on the same page: at
+ * `subScale` of the big lines, the text face at `SUB_WEIGHT`, balanced lines with measured word spaces, centred under
+ * a headline and on the start edge under prose. A short text role (≤ `HEAD_MAX` words) over a standfirst is a
+ * headline, not drop-cap prose: a two-word teaser at body size would leave the standfirst unreadably small. The big
+ * block's height shrinks until both fit the box.
+ */
+function withStandfirst(host: Host, s: Section, big: Unit[], subs: Unit[], box: Rect, cap: number): void {
+  const toks = subs.map((u) => tok(u, u.emphasis ? EMPH_WT : SUB_WEIGHT, 'text'));
+  const adv = toks.map((t) => advanceOf(inkOf(host, t)));
+  const space = wordGap(host, toks);
+  const asHead = SHORT.has(s.role) || (big.length <= HEAD_MAX && big.every((u) => u.kind === 'word'));
+  const align = asHead ? 'center' : 'start';
+  let h = box.h;
+  for (let i = 0; ; i++) {
+    if (asHead) headline(host, s, big, { ...box, h }, cap);
+    else placeRole(host, s, big, { ...box, h }, cap);
+    let bottom = box.y;
+    let line = -1;
+    const sizes: number[] = [];
+    for (const u of big) {
+      bottom = Math.max(bottom, u.box.y + u.box.h);
+      line = Math.max(line, u.tags.line);
+      sizes.push(u.font.size);
+    }
+    const Ss = Math.max(FLOOR, subScale(sizes));
+    const rows: Row[] = wrapSub(adv, space, box.w / Ss).map((ix) => ({ kind: 'text', f: 1, toks: ix.map((j) => toks[j]!) }));
+    const top = bottom + SUB_GAP * Ss;
+    const subH = rowsHeight(host, rows, GAP, SUB_LEAD, true) * Ss;
+    const next = Math.min(h, bottom - box.y) * 0.92;
+    if (top + subH <= box.y + box.h || i >= 14 || next < 24) {
+      placeRows(host, rows, Ss, { left: box.x, width: box.w, top, align, dir: s.dir, gap: GAP, leading: SUB_LEAD, wordSpace: true });
+      rows.forEach((r, k) => {
+        if (r.kind !== 'text') return;
+        for (const t of r.toks) {
+          t.u.tags.line = line + 1 + k;
+          mark(host, s, t.u, 'stand');
+        }
+      });
+      return;
+    }
+    h = next;
   }
 }
 

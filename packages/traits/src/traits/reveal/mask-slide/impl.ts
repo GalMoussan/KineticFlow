@@ -9,6 +9,7 @@ import { clamp01 } from '@reel/runtime';
 import { defineReveal, type Section } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 interface Data {
@@ -60,6 +61,7 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     const rows = new Set<number>();
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
       const d = u.data.reveal as Data;
@@ -67,6 +69,11 @@ export default defineReveal({
       const pan = host.pan(u);
       if (d.anim === 'rule') out.push({ t: st, until: st + params.duration, kind: 'swipe', weight: 0.2, pan });
       if (u.item < 0) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, pan);
+        if (c) out.push(c);
+        continue;
+      }
       if (u.kind === 'logos') out.push({ t: st + 0.5 * params.duration, kind: 'pop', weight: 0.4, pan });
       else if (!rows.has(u.tags.line)) {
         rows.add(u.tags.line);

@@ -5,7 +5,9 @@
  * split (PLAN.md §5.4: measured advances, never SVG `textPath`). Page-side helpers (trigonometry is fine here: no
  * Node code path uses them except the unit test).
  */
-import type { Part, Unit } from '../contract.ts';
+import type { Host, Part, Unit } from '../contract.ts';
+import { subScale, wrapSub } from './subline.ts';
+import { fitRows, inkOf, rowDims, stackHeight, type Block, type FitOptions, type Row, type Tok } from './typeset.ts';
 
 export interface Pt {
   x: number;
@@ -123,4 +125,27 @@ export class Polyline {
   d(): string {
     return this.pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   }
+}
+
+/**
+ * `fitRows` for the big blocks, then the sub words (`subs`, logical order) wrapped into balanced lines under them
+ * at `subScale` of the big rows, no wider than the big rows or `share` of the room, and the base size refitted with
+ * those lines in the stack. Without sub words this is `fitRows` itself. `sub` is the index of the first sub row.
+ */
+export function fitWithSub(host: Host, big: readonly Block[], subs: readonly Tok[], o: FitOptions, share = 0.86): { rows: Row[]; size: number; sub: number } {
+  const fit = fitRows(host, big, o);
+  if (!subs.length) return { ...fit, sub: fit.rows.length };
+  const ws = o.wordSpace ?? false;
+  const f = subScale(fit.rows.flatMap((r) => (r.kind === 'text' ? [r.f] : [])));
+  const bigW = Math.max(...fit.rows.map((r) => rowDims(host, r, o.gap, ws).w));
+  const widths = subs.map((t) => {
+    const m = inkOf(host, t);
+    return (m.bl + m.br) * f;
+  });
+  const lines = wrapSub(widths, o.gap * f, Math.max(bigW, (share * o.w) / fit.size));
+  const rows: Row[] = [...fit.rows, ...lines.map((ix): Row => ({ kind: 'text', f, toks: ix.map((i) => subs[i]!) }))];
+  const w = Math.max(...rows.map((r) => rowDims(host, r, o.gap, ws).w));
+  const h = stackHeight(host, rows, o.gap, o.leading, ws) + (o.extraH ?? 0);
+  const fmax = Math.max(0.01, ...rows.map((r) => (r.kind === 'text' ? r.f : 0)));
+  return { rows, size: Math.min(o.w / w, o.h / h, o.cap / fmax), sub: fit.rows.length };
 }

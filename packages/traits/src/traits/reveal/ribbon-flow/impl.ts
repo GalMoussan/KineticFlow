@@ -12,8 +12,13 @@ import { defineReveal, type Section, type Unit } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { cubic, partCentre, Polyline, ride, type Pt } from '../../../lib/pathtext.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import type { RibbonSection, RibbonUnit } from '../../layout/ribbon-band/impl.ts';
 import { meta } from './meta.ts';
+
+/** Sub words glide in quicker than the big trains, fading in over this share of their glide. */
+const SUB_TRAVEL = 0.75;
+const SUB_FADE = 0.4;
 
 /** One glyph (or a whole unit without parts) on its band. */
 interface Item {
@@ -29,6 +34,8 @@ interface Rider {
   sMin: number;
   sMax: number;
   D0: number;
+  /** A sub word: a shorter, quicker glide that fades in on its band. */
+  calm?: true;
 }
 interface Band {
   row: number;
@@ -97,7 +104,9 @@ export default defineReveal({
       const sMin = Math.min(...items.map((i) => i.s));
       const sMax = Math.max(...items.map((i) => i.s));
       const half = d.rows[row]!.half;
-      riders.set(u, { row, items, sMin, sMax, D0: sMax + 2 * half + 0.05 * host.W });
+      const D0 = sMax + 2 * half + 0.05 * host.W;
+      if (d.rows[row]!.sub) riders.set(u, { row, items, sMin, sMax, D0: Math.min(D0, sMax - sMin + 0.2 * host.W), calm: true });
+      else riders.set(u, { row, items, sMin, sMax, D0 });
       lo[row] = Math.min(lo[row]!, sMin);
     }
     d.rows.forEach((r, i) => {
@@ -121,11 +130,13 @@ export default defineReveal({
     for (const u of section.units) {
       const r = riders.get(u);
       if (!r || !u.revealed) continue;
-      const st = u.at - params.travel;
+      const travel = r.calm ? SUB_TRAVEL * params.travel : params.travel;
+      const st = u.at - travel;
       start[r.row] = Math.min(start[r.row]!, st);
       u.ch.visible &&= t >= st;
       if (t < st) continue;
-      const k = clamp01((t - st) / params.travel);
+      const k = clamp01((t - st) / travel);
+      if (r.calm && k < SUB_FADE) u.ch.opacity *= k / SUB_FADE;
       const shift = (exiting ? runs[r.row]! * m.exit(ke) : 0) - r.D0 * (1 - m.enter(k));
       const half = d.rows[r.row]!.half;
       head[r.row] = Math.max(head[r.row]!, r.sMax + shift + half);
@@ -151,8 +162,14 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section, 0.75);
     let k = 0;
+    let s = 0;
     for (const u of section.units) {
       if (u.item < 0 || !u.revealed || !Number.isFinite(u.at)) continue;
+      if (u.kind === 'sub') {
+        const cue = subLanding(u.at, s++, host.pan(u));
+        if (cue) out.push(cue);
+        continue;
+      }
       const pan = host.pan(u);
       const from = section.dir === 'ltr' ? 0.5 : -0.5;
       out.push({ t: Math.max(0.6, u.at - params.travel), until: Math.max(0.6, u.at), kind: 'swipe', weight: 0.18, pan: (pan + from) / 2 });

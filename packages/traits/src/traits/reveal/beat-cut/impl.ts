@@ -2,6 +2,7 @@ import type { SoundCue } from '@reel/core';
 import { clamp01 } from '@reel/runtime';
 import { defineReveal, type Unit } from '../../../contract.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import type { BeatData, BeatSection } from '../../../lib/beat.ts';
 import { meta } from './meta.ts';
 
@@ -21,7 +22,7 @@ export default defineReveal({
   prepare(_c, u) {
     const d = u.data.layout as BeatData | undefined;
     u.data.reveal = { anim: d?.kind ?? 'row' };
-    if (d?.kind === 'solo' && Number.isFinite(u.at)) u.hit = { t: u.at, amp: u.font.size / 14 };
+    if (d?.kind === 'solo' && !d.sub && Number.isFinite(u.at)) u.hit = { t: u.at, amp: u.font.size / 14 };
   },
   frame({ section, params }, t) {
     const st = section.data.layout as BeatSection;
@@ -38,7 +39,7 @@ export default defineReveal({
           const i = solos.indexOf(u);
           const end = Math.min(solos[i + 1]?.at ?? Infinity, st.stackT);
           c.visible &&= t >= u.at && t < end;
-          if (c.visible) punch(u, m.enter(clamp01((t - u.at) / PUNCH)), params.punch);
+          if (c.visible && !d.sub) punch(u, m.enter(clamp01((t - u.at) / PUNCH)), params.punch);
           break;
         }
         case 'panel':
@@ -51,7 +52,7 @@ export default defineReveal({
           c.clip = Math.min(c.clip, Math.min(1, m.enter(k)));
           c.clipFrom = d.row % 2 ? 'end' : 'start';
           // the unit that lands straight into the recap (no solo beat of its own) punches there
-          if (d.kind === 'row' && Math.abs(u.at - st.stackT) < 1e-6) punch(u, m.enter(clamp01((t - u.at) / PUNCH)), params.punch);
+          if (d.kind === 'row' && u.kind !== 'sub' && Math.abs(u.at - st.stackT) < 1e-6) punch(u, m.enter(clamp01((t - u.at) / PUNCH)), params.punch);
           break;
         }
       }
@@ -62,9 +63,15 @@ export default defineReveal({
     const st = section.data.layout as BeatSection;
     const out: SoundCue[] = endcardStinger(section);
     let i = 0;
+    let si = 0;
     for (const u of section.units) {
       const d = u.data.layout as BeatData | undefined;
       if (d?.kind !== 'solo' || !(u.at < st.stackT)) continue;
+      if (d.sub) {
+        const c = subLanding(u.at, si++);
+        if (c) out.push(c);
+        continue;
+      }
       out.push({ t: u.at, kind: 'impact', weight: u.emphasis || u.tags.numeric ? 0.75 : 0.55, pitch: Math.min(6, i++) });
     }
     const rows = section.units.filter((u) => (u.data.layout as BeatData | undefined)?.kind === 'band').length;

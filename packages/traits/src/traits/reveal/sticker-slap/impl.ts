@@ -3,6 +3,7 @@ import { clamp01, hash } from '@reel/runtime';
 import { defineReveal, type Section } from '../../../contract.ts';
 import { exitWindow } from '../../../lib/neon.ts';
 import { endcardStinger } from '../../../lib/sound.ts';
+import { subLanding } from '../../../lib/subline.ts';
 import { meta } from './meta.ts';
 
 /** Peel stagger between stickers (s) and the shortest peel. */
@@ -33,11 +34,12 @@ export default defineReveal({
       const st = u.at - params.lead;
       c.visible &&= t >= st;
       const k = clamp01((t - st) / params.duration);
-      const e = Math.max(0, m.bounce(k, 2.4));
+      const e = u.kind === 'sub' ? m.enter(k) : Math.max(0, m.bounce(k, 2.4));
       c.sx *= e;
       c.sy *= e;
       const side = sideOf(u.id);
-      c.rot += (1 - m.enter(k)) * side * params.spin * (0.6 + 0.4 * hash(u.id));
+      const spin = u.kind === 'sub' ? params.spin * 0.35 : params.spin;
+      c.rot += (1 - m.enter(k)) * side * spin * (0.6 + 0.4 * hash(u.id));
       if (!params.peel) return;
       const p = peelOf(section, j, stickers.length);
       if (!p || t < p.t0) return;
@@ -62,8 +64,14 @@ export default defineReveal({
   sounds({ host, section, params }) {
     const out: SoundCue[] = endcardStinger(section);
     let n = 0;
+    let si = 0;
     for (const u of section.units) {
       if (!u.revealed || !Number.isFinite(u.at)) continue;
+      if (u.kind === 'sub') {
+        const c = subLanding(u.at, si++, host.pan(u));
+        if (c) out.push(c);
+        continue;
+      }
       // back-out first crosses 1 at ≈ 58 % of the slap
       out.push({ t: u.at - params.lead + 0.58 * params.duration, kind: 'pop', weight: u.emphasis || u.tags.hero ? 0.65 : 0.5, pitch: Math.min(9, 2 * n++), pan: host.pan(u) });
     }
