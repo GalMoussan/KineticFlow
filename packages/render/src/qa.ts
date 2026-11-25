@@ -7,11 +7,13 @@ import {
   type CueSheet,
   type FormatId,
   type JobSpec,
+  type OverlayBox,
   type ReelInput,
   type ResolvedPalette,
   type SoundCue,
   type TextBox,
 } from '@reel/core';
+import { overlapArea } from '@reel/traits/lib/placement.ts';
 import { launchBrowser, ReelTab } from './capture.ts';
 import { missingChars, readFont } from './fonts.ts';
 import { exec, sha256 } from './util.ts';
@@ -47,18 +49,63 @@ interface HoldSample {
   section: CueSheet['sections'][number];
   t: number;
   boxes: TextBox[];
+  /** Sketch placements with `visible` at t. */
+  overlays: OverlayBox[];
 }
 
-/** Seeks to every section's `holdEnd − 1/fps` and reads `boxes()` there. */
+/** Seeks to every section's `holdEnd − 1/fps` and reads `boxes()` (and the sketches' `overlays()`) there. */
 export async function sampleHolds(tab: ReelTab, sheet: CueSheet): Promise<HoldSample[]> {
   const out: HoldSample[] = [];
   for (const section of sheet.sections) {
     // the last frame before the section's hold ends (holds can be zero-length: holdStart = holdEnd = out)
     const t = section.timing.holdEnd - 1 / sheet.fps;
     await tab.seek(t);
-    out.push({ section, t, boxes: await tab.boxes() });
+    out.push({ section, t, boxes: await tab.boxes(), overlays: await tab.overlays() });
   }
   return out;
+}
+
+/** A sketch may cover at most this share of any text box at a hold. */
+export const SKETCH_COVER = 0.08;
+
+/**
+ * Sketch placement (SKETCH-PLAN.md P1): a `frame` sketch outside the safe area fails; a sketch covering more than 8 %
+ * of a text box at a hold warns (a `word` sketch is exempt for its own item); an auto sketch that found no free space
+ * and went under the text warns. `null` for jobs without sketches.
+ */
+export function gateSketches(samples: HoldSample[], input: ReelInput): GateResult | null {
+  const all = samples[0]?.overlays ?? [];
+  if (!all.length) return null;
+  const { w: W, h: H, safe } = input.format;
+  const e = EDGE_TOLERANCE;
+  const box = (o: OverlayBox) => `[${r2(o.x)},${r2(o.y)} → ${r2(o.x + o.w)},${r2(o.y + o.h)}]`;
+  const outside = all
+    .filter((o) => o.place === 'frame')
+    .filter((o) => o.x < safe.left - e || o.y < safe.top - e || o.x + o.w > W - safe.right + e || o.y + o.h > H - safe.bottom + e)
+    .map((o) => `${o.id} (frame) ${box(o)} leaves the safe area`);
+  const under = all.filter((o) => o.fallback).map((o) => `${o.id}: no free space beside the text, drawn under it`);
+  const notes = all.filter((o) => o.place === 'word').map((o) => `${o.id}: word attachment comes later; placed automatically for now`);
+  const covers: string[] = [];
+  for (const s of samples) {
+    for (const o of s.overlays.filter((x) => x.visible)) {
+      for (const b of s.boxes) {
+        if (o.place === 'word' && b.section === o.section && b.unit === o.item) continue;
+        const share = overlapArea(o, b) / Math.max(1e-9, b.w * b.h);
+        if (share > SKETCH_COVER) covers.push(`${o.id} covers ${Math.round(share * 100)} % of "${b.text || `${b.section}#${b.unit}`}" @${s.t.toFixed(2)}s`);
+      }
+    }
+  }
+  const level: Level = outside.length ? 'fail' : under.length || covers.length ? 'warn' : 'pass';
+  const problems = [...outside, ...under, ...covers];
+  return {
+    gate: 'sketch',
+    level,
+    format: input.format.id,
+    detail: problems.length
+      ? `${problems.slice(0, 4).join('; ')}${problems.length > 4 ? ` (+${problems.length - 4})` : ''}`
+      : `${all.length} sketch(es) inside the safe area, clear of text at every hold${notes.length ? `; ${notes.join('; ')}` : ''}`,
+    data: { outside, under, covers, notes, placements: all.map(({ visible: _v, ...o }) => o) },
+  };
 }
 
 /** Text the page shows for each unit of a section (boxes of one unit joined in the order the page reports them). */

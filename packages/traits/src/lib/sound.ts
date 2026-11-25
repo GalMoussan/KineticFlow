@@ -5,8 +5,8 @@
 import type { SoundCue, SoundKind } from '@reel/core';
 import type { Section, Unit } from '../contract.ts';
 
-/** Thinning priority (lower survives): accents first, small detail sounds last. */
-const RANK: Record<SoundKind, number> = { stinger: 0, impact: 1, whoosh: 2, riser: 3, shimmer: 4, swipe: 5, pop: 6, tick: 7 };
+/** Thinning priority (lower survives): accents first, small detail sounds last. A sketch's scribble ranks by its swipe. */
+const RANK: Record<SoundKind, number> = { stinger: 0, impact: 1, whoosh: 2, riser: 3, shimmer: 4, swipe: 5, scribble: 6, pop: 7, tick: 8 };
 /** Most cues whose attacks fall inside any 1 s window. */
 export const MAX_PER_SECOND = 6;
 /** Two cues of one kind closer than this are one sound (the louder one, at the earlier time). */

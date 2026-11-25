@@ -208,7 +208,7 @@ test('SFX: every kind starts exactly at t (±1 sample) with nothing before, and 
   const t = 0.4321;
   const s = Math.round(t * SR);
   for (const kind of SOUND_KINDS) {
-    const cue: SoundCue = { t, kind, weight: 1, ...(kind === 'whoosh' || kind === 'riser' || kind === 'swipe' ? { until: t + 0.5 } : {}) };
+    const cue: SoundCue = { t, kind, weight: 1, ...(kind === 'whoosh' || kind === 'riser' || kind === 'swipe' || kind === 'scribble' ? { until: t + 0.5 } : {}) };
     const x = renderSfx([cue], { duration: 2, seed: 5, samples: bank });
     let first = -1;
     for (let i = 0; i < x.l.length; i++) {

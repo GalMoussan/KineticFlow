@@ -3,6 +3,7 @@ import { mkdir, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { BrandKit } from '@reel/api';
 import { isCatalogFont, plainText, type JobSpec } from '@reel/core';
+import { specSketchAssets } from '@reel/render';
 import type { Store } from './store.ts';
 
 const rec = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -45,10 +46,11 @@ export function specStyle(spec: unknown): string {
   return typeof base === 'string' ? base : '';
 }
 
-/** Asset ids a parsed spec references (logos, track, uploaded fonts). */
+/** Asset ids a parsed spec references (logos, track, uploaded fonts, generated sketches). */
 export function referencedAssets(spec: JobSpec): string[] {
   const ids = new Set<string>();
   for (const s of spec.sections) if (s.role === 'endcard') for (const l of s.logos) ids.add(l);
+  for (const id of specSketchAssets(spec)) ids.add(id);
   if (spec.music.source === 'track') ids.add(spec.music.file);
   for (const f of [spec.fonts.display, spec.fonts.text]) if (f && !isCatalogFont(f)) ids.add(f);
   return [...ids];

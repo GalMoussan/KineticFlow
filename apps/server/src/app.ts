@@ -13,6 +13,7 @@ import {
   RankStylesRequest,
   SaveBrandKit,
   SaveProject,
+  SaveSketch,
   SplitRequest,
   StartRender,
   StyleStillsRequest,
@@ -25,7 +26,7 @@ import {
 } from '@reel/api';
 import { JobSpec } from '@reel/core';
 import { CSP, FONT_DIR, renderJob, type GateResult } from '@reel/render';
-import { ingestAsset } from './assets.ts';
+import { ingestAsset, saveSketch, SKETCH_THUMB_EXT } from './assets.ts';
 import { catalog } from './catalog.ts';
 import { apiError, check, HttpError, jsonBody, newId, sendFile, slugify, uniqueSlug, within } from './http.ts';
 import { rankStyles, splitContent, suggestEmphasis } from './llm/index.ts';
@@ -260,11 +261,17 @@ export function createApp(d: AppDeps): Hono {
     const asset = await ingestAsset(store, paths.assets, { file, kind, name: typeof body.name === 'string' ? body.name : undefined }, log);
     return c.json(asset, 201);
   });
+  // a drawing from a generator or the CLI (P3 adds the generate endpoints): validated, stored with its thumbnail
+  app.post('/api/sketch/save', async (c) => {
+    const body = check(SaveSketch, await jsonBody(c));
+    return c.json(await saveSketch(store, paths.assets, body.doc, body.name, log), 201);
+  });
   app.delete('/api/assets/:id', async (c) => {
     const a = store.getAsset(c.req.param('id'));
     if (!a) throw new HttpError(404, `no asset "${c.req.param('id')}"`);
     store.deleteAsset(a.id);
     await rm(join(paths.assets, `${a.id}.${a.ext}`), { force: true });
+    if (a.kind === 'sketch') await rm(join(paths.assets, `${a.id}.${SKETCH_THUMB_EXT}`), { force: true });
     log(`asset ${a.id} deleted`);
     return c.json({ ok: true });
   });

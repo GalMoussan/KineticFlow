@@ -2,8 +2,23 @@
  * Builds `window.REEL` (PLAN.md §8.1) for one format: everything the page needs, with bundle-relative asset URLs.
  */
 import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { PNG } from 'pngjs';
-import { format, type CueSheet, type FontRef, type FormatId, type JobSpec, type LogoRef, type ReelInput } from '@reel/core';
+import {
+  format,
+  presetDoc,
+  sectionSketchLook,
+  seedOf,
+  SketchDoc,
+  sketchDocHash,
+  type CueSheet,
+  type FontRef,
+  type FormatId,
+  type JobSpec,
+  type LogoRef,
+  type ReelInput,
+  type SketchRef,
+} from '@reel/core';
 import type { StyleResolution } from '@reel/traits';
 import { findLogo, fontUrl, specFontIds, type Bundle } from './bundle.ts';
 import { resolveFonts } from './fonts.ts';
@@ -110,6 +125,7 @@ export async function reelInput(o: {
     }
   }
 
+  const sketches = await sketchRefs(spec, o.specDir);
   return {
     spec,
     cues: o.sheet,
@@ -120,5 +136,52 @@ export async function reelInput(o: {
     palette: styles.job.palette,
     fonts: { display: font(spec.fonts.display), text: font(spec.fonts.text ?? spec.fonts.display) },
     logos,
+    ...(sketches.length ? { sketches } : {}),
   };
+}
+
+/** Asset ids of the generated sketches a spec draws (`source.kind: 'generated'`), unique, in reel order. */
+export function specSketchAssets(spec: JobSpec): string[] {
+  const ids = spec.sections.flatMap((s) =>
+    s.role === 'endcard' ? [] : (s.sketches ?? []).flatMap((k) => (k.source.kind === 'generated' ? [k.source.asset] : [])),
+  );
+  return [...new Set(ids)];
+}
+
+/** A generated sketch's stored drawing, `<specDir>/assets/<asset>.sketch.json`, validated against `SketchDoc`. */
+export async function loadSketchDoc(specDir: string, asset: string): Promise<SketchDoc> {
+  const path = join(specDir, 'assets', `${asset}.sketch.json`);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readFile(path, 'utf8'));
+  } catch (e) {
+    throw new Error(`sketch "${asset}": cannot read ${path}: ${(e as Error).message}`);
+  }
+  const r = SketchDoc.safeParse(raw);
+  if (!r.success) throw new Error(`sketch "${asset}" (${path}) is not a valid SketchDoc: ${r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).slice(0, 3).join('; ')}`);
+  return r.data;
+}
+
+/**
+ * The page's view of every section sketch: the resolved look, the drawing and its content hash. Every drawing travels
+ * inline (presets drawn here bit-exactly, generated ones read from the asset store), never in the page bundle: the
+ * hash in the fingerprint keys exactly the chunks a drawing appears in (SKETCH-PLAN.md SK16).
+ */
+export async function sketchRefs(spec: JobSpec, specDir: string): Promise<SketchRef[]> {
+  const out: SketchRef[] = [];
+  for (const s of spec.sections) {
+    if (s.role === 'endcard' || !s.sketches) continue;
+    for (const k of s.sketches) {
+      const look = sectionSketchLook(k);
+      const doc =
+        k.source.kind === 'preset'
+          ? presetDoc(k.source.preset, look.presetMode, seedOf(k.id))
+          : k.source.kind === 'generated'
+            ? await loadSketchDoc(specDir, k.source.asset)
+            : null;
+      if (!doc) throw new Error(`sketch "${k.id}": logo line versions are not available yet`);
+      out.push({ id: k.id, section: s.id, until: k.until ?? s.id, look, place: k.place, hash: await sketchDocHash(doc), doc });
+    }
+  }
+  return out;
 }

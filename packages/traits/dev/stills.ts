@@ -17,7 +17,8 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { FORMATS, JobSpec, formatSlug, type CueSheet, type FormatId, type ReelInput, type TextBox } from '@reel/core';
+import { FORMATS, JobSpec, formatSlug, type CueSheet, type FormatId, type OverlayBox, type ReelInput, type TextBox } from '@reel/core';
+import { overlapArea } from '../src/lib/placement.ts';
 import { buildCueSheet } from '../../timing/src/index.ts';
 import { RECIPES, recipe } from '../../styles/src/index.ts';
 import { assertResolved, resolveStyles, TRAIT_META, usedTraits } from '../src/index.ts';
@@ -153,6 +154,22 @@ async function contactSheet(pngs: Buffer[], fmt: FormatId, path: string): Promis
   await done.promise;
 }
 
+/**
+ * Frames inside every sketch window (SK14): mid-draw, just drawn, mid-exit. The determinism checks add them so
+ * (a) and (b) sample sketches too, not only (c).
+ */
+function sketchTimes(sheet: CueSheet): { t: number; label: string }[] {
+  const f = (t: number) => Math.round(t * 30) / 30;
+  const out: { t: number; label: string }[] = [];
+  for (const c of sheet.cues) {
+    if (c.type === 'sketch-in') {
+      out.push({ t: f(c.t + 0.4 * (c.until! - c.t)), label: `sketch ${c.sketch} draw` });
+      out.push({ t: f(c.until! + 1 / 30), label: `sketch ${c.sketch} drawn` });
+    } else if (c.type === 'sketch-out' && c.until! > c.t) out.push({ t: f((c.t + c.until!) / 2), label: `sketch ${c.sketch} exit` });
+  }
+  return out;
+}
+
 function stillTimes(sheet: CueSheet): { t: number; label: string }[] {
   const out = sheet.sections.map((s) => ({ t: Math.round((s.timing.holdEnd - 1 / 30) * 30) / 30, label: `${s.id} hold` }));
   // every transition's midpoint (where wipe panels, flashes and camera moves are all on screen)
@@ -161,7 +178,7 @@ function stillTimes(sheet: CueSheet): { t: number; label: string }[] {
   }
   const intro = sheet.cues.find((c) => c.type === 'intro');
   if (intro) out.push({ t: intro.t, label: 'intro' });
-  return out;
+  return [...out, ...sketchTimes(sheet)];
 }
 
 const inside = (b: TextBox, fmt: FormatId) => {
@@ -170,7 +187,8 @@ const inside = (b: TextBox, fmt: FormatId) => {
 };
 const overlaps = (a: TextBox, b: TextBox) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-const WINDOWS: [number, number][] = [[0, 10], [10, 20], [20, 26]];
+// the last window runs to the end of longer videos (the test set is 26 s)
+const windowsOf = (duration: number): [number, number][] => [[0, 10], [10, 20], [20, Math.max(26, duration)]];
 const fpHash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 16);
 
 // ---------- main ----------
@@ -212,7 +230,7 @@ console.log(`bundle ${bundle.hash.slice(0, 16)} → ${bundle.dir}`);
 
 const srv = await serve(bundle.dir);
 let browser = await launch();
-let safeFailures = 0, overlapFailures = 0;
+let safeFailures = 0, overlapFailures = 0, sketchCovers = 0;
 const formats = (args.formats?.split(',') as FormatId[] | undefined) ?? spec.formats;
 for (const fmt of formats) {
   const input = await reelInput({ spec, sheet, formatId: fmt, specDir, bundle, styles });
@@ -226,15 +244,26 @@ for (const fmt of formats) {
     const isHold = s.label.endsWith('hold');
     const bad = boxes.filter((b) => !inside(b, fmt));
     const ov = boxes.flatMap((a, j) => boxes.slice(j + 1).filter((b) => overlaps(a, b)).map((b) => `${a.text}×${b.text}`));
+    // sketches covering more than 8 % of a text box (the QA `sketch` gate's rule)
+    const sketches: OverlayBox[] = await o.page.evaluate(() => window.reelPage.overlays?.() ?? []);
+    const cover = sketches
+      .filter((k) => k.visible)
+      .flatMap((k) =>
+        boxes
+          .filter((b) => !(k.place === 'word' && b.section === k.section && b.unit === k.item) && overlapArea(k, b) / (b.w * b.h) > 0.08)
+          .map((b) => `${k.id}×"${b.text}" ${Math.round((overlapArea(k, b) / (b.w * b.h)) * 100)} %`),
+      );
     if (isHold) {
       safeFailures += bad.length;
       overlapFailures += ov.length;
+      sketchCovers += cover.length;
     }
     console.log(
       `#${i} t=${s.t.toFixed(3)} ${s.label}: ${boxes.length} boxes` +
         (bad.length ? ` OUTSIDE SAFE: ${bad.map((b) => `${b.section}/${b.unit} "${b.text}" [${b.x.toFixed(0)},${b.y.toFixed(0)} ${b.w.toFixed(0)}×${b.h.toFixed(0)}]`).join('; ')}` : ' all inside safe') +
         (ov.length ? ` OVERLAPS: ${ov.join(', ')}` : ''),
     );
+    if (sketches.length) console.log(`    sketches: ${sketches.map((k) => `${k.id}${k.visible ? '' : ' (off)'} ${k.layer}${k.fallback ? ' FALLBACK' : ''} [${k.x.toFixed(0)},${k.y.toFixed(0)} ${k.w.toFixed(0)}×${k.h.toFixed(0)}]`).join('; ')}${cover.length ? ` COVERS: ${cover.join(', ')}` : ''}`);
     if (isHold) for (const b of boxes) console.log(`    ${b.section}/${b.unit} "${b.text}" x=${b.x.toFixed(0)} y=${b.y.toFixed(0)} w=${b.w.toFixed(0)} h=${b.h.toFixed(0)}`);
   }
   const sheetPath = join(OUT, `${NAME}-${formatSlug(fmt)}.png`);
@@ -244,7 +273,7 @@ for (const fmt of formats) {
   // Fingerprints: base vs date-changed spec.
   const altInput = await reelInput({ spec: altSpec, sheet: altSheet, formatId: fmt, specDir, bundle: altBundle, styles: altStyles });
   const alt = await open(browser, srv.url, altInput);
-  for (const [t0, t1] of WINDOWS) {
+  for (const [t0, t1] of windowsOf(sheet.duration)) {
     const a = await o.page.evaluate(([x, y]) => window.reelPage.fingerprint(x, y), [t0, t1] as const);
     const b = await alt.page.evaluate(([x, y]) => window.reelPage.fingerprint(x, y), [t0, t1] as const);
     await writeFile(join(OUT, `fp-${formatSlug(fmt)}-${t0}-${t1}.json`), JSON.stringify(a, null, 1));
@@ -254,7 +283,7 @@ for (const fmt of formats) {
   await alt.close();
 
   // Determinism (a): 5 frames forward then reverse in one page, max Δ ≤ 2/255.
-  const det = [0.5, 4.4, 9.8, 14.3, 22.7];
+  const det = [0.5, 4.4, 9.8, 14.3, 22.7, ...sketchTimes(sheet).map((s) => s.t)];
   const fwd: Buffer[] = [];
   for (const t of det) fwd.push(await shot(o, t));
   let worst = 0;
@@ -314,7 +343,7 @@ for (const fmt of formats) {
 await browser.close();
 await srv.close();
 
-console.log(`\nsafe-area failures at holds: ${safeFailures}; overlaps at holds: ${overlapFailures}`);
+console.log(`\nsafe-area failures at holds: ${safeFailures}; overlaps at holds: ${overlapFailures}; sketches covering text at holds: ${sketchCovers}`);
 if (problems.length) {
   console.log(`problems (${problems.length}):\n  ${problems.join('\n  ')}`);
   process.exitCode = 1;

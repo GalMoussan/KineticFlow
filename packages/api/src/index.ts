@@ -131,20 +131,27 @@ export interface ProjectWithValidation {
 
 // ---------- assets: POST /api/assets (multipart: file, kind) ----------
 
-export const AssetKind = z.enum(['logo', 'track', 'font']);
+/** `sketch`: a `SketchDoc` stored as `<id>.sketch.json` with an SVG thumbnail (`meta.thumb`). */
+export const AssetKind = z.enum(['logo', 'track', 'font', 'sketch']);
 export type AssetKind = z.infer<typeof AssetKind>;
 
 export interface Asset {
-  /** Slug, unique; used in specs (`endcard.logos`, `music.file`, `fonts.display`). */
+  /** Slug, unique; used in specs (`endcard.logos`, `music.file`, `fonts.display`, a generated sketch's `asset`). */
   id: string;
   kind: AssetKind;
   name: string;
   url: string;
   bytes: number;
-  /** logo: {w, h, colors (dominant hex, most frequent first)}; track: {duration}; font: {family, weights, scripts}. */
+  /**
+   * logo: {w, h, colors (dominant hex, most frequent first)}; track: {duration}; font: {family, weights, scripts};
+   * sketch: {mode, box, strokes, points, source, hash (sha256 of the canonical doc), thumb (SVG URL)}.
+   */
   meta: Record<string, unknown>;
   createdAt: string;
 }
+
+/** `POST /api/sketch/save`: stores a `SketchDoc` (validated server-side) as a `sketch` asset. */
+export const SaveSketch = z.object({ name: z.string().trim().max(120).optional(), doc: z.unknown() });
 
 // ---------- brand kits ----------
 

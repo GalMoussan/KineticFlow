@@ -13,7 +13,7 @@ import type { MusicEvent } from './voices.ts';
 import { pow } from './dmath.ts';
 
 /** Default lengths for sustained kinds whose cue has no `until`. */
-const DEFAULT_LEN: Partial<Record<SoundKind, number>> = { whoosh: 0.45, riser: 1.2, swipe: 0.3 };
+const DEFAULT_LEN: Partial<Record<SoundKind, number>> = { whoosh: 0.45, riser: 1.2, swipe: 0.3, scribble: 0.8 };
 /**
  * Stem level: a weight-1 hit peaks around −6 dBFS, which sits on the music stem (≈ −20 dBFS RMS) like a produced
  * accent: short-term loudness within a few LU of the music, never dominating it.
@@ -95,6 +95,24 @@ function patch(c: SoundCue, i: number, rnd: Rand, gain: number): MusicEvent[] {
         { v: 'sample', bus: 'lead', id: 'fx-bowl', t, semi: pitch, gain: gain * 0.3, pan },
       ];
       [0, 7, 12, 16, 19].forEach((d, k) => out.push({ v: 'bell', bus: 'lead', t: t + k * 0.03, midi: root + d, dur: 1.6, vel: 0.75, gain: gain * 0.28, pan: pan + (k - 2) * 0.25 }));
+      return out;
+    }
+    case 'scribble': {
+      // pen on paper: a soft paper hiss under grainy strokes (short band-passed bursts, one per pen move), all under a
+      // span envelope (quick rise, steady, a fade over the last quarter)
+      const env = (u: number) => Math.max(0.25, Math.min(1, u / 0.12) * Math.min(1, (1 - u) / 0.25));
+      const out: MusicEvent[] = [
+        { v: 'noise', bus: 'fx', t, dur: len, color: 'pink', filter: 'bp', f0: 2200 * vary(0.1), f1: 2600 * vary(0.1), q: 0.9, a: Math.min(0.08, len * 0.2), r: Math.min(0.2, len * 0.3), gain: gain * 0.22, pan, salt: i },
+      ];
+      let at = 0;
+      for (let k = 0; at < len - 0.04 && k < 48; k++) {
+        const g = Math.min(0.05 + rnd() * 0.12, len - at);
+        out.push({
+          v: 'noise', bus: 'fx', t: t + at, dur: g, filter: 'bp', f0: 1700 + rnd() * 2600, f1: 1500 + rnd() * 2900, q: 2.4,
+          a: 0.006, r: g * 0.6, gain: gain * 0.6 * env(at / len) * vary(0.25), pan: pan + (rnd() * 2 - 1) * 0.12, salt: i * 97 + k + 1,
+        });
+        at += g + rnd() * 0.05;
+      }
       return out;
     }
   }

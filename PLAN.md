@@ -91,6 +91,12 @@ makeAvideo/
 
 Packages appear at the milestone that needs them; nothing ships as an empty stub.
 
+**Third-party runtime dependencies added by features** (licence rule: MIT, Apache-2.0, BSD, ISC or OFL only):
+
+| Dependency | Package | Licence | Why |
+|---|---|---|---|
+| `perfect-freehand` 1.2.2 | `@reel/traits` (page bundle) | MIT | Sketch overlays: pressure-shaped stroke outlines, computed once at `ready()` (SKETCH-PLAN.md SK12) |
+
 ---
 
 ## 4. Job Spec (single source of truth)

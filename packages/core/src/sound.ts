@@ -21,6 +21,8 @@ export const SOUND_KINDS = [
   'swipe',
   /** Closing accent on the end card. */
   'stinger',
+  /** Pen on paper while a sketch draws on: grainy filtered noise over `t` → `until`. */
+  'scribble',
 ] as const;
 export type SoundKind = (typeof SOUND_KINDS)[number];
 

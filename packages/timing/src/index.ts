@@ -4,7 +4,9 @@
  */
 import {
   CUE_TYPES,
+  sectionSketchLook,
   sectionItems,
+  SKETCH_EXIT_S,
   type Choreography,
   type Cue,
   type CueSheet,
@@ -109,6 +111,42 @@ interface Plan {
   move: number;
   /** Apportionment weights of the extra half-beats: one per non-last section (reading load), then the end hold. */
   weights: number[];
+  /** Every section sketch in reel order (empty for jobs without sketches). */
+  sketches: SketchPlan[];
+}
+
+/** A section sketch as the timing engine sees it: where it starts, how long it draws, how it leaves. */
+interface SketchPlan {
+  id: string;
+  /** Index of the owning section. */
+  section: number;
+  /** Index of the last section it stays through. */
+  until: number;
+  edge: 'in' | 'hold';
+  beats: number;
+  drawBeats: number;
+  /** Exit length in seconds (`SKETCH_EXIT_S`). */
+  exit: number;
+}
+
+function sketchPlans(spec: JobSpec): SketchPlan[] {
+  const index = new Map(spec.sections.map((s, i) => [s.id, i]));
+  return spec.sections.flatMap((s, i) =>
+    s.role === 'endcard' || !s.sketches
+      ? []
+      : s.sketches.map((k) => {
+          const look = sectionSketchLook(k);
+          return {
+            id: k.id,
+            section: i,
+            until: k.until === undefined ? i : index.get(k.until)!,
+            edge: k.start?.edge ?? 'hold',
+            beats: k.start?.beats ?? 0,
+            drawBeats: look.drawBeats,
+            exit: SKETCH_EXIT_S[look.exit],
+          };
+        }),
+  );
 }
 
 function plan(spec: JobSpec, c: Choreography): Plan {
@@ -135,6 +173,7 @@ function plan(spec: JobSpec, c: Choreography): Plan {
     outro: lastIsEnd ? halves(c.outroBeats) : 0,
     move: halves(c.moveBeats),
     weights: [...load, avg],
+    sketches: sketchPlans(spec),
   };
 }
 
@@ -182,17 +221,28 @@ function detectedGrid(grid: BeatGrid, duration: number) {
   return { at, bpm: r6(60 / median), beats, downbeats };
 }
 
+/** Detected grid: the fewest half-beats after half-beat `h` that last `minTail` seconds. */
+const gridMinTail = (at: (h: number) => number, c: Choreography) => (h: number) => {
+  let k = 0;
+  while (at(h + k) - at(h) < c.minTail - 1e-9) k++;
+  return k;
+};
+
+/** Detected grid: the last half-beat that still leaves `endHold` before the end of the video. */
+function gridLimit(at: (h: number) => number, c: Choreography, duration: number): number {
+  const limit = duration - c.endHold + 1e-9;
+  let available = -1;
+  while (at(available + 1) <= limit) available++;
+  return available;
+}
+
 /**
  * Tails on a detected grid. Seconds (`minTail`, `endHold`) are measured on the grid itself, so they follow the local
  * tempo; the extra half-beats are apportioned like the uniform grid's, then taken back from the largest holds if the
  * local tempo made the layout overrun.
  */
 function gridTails(p: Plan, c: Choreography, duration: number, at: (h: number) => number, bpm: number): number[] {
-  const tailHalves = (h: number) => {
-    let k = 0;
-    while (at(h + k) - at(h) < c.minTail - 1e-9) k++;
-    return k;
-  };
+  const tailHalves = gridMinTail(at, c);
   const walk = (extra: number[]) => {
     const tails: number[] = [];
     let cursor = p.intro;
@@ -203,10 +253,7 @@ function gridTails(p: Plan, c: Choreography, duration: number, at: (h: number) =
     }
     return { tails, end: cursor + p.span[p.last]! + p.outro };
   };
-  // last half-beat that still leaves `endHold` before the end of the video
-  const limit = duration - c.endHold + 1e-9;
-  let available = -1;
-  while (at(available + 1) <= limit) available++;
+  const available = gridLimit(at, c, duration);
   const base = walk(p.weights.map(() => 0));
   if (base.end > available) throw new TimingError(r6(at(base.end) + c.endHold), duration, `the track's ${r6(bpm)} bpm`);
   const extra = apportion(available - base.end, p.weights);
@@ -219,6 +266,126 @@ function gridTails(p: Plan, c: Choreography, duration: number, at: (h: number) =
     res = walk(extra);
   }
   return res.tails;
+}
+
+/** One section's laid-out times: its last landing's half-beat index, entry, last landing and `out` (seconds). */
+interface SectionTimes {
+  lastH: number;
+  inT: number;
+  lastLand: number;
+  out: number;
+}
+
+/** Section times for given tails, exactly as `buildCueSheet` lays them out. */
+function walkTimes(p: Plan, c: Choreography, tails: number[], at: (h: number) => number, duration: number): { secs: SectionTimes[]; end: number } {
+  const out: SectionTimes[] = [];
+  let cursor = p.intro;
+  let prevOut = 0;
+  for (let i = 0; i <= p.last; i++) {
+    const firstLand = at(cursor);
+    const lastH = cursor + p.span[i]!;
+    const outH = lastH + (i === p.last ? 0 : tails[i]!);
+    const o = i === p.last ? duration : at(outH);
+    out.push({ lastH, inT: i === 0 ? 0 : r6(Math.max(prevOut, firstLand - c.leadIn)), lastLand: at(lastH), out: o });
+    prevOut = o;
+    cursor = outH + p.move;
+  }
+  return { secs: out, end: cursor - p.move + p.outro };
+}
+
+/** One beat at half-beat `h` (the local beat on a detected grid). */
+const beatAt = (at: (h: number) => number, h: number) => r6(at(h + 2) - at(h));
+
+/**
+ * When a sketch draws and when it is done: from its section's edge (`in`, or the hold = last landing + entry) plus
+ * `beats`, for `drawBeats`, in beats of the grid at the section's last landing.
+ */
+function sketchWindow(k: SketchPlan, s: Omit<SectionTimes, 'out'>, at: (h: number) => number, c: Choreography) {
+  const beat = beatAt(at, s.lastH);
+  const edge = k.edge === 'in' ? s.inT : r6(s.lastLand + c.entry);
+  const tIn = r6(edge + k.beats * beat);
+  const drawEnd = r6(tIn + k.drawBeats * beat);
+  return { tIn, drawEnd, beat };
+}
+
+/**
+ * Budget rule: a section holds long enough for each of its sketches to start, draw and stay one more beat
+ * (out ≥ edge + (beats + drawBeats + 1) beats). A tail that is too short takes half-beats from the hold with the most
+ * to spare (another section's surplus over its own minimum, or the end hold's slack); tails that already suffice are
+ * left exactly as they were. Throws `TimingError` (the same overrun report as text) when nothing can give.
+ */
+function sketchBudget(
+  p: Plan,
+  c: Choreography,
+  tails0: number[],
+  at: (h: number) => number,
+  duration: number,
+  limit: number,
+  minTail: (lastH: number) => number,
+  tempo: string,
+): number[] {
+  const tails = tails0.slice();
+  /** Fewest tail half-beats each section needs for its sketches (the last section: its hold until `duration`). */
+  const needs = (secs: SectionTimes[]) =>
+    secs.map((s, i) => {
+      let need = -Infinity;
+      for (const k of p.sketches) {
+        if (k.section !== i) continue;
+        const w = sketchWindow(k, s, at, c);
+        need = Math.max(need, r6(w.drawEnd + w.beat));
+      }
+      if (need === -Infinity) return { halves: 0, seconds: need };
+      let h = 0;
+      while (at(s.lastH + h) < need - 1e-9) h++;
+      return { halves: h, seconds: need };
+    });
+  for (let guard = 0; guard < 100_000; guard++) {
+    const w = walkTimes(p, c, tails, at, duration);
+    const need = needs(w.secs);
+    let i = -1;
+    for (let k = 0; k <= p.last && i < 0; k++) {
+      if (need[k]!.seconds === -Infinity) continue;
+      if (k < p.last ? need[k]!.halves > tails[k]! : duration < need[k]!.seconds - 1e-9) i = k;
+    }
+    if (i < 0) return tails;
+    // donor: the most surplus over its own floor; the end hold's slack counts (index p.last), ties go to the later hold
+    let donor = -1;
+    let best = 0;
+    for (let j = 0; j < p.last; j++) {
+      if (j === i) continue;
+      const surplus = tails[j]! - Math.max(minTail(w.secs[j]!.lastH), need[j]!.halves);
+      if (surplus > 0 && surplus >= best) [donor, best] = [j, surplus];
+    }
+    const slack = i < p.last ? limit - w.end : 0;
+    if (slack > 0 && slack >= best) donor = p.last;
+    if (donor < 0) {
+      // every hold is at its floor: the video must grow by what all sketch sections still miss
+      let missing = 0;
+      w.secs.forEach((s, k) => {
+        if (need[k]!.seconds === -Infinity) return;
+        const half = r6(at(s.lastH + 1) - at(s.lastH));
+        missing += k < p.last ? Math.max(0, need[k]!.halves - tails[k]!) * half : Math.max(0, need[k]!.seconds - duration);
+      });
+      throw new TimingError(r6(duration + missing), duration, tempo);
+    }
+    if (i < p.last) tails[i]! += 1;
+    if (donor < p.last) tails[donor]! -= 1;
+  }
+  throw new Error('sketch budget did not settle');
+}
+
+/** `sketch-in` / `sketch-out` cues of every sketch, from the laid-out sections. */
+function sketchCues(p: Plan, c: Choreography, sections: ReelSection[], lastHs: number[], at: (h: number) => number): Cue[] {
+  return p.sketches.flatMap((k) => {
+    const s = sections[k.section]!;
+    const { tIn, drawEnd } = sketchWindow(k, { lastH: lastHs[k.section]!, inT: s.timing.in, lastLand: s.timing.lastLand }, at, c);
+    const gone = sections[k.until]!.timing.out;
+    const exitStart = r6(Math.max(drawEnd, gone - k.exit));
+    return [
+      { t: tIn, type: 'sketch-in', section: s.id, sketch: k.id, weight: 1, until: drawEnd },
+      { t: exitStart, type: 'sketch-out', section: s.id, sketch: k.id, weight: 1, until: Math.max(exitStart, gone) },
+    ] satisfies Cue[];
+  });
 }
 
 /**
@@ -261,6 +428,9 @@ export function buildCueSheet(input: TimingInput): CueSheet {
     const g = detectedGrid(input.grid, duration);
     ({ at, bpm, beats, downbeats } = g);
     tails = gridTails(p, c, duration, at, bpm);
+    if (p.sketches.length) {
+      tails = sketchBudget(p, c, tails, at, duration, gridLimit(at, c, duration), gridMinTail(at, c), `the track's ${r6(bpm)} bpm`);
+    }
   } else {
     if (input.bpm === undefined) throw new Error('buildCueSheet needs a bpm or a detected grid');
     bpm = input.bpm;
@@ -269,6 +439,11 @@ export function buildCueSheet(input: TimingInput): CueSheet {
     const H = beat / 2;
     at = (h: number) => r6(t0 + h * H);
     tails = uniformTails(p, c, duration, t0, H);
+    if (p.sketches.length) {
+      const tailMin = Math.ceil(r6(c.minTail / H));
+      const limit = Math.floor(r6((duration - t0) / H)) - Math.ceil(r6(c.endHold / H));
+      tails = sketchBudget(p, c, tails, at, duration, limit, () => tailMin, `${bpm} bpm`);
+    }
     beats = [];
     downbeats = [];
     for (let k = 0; t0 + k * beat < duration; k++) {
@@ -283,6 +458,7 @@ export function buildCueSheet(input: TimingInput): CueSheet {
   if (intro > 0) cues.push({ t: at(0), type: 'intro', weight: 1 });
   let cursor = intro;
   let prevOut = 0;
+  const lastHs: number[] = [];
   secs.forEach(({ section, items }, i) => {
     const id = section.id!;
     const lands = offs[i]!.map((o) => cursor + o);
@@ -290,6 +466,7 @@ export function buildCueSheet(input: TimingInput): CueSheet {
     const lastLand = at(lands.at(-1)!);
     const isLast = i === last;
     const outH = lands.at(-1)! + (isLast ? 0 : tails[i]!);
+    lastHs.push(lands.at(-1)!);
     const out = isLast ? duration : at(outH);
     const inT = i === 0 ? 0 : r6(Math.max(prevOut, firstLand - c.leadIn));
     if (i > 0) cues.push({ t: prevOut, type: 'camera-move', section: id, weight: 1, until: inT });
@@ -318,6 +495,7 @@ export function buildCueSheet(input: TimingInput): CueSheet {
     cursor = outH + move;
   });
 
+  cues.push(...sketchCues(p, c, sections, lastHs, at));
   const rank = (t: Cue['type']) => CUE_TYPES.indexOf(t);
   cues.sort((a, b) => a.t - b.t || rank(a.type) - rank(b.type));
   return { duration, fps, frames, bpm, t0: at(0), beats, downbeats, sections, cues };

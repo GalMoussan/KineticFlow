@@ -1,4 +1,4 @@
-import type { ReelPage } from '@reel/core';
+import type { OverlayBox, ReelPage } from '@reel/core';
 
 /** What a style implements; `defineReelPage` adds readiness gating and the paint barrier. */
 export interface ReelPageImpl {
@@ -12,6 +12,8 @@ export interface ReelPageImpl {
   fingerprint: ReelPage['fingerprint'];
   /** Called only after `ready()` resolved. */
   soundCues: ReelPage['soundCues'];
+  /** Sketch placements (pages with overlays). */
+  overlays?(): OverlayBox[];
   destroy?(): void;
 }
 
@@ -41,6 +43,7 @@ export function defineReelPage(impl: ReelPageImpl): ReelPage {
     boxes: () => impl.boxes(),
     fingerprint: (t0, t1) => impl.fingerprint(t0, t1),
     soundCues: () => impl.soundCues(),
+    ...(impl.overlays ? { overlays: () => impl.overlays?.() ?? [] } : {}),
     ...(impl.destroy ? { destroy: () => impl.destroy?.() } : {}),
   };
   window.reelPage = page;

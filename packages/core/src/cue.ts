@@ -15,6 +15,10 @@ export const CUE_TYPES = [
   'endcard',
   /** Decoration after the end card's last item (e.g. a closing quote mark). */
   'outro',
+  /** A sketch starts drawing at `t` and finishes at `until`; `section` owns it, `sketch` is its id. */
+  'sketch-in',
+  /** A sketch's exit runs from `t` to `until` (the `until` section's `out`), then it is gone. */
+  'sketch-out',
 ] as const;
 export type CueType = (typeof CUE_TYPES)[number];
 
@@ -26,8 +30,10 @@ export interface Cue {
   unit?: number;
   /** 0..1 intensity; music presets scale hits by it. */
   weight: number;
-  /** End time for cues with a duration (`camera-move`). */
+  /** End time for cues with a duration (`camera-move`, `sketch-in`, `sketch-out`). */
   until?: number;
+  /** Sketch id (`sketch-in`, `sketch-out`). */
+  sketch?: string;
 }
 
 export interface SectionTiming {

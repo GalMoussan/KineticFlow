@@ -1,12 +1,15 @@
 /**
  * Uploads (`POST /api/assets`, multipart `file` + `kind` [+ `name`]): type and size checks, metadata, storage as
  * `data/assets/<id>.<ext>` where `id` is a unique slug of the file name (`ayalim.png` → `ayalim`, then `ayalim-2`).
+ * Sketches (`.json` uploads or `POST /api/sketch/save`) are validated as `SketchDoc` and stored as canonical JSON in
+ * `<id>.sketch.json`, with a plain SVG thumbnail `<id>.sketch.svg`.
  */
 import { createHash } from 'node:crypto';
 import { access, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import type { Asset, AssetKind } from '@reel/api';
+import { canonicalJson, SketchDoc, sketchSvg } from '@reel/core';
 import { analyzeTrack, imageSize, logoColors, MODEL_PATH, readFont } from '@reel/render';
 import { HttpError, slugify, uniqueSlug, newId } from './http.ts';
 import type { Store } from './store.ts';
@@ -15,7 +18,52 @@ export const LIMITS: Record<AssetKind, { bytes: number; exts: readonly string[] 
   logo: { bytes: 10 * 1024 * 1024, exts: ['png', 'svg', 'jpg'] },
   track: { bytes: 60 * 1024 * 1024, exts: ['mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg'] },
   font: { bytes: 10 * 1024 * 1024, exts: ['ttf', 'otf', 'woff2'] },
+  sketch: { bytes: 2 * 1024 * 1024, exts: ['json'] },
 };
+
+/** Stored file extension of a sketch asset (`<id>.sketch.json`) and of its thumbnail. */
+export const SKETCH_EXT = 'sketch.json';
+export const SKETCH_THUMB_EXT = 'sketch.svg';
+
+/**
+ * Validates `doc` as a `SketchDoc` and stores it as a `sketch` asset: canonical JSON (so the file's sha256 is the
+ * doc's content hash) plus an SVG thumbnail. 422 with the first schema issues when it is not a valid drawing.
+ */
+export async function saveSketch(store: Store, dir: string, doc: unknown, name: string | undefined, log: (msg: string) => void): Promise<Asset> {
+  const r = SketchDoc.safeParse(doc);
+  if (!r.success) {
+    const first = r.error.issues.slice(0, 3).map((i) => `${i.path.join('.') || 'doc'}: ${i.message}`);
+    throw new HttpError(422, `not a valid sketch drawing: ${first.join('; ')}`);
+  }
+  const d = r.data;
+  const bytes = new TextEncoder().encode(canonicalJson(d));
+  const label = (name?.trim() || d.meta.prompt || `sketch ${d.mode}`).slice(0, 120);
+  const id = uniqueSlug(slugify(label) || `sketch-${newId(6)}`, (x) => store.getAsset(x) !== undefined);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, `${id}.${SKETCH_EXT}`), bytes);
+  await writeFile(join(dir, `${id}.${SKETCH_THUMB_EXT}`), sketchSvg(d));
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const asset = store.insertAsset({
+    id,
+    kind: 'sketch',
+    name: label,
+    ext: SKETCH_EXT,
+    bytes: bytes.length,
+    sha256,
+    meta: {
+      mode: d.mode,
+      box: d.box,
+      strokes: d.strokes.length,
+      points: d.strokes.reduce((n, s) => n + s.pts.length, 0),
+      source: d.meta.source,
+      hash: sha256,
+      thumb: `/files/assets/${encodeURIComponent(`${id}.${SKETCH_THUMB_EXT}`)}`,
+    },
+  });
+  log(`asset sketch ${id} (${d.mode}, ${d.strokes.length} strokes)`);
+  const { ext: _e, sha256: _s, ...out } = asset;
+  return out;
+}
 
 function probeDuration(path: string): Promise<number> {
   const { promise, resolve, reject } = Promise.withResolvers<number>();
@@ -33,7 +81,7 @@ function probeDuration(path: string): Promise<number> {
   return promise;
 }
 
-async function metaOf(kind: AssetKind, ext: string, bytes: Uint8Array, path: string): Promise<Record<string, unknown>> {
+async function metaOf(kind: Exclude<AssetKind, 'sketch'>, ext: string, bytes: Uint8Array, path: string): Promise<Record<string, unknown>> {
   switch (kind) {
     case 'logo': {
       if (ext === 'svg' && !/<svg[\s>]/i.test(new TextDecoder().decode(bytes.subarray(0, 4096)))) throw new Error('not an SVG file');
@@ -71,6 +119,15 @@ export async function ingestAsset(store: Store, dir: string, u: Upload, log: (ms
   }
   if (u.file.size === 0) throw new HttpError(400, `${original} is empty`);
   const bytes = new Uint8Array(await u.file.arrayBuffer());
+  if (u.kind === 'sketch') {
+    let doc: unknown;
+    try {
+      doc = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      throw new HttpError(422, `${original} is not JSON`);
+    }
+    return saveSketch(store, dir, doc, u.name ?? original.replace(/\.(sketch\.)?json$/i, ''), log);
+  }
   const name = (u.name?.trim() || original.replace(/\.[^.]+$/, '')).slice(0, 120);
   const id = uniqueSlug(slugify(name) || `${u.kind}-${newId(6)}`, (x) => store.getAsset(x) !== undefined);
   await mkdir(dir, { recursive: true });

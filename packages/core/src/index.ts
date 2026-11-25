@@ -9,3 +9,7 @@ export * from './fonts.ts';
 export * from './cue.ts';
 export * from './page.ts';
 export * from './sound.ts';
+export * from './sketch.ts';
+export * from './presets.ts';
+export * from './until.ts';
+export * from './seed.ts';

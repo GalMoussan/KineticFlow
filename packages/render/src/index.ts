@@ -38,6 +38,7 @@ import {
   gateGlyphs,
   gateLoudness,
   gateOverlap,
+  gateSketches,
   gateSfx,
   gateWeekday,
   probe,
@@ -65,7 +66,7 @@ export type { GateResult, Level, ProbeSummary } from './qa.ts';
 export type { Exported } from './assemble.ts';
 export type { Preset, QualitySettings } from './encode.ts';
 export { buildBundle, findLogo, specFontIds, type Bundle } from './bundle.ts';
-export { imageSize, logoColors, reelInput } from './reel-input.ts';
+export { imageSize, loadSketchDoc, logoColors, reelInput, specSketchAssets } from './reel-input.ts';
 export { launchBrowser, ReelTab } from './capture.ts';
 export type { Browser } from 'playwright';
 export { CSP } from './server.ts';
@@ -573,6 +574,8 @@ async function preflight(ctx: Ctx, browser: Browser, input: ReelInput): Promise<
   try {
     const samples = await sampleHolds(tab, ctx.sheet);
     const gates: GateResult[] = [gateBounds(samples, input), gateFidelity(samples, input), gateOverlap(samples, input)];
+    const sketch = gateSketches(samples, input);
+    if (sketch) gates.push(sketch);
     const weekday = gateWeekday(samples, ctx.spec, input);
     if (weekday) gates.push(weekday);
     gates.push(await gateDeterminism(tab, { origin: ctx.origin, entry: ctx.bundle.entry, input, sheet: ctx.sheet }));

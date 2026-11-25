@@ -2,6 +2,7 @@ import type { CueSheet } from './cue.ts';
 import type { Format } from './formats.ts';
 import type { JobSpec } from './spec.ts';
 import type { SoundCue } from './sound.ts';
+import type { SketchDoc, SketchLook, SketchPlace } from './sketch.ts';
 import type { TraitAxis } from './style.ts';
 
 /**
@@ -70,6 +71,43 @@ export interface ReelInput {
   palette: ResolvedPalette;
   fonts: { display: FontRef; text: FontRef };
   logos: LogoRef[];
+  /** Section sketches in reel order (absent when the job has none). Timing comes from the cue sheet's sketch cues. */
+  sketches?: SketchRef[];
+}
+
+/** One sketch as the page draws it: the resolved drawing, look and placement request. */
+export interface SketchRef {
+  id: string;
+  /** Owning section id. */
+  section: string;
+  /** Last section id it stays through (its own by default). */
+  until: string;
+  /** sha256 of the drawing's canonical JSON (`sketchDocHash`); part of every fingerprint it reaches. */
+  hash: string;
+  /** The drawing, inline (presets and generated docs alike; not a bundle file, SKETCH-PLAN.md SK16). */
+  doc: SketchDoc;
+  look: SketchLook;
+  place: SketchPlace;
+}
+
+/** Where a sketch sits on screen (`ReelPage.overlays()`), for the sketch QA gates. */
+export interface OverlayBox {
+  id: string;
+  section: string;
+  /** Placement mode as requested; `word` renders as auto until word attachment lands (P5). */
+  place: SketchPlace['mode'];
+  layer: 'under' | 'over';
+  /** Auto placement found no free space wide enough and put the sketch under the text. */
+  fallback: boolean;
+  /** The content item a `word` placement points at. */
+  item?: number;
+  /** Drawn at the current `t`. */
+  visible: boolean;
+  /** Screen pixels: axis-aligned box of the placed drawing (after rotation). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface TextBox {
@@ -106,6 +144,8 @@ export interface ReelPage {
    * Pure function of `REEL`; valid after `ready()`.
    */
   soundCues(): SoundCue[];
+  /** Every sketch's placement, with `visible` for the last `seek(t)`. Absent on pages without overlays. */
+  overlays?(): OverlayBox[];
   destroy?(): void;
 }
 

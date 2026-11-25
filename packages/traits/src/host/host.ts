@@ -25,6 +25,7 @@ import type {
 } from '../contract.ts';
 import { commitLayer, commitStage, commitUnit, drawn, resetChannels, resetPart } from './commit.ts';
 import { finishCues } from '../lib/sound.ts';
+import { mountOverlays, type Overlays } from './overlays.ts';
 
 /** Bump when host behaviour changes pixels for the same inputs (it is part of every fingerprint). */
 const HOST_VERSION = 'traits-host@1';
@@ -464,15 +465,20 @@ export function runHost(traits: readonly AnyTrait[]): void {
     for (const s of sections) buildSection(s);
     for (const axis of AXES) await each(axis, (t, c) => t.mount?.(c as never));
     for (const L of layers) commitLayer(L, stageCh, IDENTITY, false);
-    sounds = collectSounds();
+    // sketches place themselves against the text's hold boxes, so they mount once the scene can be seeked
+    overlays = mountOverlays(host, { seek, boxes });
+    sounds = collectSounds(overlays?.sounds() ?? []);
   }
+
+  /** Section sketches (`REEL.sketches`); null for jobs without any (then nothing is created). */
+  let overlays: Overlays | null = null;
 
   // ── sound cues (once, after mount) ──
   let sounds: SoundCue[] | null = null;
 
-  /** Every instance's `sounds`, plus the host's landing sounds for sections whose reveal has none; thinned. */
-  function collectSounds(): SoundCue[] {
-    const raw: SoundCue[] = [];
+  /** Every instance's `sounds`, plus the host's landing sounds for sections whose reveal has none and `extra`; thinned. */
+  function collectSounds(extra: SoundCue[]): SoundCue[] {
+    const raw: SoundCue[] = [...extra];
     for (const axis of AXES) {
       for (const i of instancesOf(axis)) {
         const own = (i.c as Partial<SectionCtx<unknown>>).section?.id;
@@ -591,6 +597,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
       if (!L.ch.visible || !activeAt(L, t)) continue;
       for (const s of L.sections) for (const u of s.units) commitUnit(u);
     }
+    overlays?.frame(t);
   }
 
   /** Hides an idle instance's owned elements (once), remembering their inline `display`. */
@@ -730,6 +737,8 @@ export function runHost(traits: readonly AnyTrait[]): void {
           }),
         };
       });
+    // sketches visible in the window only: windows without one keep exactly the keys they had before sketches existed
+    const sketches = overlays?.fingerprint(t0, t1);
     return {
       host: HOST_VERSION,
       format: REEL.format,
@@ -739,8 +748,9 @@ export function runHost(traits: readonly AnyTrait[]): void {
       // a generated grid is fully given by t0 + bpm; a detected one (own/AI track) drifts, so it is keyed whole
       beats: { t0: REEL.cues.t0, bpm: REEL.cues.bpm ?? null, ...(DETECTED ? { grid: REEL.cues.beats } : {}) },
       layers: layersOut,
+      ...(sketches ? { overlays: sketches } : {}),
     };
   }
 
-  defineReelPage({ width: W, height: H, ready: setup, seek, boxes, fingerprint, soundCues });
+  defineReelPage({ width: W, height: H, ready: setup, seek, boxes, fingerprint, soundCues, overlays: () => overlays?.boxes() ?? [] });
 }

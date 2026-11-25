@@ -94,6 +94,7 @@ The overlay's own cost per frame, median / p95 ms. Measured on GPU raster with t
 | SK13 | The "+5 %" gate is measured on dilemma **render wall time**, not page main-thread time. | A visible sketch adds 40–90 % to the page's own ≈ 1.1 ms of work, but < 4 % of a captured frame. |
 | SK14 | The determinism check times include frames inside every sketch window. | `stills.ts`'s fixed times missed the section-2 sketch in S5. |
 | SK15 | Adding the overlay module changes the page bundle, so every job's chunk cache key changes once (pixels and fingerprints stay the same). Accepted. | One-time re-render of cached chunks. |
+| SK16 | **Generated SketchDocs travel inline in the job input, not the page bundle.** Their content hash is in the fingerprint, so only the chunks they appear in re-render (refines brief hard rule 4). | Decided by the integrator in P1 review round 1: a drawing in the bundle changed the bundle hash, so adding or regenerating one re-rendered every chunk of the job. |
 
 The brief's own open questions keep its defaults unless you say otherwise:
 - refine on, capped at 3 calls per Generate (cost not measured yet: expected +35–45 % tokens and one extra round trip)
@@ -128,6 +129,11 @@ As in the brief, with the gate from §3.1. Each phase has one worker and one rev
 | P4 UI | Section-card sketch row, `✎` emphasis menu, end-card toggle, Brand sketches + line version, Mixer group, scrub spans, handles | `sketch.ts` e2e runs the three stories (replay fixtures); `happy-path.ts` passes untouched |
 | P5 Word attachment | `place.mode = 'word'` incl. sub words, click to attach | Circle tracks an emphasised word in kinetic-quote and one per-letter style, 4 formats, he + en |
 | P6 Polish | Copy, RTL review, PLAN.md rows, dead code | Reviewer walks the three stories and finds nothing to reject |
+
+### Carried forward from P1 review
+- **P2:** before falling back under the text, shrink the sketch into the largest usable free spot (kinetic-quote 1:1 / 16:9 fall back today; every remaining fallback was checked as genuine at the current 18 % minimum).
+- **P4:** `convertSection` (web `spec.ts`) drops a section's sketches when its role changes between text and non-text roles; keep them when the new role allows sketches.
+- **P6:** delete the P0 spike harnesses in `packages/render/dev/sketch/` (they no longer run since `perfect-freehand` moved to `@reel/traits`).
 
 ## 5. New dependencies
 

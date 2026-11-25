@@ -136,9 +136,6 @@ importers:
       esbuild:
         specifier: ^0.25.12
         version: 0.25.12
-      perfect-freehand:
-        specifier: 1.2.2
-        version: 1.2.2
       playwright:
         specifier: ^1.65.1
         version: 1.65.1
@@ -189,6 +186,9 @@ importers:
       harfbuzzjs:
         specifier: ^0.4.15
         version: 0.4.15
+      perfect-freehand:
+        specifier: 1.2.2
+        version: 1.2.2
       polygon-clipping:
         specifier: ^0.15.7
         version: 0.15.7

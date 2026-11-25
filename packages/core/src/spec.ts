@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { FormatId } from './formats.ts';
+import { sectionItems } from './items.ts';
+import { SectionSketch, SKETCH_LIMITS } from './sketch.ts';
 import { Slug, TraitAxis } from './style.ts';
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, '#RRGGBB');
@@ -38,6 +40,13 @@ const common = {
   minHold: z.number().min(0.5).max(10).optional(),
 };
 
+/** Sections that can carry sketches (every role except the end card). */
+const drawable = {
+  ...common,
+  /** Overlays drawn on in sync with this section (SKETCH-PLAN.md); they move, duplicate and delete with it. */
+  sketches: z.array(SectionSketch).max(SKETCH_LIMITS.perSection, `at most ${SKETCH_LIMITS.perSection} sketches per section`).optional(),
+};
+
 export const TEXT_ROLES = ['tagline', 'body', 'teaser', 'cta', 'heading', 'question', 'answer', 'quote'] as const;
 
 /**
@@ -47,13 +56,13 @@ export const TEXT_ROLES = ['tagline', 'body', 'teaser', 'cta', 'heading', 'quest
 const Sub = Text.optional();
 
 export const Section = z.discriminatedUnion('role', [
-  z.object({ ...common, role: z.literal('title'), text: Text, sub: Sub }),
-  z.object({ ...common, role: z.enum(TEXT_ROLES), text: Text, sub: Sub }),
-  z.object({ ...common, role: z.literal('datetime'), date: IsoDate, time: Time.optional() }),
-  z.object({ ...common, role: z.literal('location'), place: Text, city: Text.optional() }),
-  z.object({ ...common, role: z.literal('list'), title: Text.optional(), items: z.array(Text).min(1).max(10) }),
+  z.object({ ...drawable, role: z.literal('title'), text: Text, sub: Sub }),
+  z.object({ ...drawable, role: z.enum(TEXT_ROLES), text: Text, sub: Sub }),
+  z.object({ ...drawable, role: z.literal('datetime'), date: IsoDate, time: Time.optional() }),
+  z.object({ ...drawable, role: z.literal('location'), place: Text, city: Text.optional() }),
+  z.object({ ...drawable, role: z.literal('list'), title: Text.optional(), items: z.array(Text).min(1).max(10) }),
   z.object({
-    ...common,
+    ...drawable,
     role: z.literal('stat'),
     value: z.number(),
     prefix: z.string().max(4).optional(),
@@ -61,14 +70,23 @@ export const Section = z.discriminatedUnion('role', [
     label: Text,
   }),
   /** Days remaining are computed from `from` (the posting date), never from the clock, so renders stay deterministic. */
-  z.object({ ...common, role: z.literal('countdown'), from: IsoDate, to: IsoDate, label: Text.optional() }),
+  z.object({ ...drawable, role: z.literal('countdown'), from: IsoDate, to: IsoDate, label: Text.optional() }),
   z.object({
-    ...common,
+    ...drawable,
     role: z.literal('lyric'),
     /** `at` = seconds into the track, from tap-to-align or manual entry. */
     lines: z.array(z.object({ text: Text, at: z.number().min(0).optional() })).min(1),
   }),
-  z.object({ ...common, role: z.literal('endcard'), logos: z.array(Slug).max(4), text: Text.optional() }),
+  z.object({
+    ...common,
+    role: z.literal('endcard'),
+    logos: z.array(Slug).max(4),
+    text: Text.optional(),
+    /** Draw the logo's Line version, then reveal the real logo (rendered once logo line versions exist, P3). */
+    drawLogo: z.boolean().optional(),
+    /** The end card carries no sketches (it can draw its logo instead). */
+    sketches: z.array(z.unknown()).max(0, 'the end card has no sketches; use "drawLogo" instead').optional(),
+  }),
 ]);
 export type Section = z.infer<typeof Section>;
 export type SectionRole = Section['role'];
@@ -198,8 +216,55 @@ export const JobSpec = z
       ctx.addIssue({ code: 'custom', path: ['sections'], message: 'duplicate section id' });
       return z.NEVER;
     }
+    const explicit = new Set(spec.sections.flatMap((s) => (s.id === undefined ? [] : [s.id])));
+    if (!sketchIssues(sections, explicit, spec.language, (path, message) => ctx.addIssue({ code: 'custom', path, message }))) return z.NEVER;
     return { ...spec, sections };
   });
+
+/**
+ * Cross-section sketch rules: ≤ 12 per job, unique ids, `until` names a later section by its explicit `id` (a positional
+ * default id would silently retarget when sections move), a `word` placement points at a content item of its section,
+ * and logo line versions (P3) are not available yet. Returns false on any issue.
+ */
+function sketchIssues(
+  sections: (Section & { id: string })[],
+  explicit: ReadonlySet<string>,
+  language: 'he' | 'en',
+  issue: (path: (string | number)[], message: string) => void,
+): boolean {
+  let ok = true;
+  const fail = (path: (string | number)[], message: string) => {
+    ok = false;
+    issue(path, message);
+  };
+  const index = new Map(sections.map((s, i) => [s.id, i]));
+  const seen = new Set<string>();
+  let total = 0;
+  sections.forEach((s, i) => {
+    if (s.role === 'endcard' || !s.sketches) return;
+    s.sketches.forEach((k, j) => {
+      const at = ['sections', i, 'sketches', j];
+      total++;
+      if (seen.has(k.id)) fail([...at, 'id'], `duplicate sketch id "${k.id}"`);
+      seen.add(k.id);
+      if (k.until !== undefined) {
+        const u = index.get(k.until);
+        if (u === undefined) fail([...at, 'until'], `"until" names no section ("${k.until}")`);
+        else if (u <= i) fail([...at, 'until'], `"until" must name a later section than "${s.id}"`);
+        else if (!explicit.has(k.until)) fail([...at, 'until'], `"until" needs section "${k.until}" to have an explicit "id"`);
+      }
+      if (k.place.mode === 'word') {
+        const it = sectionItems(s, { language, sections })[k.place.item];
+        if (!it || it.kind === 'logos') fail([...at, 'place', 'item'], `section "${s.id}" has no content item ${k.place.item}`);
+      }
+      if (k.source.kind === 'logo') {
+        fail([...at, 'source'], 'drawing a logo\u2019s line version is not available yet (it comes with the sketch generators)');
+      }
+    });
+  });
+  if (total > SKETCH_LIMITS.perJob) fail(['sections'], `${total} sketches; a video has at most ${SKETCH_LIMITS.perJob}`);
+  return ok;
+}
 
 export type JobSpecInput = z.input<typeof JobSpec>;
 export type JobSpec = z.output<typeof JobSpec>;

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { daysBetween, weekday, type SectionRole } from '@reel/core';
+import { daysBetween, retargetSketchUntil, weekday, type SectionRole } from '@reel/core';
 import { api, errorMessage } from '../api.ts';
 import { convertSection, emphasisWords, humanMessage, isTextRole, newSection, plain, ROLE_LABELS, sectionId, styleBase, toggleEmphasis, type SectionInput } from '../spec.ts';
 import { useStudio } from '../studio.tsx';
@@ -37,26 +37,28 @@ export function SectionList() {
   const sections = s.spec.sections;
   const issues = useIssues();
 
+  // every section-list edit keeps sketches' `until` on the same target (clamped when it is gone), inside the same
+  // `s.update`, so one undo restores both
   const move = (from: number, to: number) => {
     if (from === to || to < 0 || to >= sections.length) return;
     s.update((d) => {
       const next = [...d.sections];
       const [x] = next.splice(from, 1);
       next.splice(to, 0, x!);
-      return { ...d, sections: next };
+      return { ...d, sections: retargetSketchUntil(d.sections, next) };
     });
   };
   const patch = (i: number, fn: Patch, key?: string) =>
     s.update((d) => ({ ...d, sections: d.sections.map((x, j) => (j === i ? fn(x) : x)) }), key ?? `sec-${i}`);
   const remove = (i: number) => {
-    s.update((d) => ({ ...d, sections: d.sections.filter((_, j) => j !== i) }));
+    s.update((d) => ({ ...d, sections: retargetSketchUntil(d.sections, d.sections.filter((_, j) => j !== i)) }));
     s.toast('Section removed', { action: { label: 'Undo', run: s.undo } });
   };
   /** Inserts a new section at `at`, or (no `at`) before the end card so it stays last. */
   const add = (role: SectionRole, at?: number) => {
     const end = sections.findIndex((x) => x.role === 'endcard');
     const i = at ?? (end >= 0 && role !== 'endcard' ? end : sections.length);
-    s.update((d) => ({ ...d, sections: [...d.sections.slice(0, i), newSection(role), ...d.sections.slice(i)] }));
+    s.update((d) => ({ ...d, sections: retargetSketchUntil(d.sections, [...d.sections.slice(0, i), newSection(role), ...d.sections.slice(i)]) }));
     setInserting(null);
     requestAnimationFrame(() => s.select(['sections', i]));
   };

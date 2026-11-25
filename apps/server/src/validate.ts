@@ -50,12 +50,22 @@ export async function validateSpec(raw: unknown, env: ValidateEnv): Promise<Vali
 
   // ── asset references ──
   spec.sections.forEach((s, i) => {
-    if (s.role !== 'endcard') return;
+    if (s.role !== 'endcard') {
+      s.sketches?.forEach((k, j) => {
+        if (k.source.kind === 'generated' && store.getAsset(k.source.asset)?.kind !== 'sketch') {
+          issues.push({ path: ['sections', i, 'sketches', j, 'source', 'asset'], message: `sketch "${k.source.asset}" is not saved`, level: 'error' });
+        }
+      });
+      return;
+    }
     s.logos.forEach((id, j) => {
       if (store.getAsset(id)?.kind !== 'logo') {
         issues.push({ path: ['sections', i, 'logos', j], message: `logo "${id}" is not uploaded`, level: 'error' });
       }
     });
+    if (s.drawLogo) {
+      issues.push({ path: ['sections', i, 'drawLogo'], message: 'drawing the logo needs its line version, which comes with the sketch generators; the logo shows as usual for now', level: 'warn' });
+    }
   });
   if (spec.music.source === 'track' && store.getAsset(spec.music.file)?.kind !== 'track') {
     issues.push({ path: ['music', 'file'], message: `track "${spec.music.file}" is not uploaded`, level: 'error' });

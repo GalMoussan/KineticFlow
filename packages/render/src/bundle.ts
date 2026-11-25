@@ -3,7 +3,8 @@
  * `index.html` + `engine.js` (the generic trait host, the job's traits and the runtime, one IIFE) + `engine.css`
  * (host + trait stylesheets) + `fonts/*` + `logos/*`. The entry is generated per job and imports only the traits the
  * job uses, so editing an unrelated trait does not change the hash. Everything the page can load is in here, so
- * `hash` covers every byte that can influence pixels except the injected `window.REEL`.
+ * `hash` covers every byte that can influence pixels except the injected `window.REEL` (which carries sketch
+ * drawings inline, keyed by their content hash in the fingerprint: SKETCH-PLAN.md SK16).
  */
 import { createHash } from 'node:crypto';
 import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';

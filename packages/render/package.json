@@ -13,7 +13,6 @@
     "@reel/timing": "workspace:*",
     "@reel/traits": "workspace:*",
     "esbuild": "^0.25.12",
-    "perfect-freehand": "1.2.2",
     "playwright": "^1.65.1",
     "pngjs": "^7.0.0"
   },

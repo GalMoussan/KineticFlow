@@ -3,7 +3,7 @@
  * script, Math.random seeded per frame, frames grabbed with CDP `Page.captureScreenshot` (never `page.screenshot`).
  */
 import { chromium, type Browser, type BrowserContext, type CDPSession, type Page } from 'playwright';
-import type { ReelInput, SoundCue, TextBox } from '@reel/core';
+import type { OverlayBox, ReelInput, SoundCue, TextBox } from '@reel/core';
 
 /**
  * M0a: Metal WebGL2 on the M1 Pro in chrome-headless-shell.
@@ -152,6 +152,11 @@ export class ReelTab {
 
   boxes(): Promise<TextBox[]> {
     return this.#page.evaluate(() => window.reelPage.boxes());
+  }
+
+  /** Sketch placements, `visible` for the last seek (empty on pages without overlays). */
+  overlays(): Promise<OverlayBox[]> {
+    return this.#page.evaluate(() => window.reelPage.overlays?.() ?? []);
   }
 
   /** CSP violations, page errors and blocked requests so far; any of them fails the job. */
