@@ -64,7 +64,7 @@ for (const style of styles) {
     const row: Row = { spec: name, style, ok: false, seconds: 0, fails: [], warns: [], holds: [] };
     const t0 = performance.now();
     try {
-      const sheet = buildCueSheet({ spec: JobSpec.parse(raw), choreography: recipe.choreography, bpm: raw.music.bpm, fps: 30 });
+      const sheet = buildCueSheet({ spec: JobSpec.parse(raw), choreography: recipe.choreography, bpm: raw.music.bpm, fps: 30, recipes: RECIPES });
       row.holds = sheet.sections.map((s) => s.timing.holdEnd - 1 / 30);
       const receipt = await renderJob(
         path,

@@ -1502,6 +1502,13 @@ figure.picked .big-thumb {
   color: var(--accent);
   font-weight: 600;
 }
+.strip-sketch {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* look */
 .palette-grid {

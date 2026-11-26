@@ -13,3 +13,4 @@ export * from './sketch.ts';
 export * from './presets.ts';
 export * from './until.ts';
 export * from './seed.ts';
+export * from './glow.ts';

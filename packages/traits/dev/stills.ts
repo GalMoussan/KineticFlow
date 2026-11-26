@@ -217,7 +217,7 @@ const samples = args.audio ? nodeSampleBank() : null;
 const cue = async (s: JobSpec): Promise<CueSheet> =>
   samples
     ? (await prepareMusic({ spec: s, specDir, choreography: rec.choreography, fps: 30, samples })).sheet
-    : buildCueSheet({ spec: s, choreography: rec.choreography, bpm, fps: 30 });
+    : buildCueSheet({ spec: s, choreography: rec.choreography, bpm, fps: 30, recipes: RECIPES });
 const sheet = await cue(spec);
 const altSheet = await cue(altSpec);
 if (args.audio) console.log(`cue sheet from prepareMusic: envelopes ${sheet.envelopes ? 'yes' : 'no'}, bpm ${sheet.bpm ?? '—'}`);

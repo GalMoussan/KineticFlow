@@ -19,6 +19,7 @@ import {
   type ReelInput,
   type SketchRef,
 } from '@reel/core';
+import { RECIPES } from '@reel/styles';
 import type { StyleResolution } from '@reel/traits';
 import { findLogo, fontUrl, specFontIds, type Bundle } from './bundle.ts';
 import { resolveFonts } from './fonts.ts';
@@ -172,7 +173,7 @@ export async function sketchRefs(spec: JobSpec, specDir: string): Promise<Sketch
   for (const s of spec.sections) {
     if (s.role === 'endcard' || !s.sketches) continue;
     for (const k of s.sketches) {
-      const look = sectionSketchLook(k);
+      const look = sectionSketchLook(spec, s, k, RECIPES);
       const doc =
         k.source.kind === 'preset'
           ? presetDoc(k.source.preset, look.presetMode, seedOf(k.id))

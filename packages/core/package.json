@@ -2,7 +2,7 @@
   "name": "@reel/core",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./seed.ts": "./src/seed.ts" },
+  "exports": { ".": "./src/index.ts", "./seed.ts": "./src/seed.ts", "./glow.ts": "./src/glow.ts" },
   "dependencies": {
     "zod": "^4.1.0"
   }

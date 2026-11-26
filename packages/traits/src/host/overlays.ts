@@ -17,9 +17,16 @@
  * - Sketch: perfect-freehand outlines precomputed at `ready()` (only the one partial stroke is rebuilt per frame),
  *   plus a faint jitter pass when `rough > 0`; `boil` moves each stroke's faint pass with an SVG `translate` that
  *   changes every 4 frames. Pen width scales down with stroke density so dense hatching stays hatching.
+ *
+ * Material carry-over (P2): the owning section's material treats the strokes as it treats text.
+ * - Glow: the material's text-shadow glow (same radius pair, falloff and colour, `look.glow` = the share of it), drawn
+ *   without filters as stacked translucent rings of the drawn centreline (`glowRings`): an SVG filter made Chromium
+ *   composite the drawing, and promote what was painted above it (measured with `out/sketch/P2/layers.ts`).
+ * - Faint pass: risograph prints it as the second ink plate (off-register), chalk as dust, others as a pale ghost.
  */
 import { getStroke, type StrokeOptions } from 'perfect-freehand';
 // value imports from core must avoid its index: the schemas would bring zod (and its CSP-blocked eval probe) into the page
+import { sketchGlow, type GlowKind } from '@reel/core/glow.ts';
 import { seedOf } from '@reel/core/seed.ts';
 import type { OverlayBox, SketchDoc, SketchLook, SketchRef, SoundCue, TextBox } from '@reel/core';
 import { clamp01, easeInOut, hash } from '@reel/runtime';
@@ -27,7 +34,7 @@ import type { Host, Layer, Section } from '../contract.ts';
 import { autoCap, autoPlacement, framePlacement, rotatedBounds, TEXT_MARGIN, type Rect } from '../lib/placement.ts';
 
 /** Bump when overlay drawing changes pixels for the same inputs (it is part of every fingerprint with a sketch). */
-const OVERLAY_VERSION = 'overlays@1';
+const OVERLAY_VERSION = 'overlays@2';
 /** House pen width as a share of the frame's short side (≈ 8 px at 1080). */
 const PEN = 0.0075;
 /** Ink coverage of the drawing's box above which the pen thins (SK12), and the thinnest it gets. */
@@ -35,6 +42,42 @@ const MAX_COVERAGE = 0.14;
 const MIN_THIN = 0.3;
 /** Opacity of an auto-placed sketch that found no free space and went under the text. */
 const FALLBACK_OPACITY = 0.35;
+/** Neon's reference font size (its glow is `glow · (18 + 20·pulse) · size / EM`, as in `material/neon-glow`). */
+const NEON_EM = 280;
+
+/**
+ * How the owning section's material treats the strokes, fixed at `ready()` (part of the fingerprint). `glow` carries
+ * what the material's text glow is computed from: `S` (the section's largest content font size), `p` (the material's
+ * glow param), `k` (`look.glow`).
+ */
+interface Treat {
+  material: string;
+  glow: { kind: GlowKind; S: number; p: number; k: number; pulse: boolean } | null;
+  faint: 'plate' | 'dust' | 'ghost';
+}
+
+/** One frame's glow: a narrow and a wide shadow (`r` = CSS blur radius in screen px, `a` = alpha), in `color`. */
+interface GlowFrame {
+  r1: number;
+  a1: number;
+  r2: number;
+  a2: number;
+  color: string;
+}
+
+/** The material's text glow for a sketch (same formulas as the material traits), `null` when nothing glows. */
+function glowAt(g: NonNullable<Treat['glow']>, pulse: number, color: string): GlowFrame | null {
+  const { kind, S, p, k } = g;
+  let r = 0;
+  if (kind === 'neon') r = k * p * (18 + 20 * pulse) * (S / NEON_EM);
+  else if (kind === 'spectrum') r = Math.round(k * p * 0.07 * S * pulse);
+  else if (kind === 'tint') r = k * p * 0.06 * S;
+  else r = k * p * S;
+  if (r < 0.01) return null;
+  if (kind === 'neon' || kind === 'spectrum') return { r1: r, a1: 1, r2: 3 * r, a2: 1, color };
+  if (kind === 'tint') return { r1: r, a1: 0.55, r2: 2.6 * r, a2: 0.22, color };
+  return { r1: r, a1: kind === 'chalk' ? 0.4 : 0.5, r2: 0, a2: 0, color };
+}
 
 export interface Overlays {
   /** Draws every sketch for reel time t (last step of `seek`). */
@@ -88,6 +131,7 @@ interface Placed {
   /** Arc-length tables of the strokes, built once (density thinning and drawing share them). */
   arcs: Arc[];
   sessions: Session[];
+  treat: Treat;
 }
 
 interface Frame {
@@ -95,6 +139,9 @@ interface Frame {
   p: number;
   opacity: number;
   color: string;
+  /** Fill of the faint pass (ghost, dust or the second riso plate). */
+  faint: string;
+  glow: GlowFrame | null;
   /** Boil bucket (`floor(t·fps/4)`), 0 without boil. */
   bucket: number;
 }
@@ -200,6 +247,49 @@ function jitter(seed: number, i: number, bucket: number, amp: number): { x: numb
   return { x: (hash(n) * 2 - 1) * amp, y: (hash(n + 97) * 2 - 1) * amp };
 }
 
+/**
+ * Share of a shadow's alpha that a Gaussian blur of radius r (σ = r / 2, as CSS `text-shadow`) leaves beyond a stroke's
+ * edge, at the middle of each of three equal bands out to r: ½·erfc(d / σ√2) at d = r/6, r/2, 5r/6.
+ */
+const GLOW_PROFILE = [0.37, 0.16, 0.048] as const;
+
+/**
+ * The material's glow without filters (an SVG filter made Chromium composite the drawing and promote what was painted
+ * above it, against README §1): for each shadow, three rings of the drawing's centreline, each wider by a band of the
+ * blur radius, stacked so their alpha falls off as the blur does. Wide shadow first, then the narrow one, then the
+ * strokes. A single `<path>` paints its self-overlaps once, so a ring is an even halo. Returns the per-frame writer
+ * (every attribute it ever sets, every frame); `d` is the drawn centreline, `dash` the line mode's dash state.
+ */
+function glowRings(g: SVGElement): (gl: GlowFrame | null, d: string, width: number, scale: number, dash: [string, string] | null) => void {
+  // created before any stroke, so they paint first: wide outer ring → narrow inner ring
+  const rings = (['wide', 'narrow'] as const).flatMap((kind) => [3, 2, 1].map((band) => ({ kind, band, el: g.appendChild(document.createElementNS(NS, 'path')) })));
+  return (gl, d, width, scale, dash) => {
+    for (const { kind, band, el } of rings) {
+      const r = !gl ? 0 : kind === 'wide' ? gl.r2 : gl.r1;
+      const a = !gl ? 0 : kind === 'wide' ? gl.a2 : gl.a1;
+      // band alphas from the outside in: the outer ring alone gives the outer band's share, each inner ring adds the rest
+      const t = (k: number) => a * (GLOW_PROFILE[k - 1] ?? 0);
+      const alpha = band === 3 ? t(3) : 1 - (1 - t(band)) / (1 - t(band + 1));
+      const on = r > 0.01 && alpha > 0.001 && d !== '';
+      put(el, 'd', on ? d : '');
+      put(el, 'fill', 'none');
+      put(el, 'stroke', gl?.color ?? '#000000');
+      put(el, 'stroke-opacity', alpha.toFixed(3));
+      put(el, 'stroke-width', num(width + (2 * r * band) / 3 / scale));
+      put(el, 'stroke-linecap', 'round');
+      put(el, 'stroke-linejoin', 'round');
+      put(el, 'stroke-dasharray', dash ? dash[0] : 'none');
+      put(el, 'stroke-dashoffset', dash ? dash[1] : '0');
+      put(el, 'visibility', on ? 'visible' : 'hidden');
+    }
+  };
+}
+
+/** A polyline as path data (`M x y L x y …`). */
+function polyline(pts: readonly Point[]): string {
+  return ['M', num(pts[0]![0]), ' ', num(pts[0]![1]), ...pts.slice(1).flatMap((p) => ['L', num(p[0]), ' ', num(p[1])])].join('');
+}
+
 /** One drawing in one mount: an `<svg>` at `rect`, its strokes in the doc's box. */
 function session(mount: Element, o: Placed, arcs: Arc[], sizeBox: number): Session {
   const { doc, ref, rect, rot, mirror } = o;
@@ -213,6 +303,8 @@ function session(mount: Element, o: Placed, arcs: Arc[], sizeBox: number): Sessi
     .filter(Boolean)
     .join(' ');
   const total = arcs.reduce((s, a) => s + a.len, 0);
+  const scale = rect.w / bw;
+  const glow = o.treat.glow ? glowRings(g) : null;
   const frameSvg = (f: Frame) => {
     put(svg, 'viewBox', `0 0 ${bw} ${bh}`);
     put(svg, 'preserveAspectRatio', 'xMidYMid meet');
@@ -241,12 +333,14 @@ function session(mount: Element, o: Placed, arcs: Arc[], sizeBox: number): Sessi
     const path = document.createElementNS(NS, 'path');
     g.appendChild(path);
     if (pen) g.appendChild(pen);
-    const d = ['M', num(a.pts[0]![0]), ' ', num(a.pts[0]![1]), ...a.pts.slice(1).flatMap((p) => ['L', num(p[0]), ' ', num(p[1])])].join('');
+    const d = polyline(a.pts);
     const len = a.len.toFixed(3);
     return {
       update(f) {
         frameSvg(f);
         const dist = f.p * a.len;
+        const offset = (a.len - dist).toFixed(3);
+        glow?.(f.glow, f.p > 0 ? d : '', sizeBox, scale, [`${len} ${len}`, offset]);
         put(path, 'd', d);
         put(path, 'fill', 'none');
         put(path, 'stroke', f.color);
@@ -254,7 +348,7 @@ function session(mount: Element, o: Placed, arcs: Arc[], sizeBox: number): Sessi
         put(path, 'stroke-linecap', 'round');
         put(path, 'stroke-linejoin', 'round');
         put(path, 'stroke-dasharray', `${len} ${len}`);
-        put(path, 'stroke-dashoffset', (a.len - dist).toFixed(3));
+        put(path, 'stroke-dashoffset', offset);
         put(path, 'visibility', f.p > 0 ? 'visible' : 'hidden');
         drawPen(f.p > 0 && f.p < 1 ? pointAt(a, dist) : null, f.color);
       },
@@ -270,7 +364,7 @@ function session(mount: Element, o: Placed, arcs: Arc[], sizeBox: number): Sessi
     if (fp) g.appendChild(fp);
     const main = document.createElementNS(NS, 'path');
     g.appendChild(main);
-    return { a, size, main, fp, mainD: outline(a.pts, size), faintD: fp ? outline(a.pts, size * 0.7) : '', i };
+    return { a, size, main, fp, mainD: outline(a.pts, size), faintD: fp ? outline(a.pts, size * 0.7) : '', centre: glow ? polyline(a.pts) : '', i };
   });
   if (pen) g.appendChild(pen);
   return {
@@ -278,6 +372,7 @@ function session(mount: Element, o: Placed, arcs: Arc[], sizeBox: number): Sessi
       frameSvg(f);
       let left = f.p * total;
       let tip: { x: number; y: number } | null = null;
+      const centre: string[] = [];
       for (const s of strokes) {
         put(s.main, 'fill', f.color);
         let mainD = '';
@@ -287,22 +382,25 @@ function session(mount: Element, o: Placed, arcs: Arc[], sizeBox: number): Sessi
             mainD = s.mainD;
             faintD = s.faintD;
             tip = pointAt(s.a, s.a.len);
+            if (glow) centre.push(s.centre);
           } else {
             const part = prefix(s.a, left);
             mainD = outline(part, s.size);
             faintD = s.fp ? outline(part, s.size * 0.7) : '';
             tip = pointAt(s.a, left);
+            if (glow) centre.push(polyline(part));
           }
           left -= s.a.len;
         }
         put(s.main, 'd', mainD);
         if (s.fp) {
           const j = jitter(seed, s.i, f.bucket, amp);
-          put(s.fp, 'fill', rgba(f.color, 0.35));
+          put(s.fp, 'fill', f.faint);
           put(s.fp, 'transform', `translate(${num(j.x)} ${num(j.y)})`);
           put(s.fp, 'd', faintD);
         }
       }
+      glow?.(f.glow, centre.join(''), sizeBox, scale, null);
       drawPen(f.p > 0 && f.p < 1 ? tip : null, f.color);
     },
   };
@@ -313,6 +411,18 @@ const EASE: Record<SketchLook['ease'], (k: number) => number> = {
   functional: (k) => k * (2 - k),
   snap: (k) => k,
 };
+
+/** How the owning section's material treats the strokes (see the module doc); the glow predicate is shared with the Mixer. */
+function treatOf(section: Section, look: SketchLook): Treat {
+  const material = section.style.traits.material;
+  const g = sketchGlow(material, section.style.params, look.glow);
+  const S = Math.max(0, ...section.units.filter((u) => u.item >= 0 && u.text).map((u) => u.font.size));
+  return {
+    material,
+    glow: g && S > 0 ? { ...g, S, pulse: g.kind === 'neon' || g.kind === 'spectrum' } : null,
+    faint: material === 'riso' ? 'plate' : material === 'chalk' ? 'dust' : 'ghost',
+  };
+}
 
 export function mountOverlays(host: Host, probe: HostProbe): Overlays | null {
   const refs = host.reel.sketches ?? [];
@@ -390,6 +500,7 @@ export function mountOverlays(host: Host, probe: HostProbe): Overlays | null {
       opacity: fallback ? FALLBACK_OPACITY : 1,
       pen,
       arcs,
+      treat: treatOf(section, ref.look),
       sessions: [],
     });
   }
@@ -416,13 +527,27 @@ export function mountOverlays(host: Host, probe: HostProbe): Overlays | null {
     o.sessions = mounts.map((m) => session(m, o, o.arcs, sizeBox));
   }
 
-  const colorOf = (o: Placed, t: number): string => {
+  /** The spanned section on screen at t: the last one whose `in` ≤ t. Its palette colours the drawing. */
+  const onScreen = (o: Placed, t: number): Section => {
     let s = o.span[0]!;
     for (const x of o.span) if (x.timing.in <= t) s = x;
-    const c = o.ref.look.color;
-    return c === 'text' ? s.palette.text : host.accent(Number(c.slice(6)), s);
+    return s;
+  };
+  /** Glow at t: the owning section's pulse (neon and spectrum breathe with it, as their text does). */
+  const glowOf = (o: Placed, s: Section, color: string, t: number): GlowFrame | null => {
+    const g = o.treat.glow;
+    if (!g) return null;
+    // neon's text glows in its accent around a white core; chrome's glow is always its accent
+    const c = (g.kind === 'neon' && o.ref.look.color === 'text') || g.kind === 'chrome' ? host.accent(0, s) : color;
+    const pulse = !g.pulse ? 0 : g.kind === 'spectrum' ? clamp01(o.section.pulse(t)) : o.section.pulse(t);
+    return glowAt(g, pulse, c);
   };
   let lastT = NaN;
+  const pulseSamples = (o: Placed, a: number, b: number): number[] => {
+    const out: number[] = [];
+    for (let k = Math.ceil(a * fps - 1e-9); k / fps < b; k++) out.push(Math.round(o.section.pulse(k / fps) * 1e4) / 1e4);
+    return out;
+  };
 
   return {
     frame(t) {
@@ -437,11 +562,17 @@ export function mountOverlays(host: Host, probe: HostProbe): Overlays | null {
           if (o.ref.look.exit === 'fade') opacity *= 1 - e;
           else if (o.ref.look.exit === 'undraw') p *= 1 - easeInOut(e);
         }
+        const s = onScreen(o, t);
+        const c = o.ref.look.color;
+        const color = c === 'text' ? s.palette.text : host.accent(Number(c.slice(6)), s);
         const f: Frame = {
           visible,
           p,
           opacity,
-          color: colorOf(o, t),
+          color,
+          // risograph: the other ink plate, off-register; chalk: dust; else a pale ghost of the line
+          faint: o.treat.faint === 'plate' ? rgba(host.accent(c === 'accent0' ? 1 : 0, s), 0.9) : rgba(color, o.treat.faint === 'dust' ? 0.45 : 0.35),
+          glow: visible ? glowOf(o, s, color, t) : null,
           bucket: o.ref.look.boil ? Math.max(0, Math.floor((t * fps) / 4)) : 0,
         };
         for (const s of o.sessions) s.update(f);
@@ -468,7 +599,10 @@ export function mountOverlays(host: Host, probe: HostProbe): Overlays | null {
         pen: o.pen,
         look: o.ref.look,
         colors: o.span.map((s) => ({ in: s.timing.in, palette: s.palette })),
-        fps: o.ref.look.boil ? fps : null,
+        treat: o.treat,
+        // a breathing glow: the owning section's pulse at every frame of the window the sketch is visible in
+        pulse: o.treat.glow?.pulse ? pulseSamples(o, Math.max(t0, o.times.tIn), Math.min(t1, o.times.tOut)) : null,
+        fps: o.ref.look.boil || o.treat.glow?.pulse ? fps : null,
       }));
     },
     sounds() {

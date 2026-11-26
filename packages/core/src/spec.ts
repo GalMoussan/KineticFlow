@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { FormatId } from './formats.ts';
 import { sectionItems } from './items.ts';
-import { SectionSketch, SKETCH_LIMITS } from './sketch.ts';
+import { SectionSketch, SKETCH_LIMITS, SketchLook } from './sketch.ts';
 import { Slug, TraitAxis } from './style.ts';
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, '#RRGGBB');
@@ -180,6 +180,8 @@ export const JobSpec = z
     duration: z.number().min(DURATION.min).max(DURATION.max),
     formats: z.array(FormatId).min(1),
     quality: Quality.default('standard'),
+    /** Job-level sketch look (Mixer → Fine-tune → Sketch): over every section style's look, under each sketch's `look`. */
+    sketchLook: SketchLook.partial().strict().optional(),
     outputs: z
       .object({ noMusic: z.boolean().default(true), keepChunks: z.boolean().default(false) })
       .prefault({}),

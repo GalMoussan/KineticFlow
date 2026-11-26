@@ -3,7 +3,7 @@ import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Catalog, CatalogFont, CatalogStyle, CatalogTrait } from '@reel/api';
 import { PRESET_INFO } from '@reel/audio';
-import { FONTS, FORMATS, PALETTES, TEXT_ROLES, TRAIT_AXES, type FormatId, type SectionRole } from '@reel/core';
+import { FONTS, FORMATS, PALETTES, styleSketchLook, TEXT_ROLES, TRAIT_AXES, type FormatId, type SectionRole } from '@reel/core';
 import { checkSamples, FONT_DIR, MODEL_PATH, musicAiReady, REPO } from '@reel/render';
 import { RECIPES } from '@reel/styles';
 import { TRAIT_META } from '@reel/traits';
@@ -37,6 +37,7 @@ export function catalogStyles(): CatalogStyle[] {
       roles: [...r.constraints.roles],
       maxWordsPerSection: r.constraints.maxWordsPerSection,
       params,
+      sketch: styleSketchLook(r.id, RECIPES),
     };
   });
 }

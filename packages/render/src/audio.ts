@@ -7,6 +7,7 @@ import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { computeEnvelopes, encodeWav, master, mix, renderMusic, type SampleBank, type Stereo } from '@reel/audio';
 import type { Choreography, CueSheet, JobSpec } from '@reel/core';
+import { RECIPES } from '@reel/styles';
 import { buildCueSheet, MIN_METER_CONFIDENCE, trimEdgeBeats } from '@reel/timing';
 import { analyzeTrack } from './analysis.ts';
 import { aiClip, generateMusicAi } from './music-ai.ts';
@@ -140,10 +141,10 @@ export async function prepareMusic(o: {
   switch (m.source) {
     case 'none': {
       const bpm = o.defaultBpm ?? 100;
-      return { sheet: buildCueSheet({ spec, choreography, bpm, fps }), music: null, info: { source: 'none', bpm } };
+      return { sheet: buildCueSheet({ spec, choreography, bpm, fps, recipes: RECIPES }), music: null, info: { source: 'none', bpm } };
     }
     case 'preset': {
-      const sheet = buildCueSheet({ spec, choreography, bpm: m.bpm, fps });
+      const sheet = buildCueSheet({ spec, choreography, bpm: m.bpm, fps, recipes: RECIPES });
       const r = renderMusic(sheet, { preset: m.preset, bpm: m.bpm, seed: m.seed }, { samples: o.samples, sampleRate: SAMPLE_RATE });
       const music: Stereo = { l: r.l, r: r.r, sampleRate: r.sampleRate };
       return {
@@ -211,7 +212,7 @@ async function trackStage(o: {
         beats: [...trim.grid.beats, ...raw.beats.filter((t) => !judged(t))],
         downbeats: [...trim.grid.downbeats, ...raw.downbeats.filter((t) => !judged(t))],
       };
-  const sheet = buildCueSheet({ spec, choreography: o.choreography, fps, grid });
+  const sheet = buildCueSheet({ spec, choreography: o.choreography, fps, grid, recipes: RECIPES });
   const a = an.analysis;
   return {
     sheet: { ...sheet, envelopes },

@@ -52,5 +52,19 @@
     "endHold": 2.6,
     "introBeats": 0,
     "outroBeats": 0
+  },
+  "sketch": {
+    "presetMode": "sketch",
+    "width": 1.6,
+    "rough": 0.5,
+    "boil": true,
+    "glow": 1,
+    "drawBeats": 1.5,
+    "ease": "snap",
+    "exit": "stay",
+    "pen": false,
+    "color": "accent4",
+    "layer": "under",
+    "sfx": "pop"
   }
 }

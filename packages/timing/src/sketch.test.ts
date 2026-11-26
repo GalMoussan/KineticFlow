@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { JobSpec, type SectionSketchInput } from '@reel/core';
-import { recipe } from '@reel/styles';
+import { JobSpec, type SectionSketchInput, type SketchRecipes } from '@reel/core';
+import { RECIPES, recipe } from '@reel/styles';
 import { buildCueSheet, TimingError } from './index.ts';
 
 const example = JSON.parse(readFileSync(new URL('../../../examples/dilemma.json', import.meta.url), 'utf8'));
@@ -17,8 +17,10 @@ function withSketches(duration: number, add: Record<number, SectionSketchInput[]
   for (const [i, ks] of Object.entries(add)) raw.sections[Number(i)].sketches = ks;
   return JobSpec.parse(raw);
 }
-const sheetOf = (spec: JobSpec, grid?: Parameters<typeof buildCueSheet>[0]['grid']) =>
-  buildCueSheet({ spec, choreography, fps: 30, ...(grid ? { grid } : { bpm: 100 }) });
+/** Styles without a `sketch` block: every sketch takes the house look, so these tests pin the timing rules alone. */
+const HOUSE: SketchRecipes = {};
+const sheetOf = (spec: JobSpec, grid?: Parameters<typeof buildCueSheet>[0]['grid'], recipes: SketchRecipes = HOUSE) =>
+  buildCueSheet({ spec, choreography, fps: 30, recipes, ...(grid ? { grid } : { bpm: 100 }) });
 const circle = (id: string, extra: Partial<SectionSketchInput> = {}): SectionSketchInput => ({ id, source: { kind: 'preset', preset: 'circle' }, ...extra });
 
 test('sketch timing: jobs without sketches (or with empty lists) give exactly the same cue sheet', () => {
@@ -101,4 +103,34 @@ test('sketch timing: on a detected grid the budget rule counts local beats', () 
   const beat = (sin.until! - sin.t) / 3;
   assert.ok(beat > 60 / 133 && beat < 60 / 95, `beat ${beat}`);
   assert.ok(s.timing.out >= sin.until! + beat - 1e-6);
+});
+
+test('sketch timing: drawBeats and exit come from the section style, then the job sketchLook, then the sketch look', () => {
+  const recipes: SketchRecipes = { 'kinetic-quote': { sketch: { drawBeats: 3, exit: 'stay' } }, 'dilemma-reveal': { sketch: { drawBeats: 1, exit: 'undraw' } } };
+  const draw = (spec: JobSpec, id: string) => {
+    const sheet = sheetOf(spec, undefined, recipes);
+    const sin = sheet.cues.find((c) => c.type === 'sketch-in' && c.sketch === id)!;
+    const sout = sheet.cues.find((c) => c.type === 'sketch-out' && c.sketch === id)!;
+    return { beats: Math.round(((sin.until! - sin.t) / BEAT) * 1e6) / 1e6, exit: Math.round((sout.until! - sout.t) * 1e6) / 1e6 };
+  };
+  const spec = withSketches(40, { 1: [circle('a')], 2: [circle('b', { look: { drawBeats: 1.5 } })] });
+  assert.equal(spec.style, 'kinetic-quote');
+  // the job style's block
+  assert.deepEqual(draw(spec, 'a'), { beats: 3, exit: 0 });
+  // the sketch's own look wins over the style
+  assert.equal(draw(spec, 'b').beats, 1.5);
+  // a section with its own style times its sketches from that style
+  const own = JobSpec.parse({ ...spec, sections: spec.sections.map((s, i) => (i === 1 ? { ...s, style: 'dilemma-reveal' } : s)) });
+  assert.deepEqual(draw(own, 'a'), { beats: 1, exit: 0.5 });
+  // the job's sketchLook sits between the style and the sketch
+  const job = JobSpec.parse({ ...spec, sketchLook: { drawBeats: 2.5 } });
+  assert.equal(draw(job, 'a').beats, 2.5);
+  assert.equal(draw(job, 'b').beats, 1.5);
+});
+
+test('sketch timing: a job with sketches needs the recipes; one without never reads them', () => {
+  const spec = withSketches(40, { 1: [circle('a')] });
+  assert.throws(() => buildCueSheet({ spec, choreography, fps: 30, bpm: 100 }), /needs the style recipes/);
+  const plain = withSketches(26, {});
+  assert.deepEqual(buildCueSheet({ spec: plain, choreography, fps: 30, bpm: 100 }), buildCueSheet({ spec: plain, choreography, fps: 30, bpm: 100, recipes: RECIPES }));
 });

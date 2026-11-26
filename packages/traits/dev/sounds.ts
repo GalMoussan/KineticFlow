@@ -47,7 +47,7 @@ for (const style of styles) {
   assertResolved(res);
   const rec = recipe(res.job.recipe);
   const bpm = spec.music.source === 'preset' ? spec.music.bpm : rec.defaults.music.bpm;
-  const sheet = buildCueSheet({ spec, choreography: rec.choreography, bpm, fps: 30 });
+  const sheet = buildCueSheet({ spec, choreography: rec.choreography, bpm, fps: 30, recipes: RECIPES });
   const bundle = await buildBundle({ spec, specDir, outDir: join(OUT, `bundle-sounds-${style}`), traits: usedTraits(res) });
   const srv = await serveDir(bundle.dir);
   try {

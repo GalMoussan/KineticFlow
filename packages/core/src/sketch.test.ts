@@ -8,12 +8,16 @@ import {
   canonicalJson,
   HOUSE_SKETCH_LOOK,
   resolveSketchLook,
+  sectionSketchLook,
   SKETCH_PRESETS,
   SketchDoc,
   sketchDocHash,
   sketchSvg,
+  styleSketchLook,
+  type SketchRecipes,
 } from './sketch.ts';
 import { JobSpec } from './spec.ts';
+import { StyleRecipe, TRAIT_AXES } from './style.ts';
 
 test('presets: all 8 in both modes are valid SketchDocs; line mode is one stroke', () => {
   for (const p of SKETCH_PRESETS) {
@@ -84,6 +88,69 @@ test('SketchLook: house default, then overrides in order; undefined fields are s
   assert.equal(l.width, 1.5);
   assert.equal(l.exit, 'undraw');
   assert.equal(l.color, HOUSE_SKETCH_LOOK.color);
+});
+
+/** Two styles with opposite looks (and one without a block). */
+const LOOKS: SketchRecipes = {
+  neon: { sketch: { width: 1.2, rough: 0.3, boil: true, glow: 1, drawBeats: 1, ease: 'snap', exit: 'fade', color: 'text', sfx: 'scribble' } },
+  luxe: { sketch: { presetMode: 'line', width: 0.5, rough: 0, boil: false, glow: 0, drawBeats: 4, ease: 'smooth', exit: 'stay', color: 'accent1', sfx: 'none' } },
+  plain: {},
+};
+
+test('SketchLook from a style: its recipe block over the house default; a style without one is the house look', () => {
+  assert.deepEqual(styleSketchLook('plain', LOOKS), HOUSE_SKETCH_LOOK);
+  assert.deepEqual(styleSketchLook('neon', LOOKS), { ...HOUSE_SKETCH_LOOK, ...LOOKS.neon!.sketch });
+  assert.deepEqual(styleSketchLook({ base: 'luxe', params: { 'material.glow': 1 } }, LOOKS), { ...HOUSE_SKETCH_LOOK, ...LOOKS.luxe!.sketch });
+});
+
+test('SketchLook blend: numeric fields lerp, discrete fields come from the dominant style (the trait rule)', () => {
+  const at = (mix: number) => styleSketchLook({ base: 'neon', blendWith: { style: 'luxe', mix } }, LOOKS);
+  const half = at(0.5);
+  assert.deepEqual([half.width, half.rough, half.glow, half.drawBeats], [0.85, 0.15, 0.5, 2.5]);
+  // 50 % → the partner dominates (mix ≥ 0.5), like the traits
+  assert.deepEqual([half.presetMode, half.boil, half.ease, half.exit, half.color, half.sfx], ['line', false, 'smooth', 'stay', 'accent1', 'none']);
+  const low = at(0.3);
+  assert.ok(Math.abs(low.width - (1.2 + (0.5 - 1.2) * 0.3)) < 1e-12 && Math.abs(low.drawBeats - 1.9) < 1e-12);
+  assert.deepEqual([low.presetMode, low.boil, low.ease, low.exit, low.color, low.sfx], ['sketch', true, 'snap', 'fade', 'text', 'scribble']);
+  assert.deepEqual(at(0), styleSketchLook('neon', LOOKS));
+  assert.deepEqual(at(1), styleSketchLook('luxe', LOOKS));
+});
+
+test('SketchLook resolution order: house → section style (own, else the job) → job sketchLook → sketch look', () => {
+  const spec = { style: 'neon', sketchLook: { width: 2, exit: 'undraw' as const } };
+  // the job's style, then the job's sketchLook over it
+  const job = sectionSketchLook(spec, {}, { look: undefined }, LOOKS);
+  assert.deepEqual(job, { ...HOUSE_SKETCH_LOOK, ...LOOKS.neon!.sketch, width: 2, exit: 'undraw' });
+  // the sketch's own look wins over everything
+  assert.equal(sectionSketchLook(spec, {}, { look: { width: 3 } }, LOOKS).width, 3);
+  // a section with its own style resolves from that style (replacing the job's, not stacking on it)
+  const own = sectionSketchLook({ style: 'neon' }, { style: 'luxe' }, undefined, LOOKS);
+  assert.deepEqual(own, styleSketchLook('luxe', LOOKS));
+  assert.equal(own.boil, false);
+  // … with its own blend
+  const blended = sectionSketchLook({ style: 'luxe' }, { style: { base: 'plain', blendWith: { style: 'neon', mix: 0.5 } } }, undefined, LOOKS);
+  assert.equal(blended.boil, true);
+  assert.equal(blended.drawBeats, (HOUSE_SKETCH_LOOK.drawBeats + 1) / 2);
+});
+
+test('recipe `sketch` block: optional; validated field by field (ranges, enums, unknown keys)', () => {
+  const recipe = {
+    id: 'x',
+    name: 'X',
+    families: ['simple'],
+    energy: 1,
+    background: 'light',
+    traits: Object.fromEntries(TRAIT_AXES.map((a) => [a, 'x'])),
+    params: {},
+    defaults: { palette: 'p', music: { preset: 'm', bpm: 100 }, fonts: { display: 'rubik' } },
+    constraints: { maxWordsPerSection: 5, formats: ['9:16'], roles: ['title'] },
+    choreography: { unitBeats: 1, shortUnitBeats: 0.5, moveBeats: 1, leadIn: 0.2, minTail: 0.6, entry: 0.6, endUnitBeats: 0.5, endHold: 2, introBeats: 1, outroBeats: 1 },
+  };
+  assert.ok(StyleRecipe.safeParse(recipe).success);
+  assert.ok(StyleRecipe.safeParse({ ...recipe, sketch: { glow: 1, exit: 'undraw' } }).success);
+  for (const sketch of [{ width: 5 }, { rough: -0.1 }, { drawBeats: 0 }, { ease: 'bounce' }, { color: 'accent7' }, { glw: 1 }]) {
+    assert.equal(StyleRecipe.safeParse({ ...recipe, sketch }).success, false, JSON.stringify(sketch));
+  }
 });
 
 // ───────────────────────────── spec validation ─────────────────────────────
@@ -171,4 +238,15 @@ test('spec: end card takes drawLogo but no sketches; logo line sketches are not 
   const logo = base();
   logo.sections[1]!.sketches = [{ id: 'l', source: { kind: 'logo', asset: 'ayalim' } }];
   assert.match(issues(logo).join('\n'), /sections\.1\.sketches\.0\.source: drawing a logo.s line version is not available yet/);
+});
+
+test('spec: job-level sketchLook is optional and validated; a job without it parses exactly as before', () => {
+  const plain = JobSpec.parse(base());
+  assert.equal('sketchLook' in plain, false);
+  const tuned = base() as Record<string, unknown>;
+  tuned.sketchLook = { width: 1.5, boil: true, exit: 'undraw', sfx: 'none' };
+  assert.deepEqual(JobSpec.parse(tuned).sketchLook, tuned.sketchLook);
+  for (const bad of [{ width: 0.1 }, { drawBeats: 20 }, { exit: 'vanish' }, { wobble: true }]) {
+    assert.equal(JobSpec.safeParse({ ...base(), sketchLook: bad }).success, false, JSON.stringify(bad));
+  }
 });

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { FormatId } from './formats.ts';
+import { SketchLook } from './sketch.ts';
+import { Slug } from './slug.ts';
 import type { SectionRole } from './spec.ts';
+
+export { Slug };
 
 /** One trait per axis; see PLAN.md §5.1. Order is the per-frame evaluation order (§5.2). */
 export const TRAIT_AXES = [
@@ -43,8 +47,6 @@ export type Family = z.infer<typeof Family>;
 
 export const Layer = z.enum(['dom', 'canvas', 'webgl']);
 export type Layer = z.infer<typeof Layer>;
-
-export const Slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'lowercase-kebab-case id');
 
 /**
  * Style timing rules consumed by the timing engine (PLAN.md §7). Durations in beats are snapped to half-beats.
@@ -103,6 +105,8 @@ export const StyleRecipe = z.object({
     roles: z.array(z.string().min(1)).min(1),
   }),
   choreography: Choreography,
+  /** The style's sketch look (SKETCH-PLAN.md P2): the fields it sets over the house default; the rest fall through. */
+  sketch: SketchLook.partial().strict().optional(),
 });
 export type StyleRecipe = z.infer<typeof StyleRecipe>;
 

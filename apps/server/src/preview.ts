@@ -10,7 +10,7 @@ import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { PreviewSession, SpecIssue } from '@reel/api';
 import { encodeWav, master, renderSfx, type Stereo } from '@reel/audio';
-import { format as formatOf, JobSpec, SOUND_KINDS, type Choreography, type FormatId, type ReelInput, type SoundCue } from '@reel/core';
+import { format as formatOf, JobSpec, sectionSketchLook, SOUND_KINDS, type Choreography, type FormatId, type ReelInput, type SoundCue } from '@reel/core';
 import {
   aiClip,
   buildBundle,
@@ -210,7 +210,14 @@ export class PreviewService {
   async #musicFor(spec: JobSpec, choreography: Choreography, defaultBpm: number, timings: Record<string, number>): Promise<MusicEntry> {
     const fps = resolveQuality(spec.quality).fps;
     const track = spec.music.source === 'track' ? this.#store.getAsset(spec.music.file)?.sha256 : undefined;
-    // everything the cue sheet and the music stem depend on (per-section looks do not change timing)
+    // everything the cue sheet and the music stem depend on (per-section looks change timing only through sketches:
+    // their draw length and exit come from the section's style, the job's sketch look and their own)
+    const sketchTiming = spec.sections.flatMap((s) =>
+      s.role === 'endcard' ? [] : (s.sketches ?? []).map((k) => {
+        const l = sectionSketchLook(spec, s, k, RECIPES);
+        return [k.id, l.drawBeats, l.exit];
+      }),
+    );
     const key = sha(
       JSON.stringify({
         v: 1,
@@ -222,6 +229,7 @@ export class PreviewService {
         defaultBpm,
         fps,
         track,
+        ...(sketchTiming.length ? { sketchTiming } : {}),
       }),
     );
     const hit = this.#music.get(key);

@@ -1,0 +1,131 @@
+{
+  "id": "ts-sketch",
+  "language": "he",
+  "contentType": "event",
+  "brief": "Test set: sketches. Presets on several sections, the generated cup, a star spanning two sections, a line-mode heart. They draw from each section's entry; the star and heart draw in 2 beats so every style fits 26 s at its default bpm.",
+  "sections": [
+    {
+      "role": "title",
+      "text": "קפה דילמה וג׳אם"
+    },
+    {
+      "role": "tagline",
+      "text": "הנושאים הכי *מעניינים* ו*חמים* היום!",
+      "sketches": [
+        {
+          "id": "circle-hot",
+          "source": {
+            "kind": "preset",
+            "preset": "circle"
+          },
+          "start": {
+            "edge": "in"
+          }
+        }
+      ]
+    },
+    {
+      "role": "body",
+      "text": "בואו, נשב, נדבר ונשתה *קפה*",
+      "sketches": [
+        {
+          "id": "cup",
+          "source": {
+            "kind": "generated",
+            "asset": "cup",
+            "request": {
+              "image": "product-photo",
+              "mode": "sketch",
+              "detail": 2
+            }
+          },
+          "start": {
+            "edge": "in"
+          }
+        }
+      ]
+    },
+    {
+      "role": "teaser",
+      "text": "יהיו *הפתעות*",
+      "sketches": [
+        {
+          "id": "star-surprise",
+          "source": {
+            "kind": "preset",
+            "preset": "star"
+          },
+          "start": {
+            "edge": "in"
+          },
+          "until": "datetime-4",
+          "look": {
+            "drawBeats": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "datetime-4",
+      "role": "datetime",
+      "date": "2026-12-01",
+      "time": "19:30"
+    },
+    {
+      "role": "location",
+      "place": "בית החאן",
+      "city": "קרית שמונה"
+    },
+    {
+      "role": "cta",
+      "text": "בואו *לדבר!*",
+      "sketches": [
+        {
+          "id": "heart-line",
+          "source": {
+            "kind": "preset",
+            "preset": "heart"
+          },
+          "start": {
+            "edge": "in"
+          },
+          "look": {
+            "presetMode": "line",
+            "pen": true,
+            "drawBeats": 2
+          }
+        }
+      ]
+    },
+    {
+      "role": "endcard",
+      "logos": [
+        "kiryat-shmona",
+        "ayalim"
+      ]
+    }
+  ],
+  "style": "kinetic-quote",
+  "palette": "flamingo-cafe",
+  "fonts": {
+    "display": "rubik"
+  },
+  "music": {
+    "source": "preset",
+    "preset": "lofi-jazz",
+    "bpm": 100,
+    "seed": 1101
+  },
+  "duration": 26,
+  "formats": [
+    "9:16",
+    "1:1",
+    "4:5",
+    "16:9"
+  ],
+  "quality": "standard",
+  "outputs": {
+    "noMusic": true,
+    "keepChunks": false
+  }
+}

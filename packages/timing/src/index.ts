@@ -13,6 +13,7 @@ import {
   type Item,
   type JobSpec,
   type ReelSection,
+  type SketchRecipes,
 } from '@reel/core';
 
 /** Beats detected in a track (Beat This!), already in video time (t = 0 is the first video frame). */
@@ -36,6 +37,11 @@ export interface TimingInput {
    * consecutive beats, so every choreography beat length takes the local beat length.
    */
   grid?: BeatGrid;
+  /**
+   * The style recipes (`RECIPES` of `@reel/styles`): a sketch's `drawBeats` and exit come from its section's style.
+   * Required when the spec has sketches; jobs without sketches never read it.
+   */
+  recipes?: SketchRecipes;
 }
 
 /** Below this meter confidence the detected downbeats are ignored and bars count 4 beats from the first landing beat. */
@@ -129,27 +135,27 @@ interface SketchPlan {
   exit: number;
 }
 
-function sketchPlans(spec: JobSpec): SketchPlan[] {
+function sketchPlans(spec: JobSpec, recipes: SketchRecipes | undefined): SketchPlan[] {
   const index = new Map(spec.sections.map((s, i) => [s.id, i]));
-  return spec.sections.flatMap((s, i) =>
-    s.role === 'endcard' || !s.sketches
-      ? []
-      : s.sketches.map((k) => {
-          const look = sectionSketchLook(k);
-          return {
-            id: k.id,
-            section: i,
-            until: k.until === undefined ? i : index.get(k.until)!,
-            edge: k.start?.edge ?? 'hold',
-            beats: k.start?.beats ?? 0,
-            drawBeats: look.drawBeats,
-            exit: SKETCH_EXIT_S[look.exit],
-          };
-        }),
-  );
+  return spec.sections.flatMap((s, i) => {
+    if (s.role === 'endcard' || !s.sketches?.length) return [];
+    if (!recipes) throw new Error('buildCueSheet: a job with sketches needs the style recipes (`recipes`)');
+    return s.sketches.map((k) => {
+      const look = sectionSketchLook(spec, s, k, recipes);
+      return {
+        id: k.id,
+        section: i,
+        until: k.until === undefined ? i : index.get(k.until)!,
+        edge: k.start?.edge ?? 'hold',
+        beats: k.start?.beats ?? 0,
+        drawBeats: look.drawBeats,
+        exit: SKETCH_EXIT_S[look.exit],
+      };
+    });
+  });
 }
 
-function plan(spec: JobSpec, c: Choreography): Plan {
+function plan(spec: JobSpec, c: Choreography, recipes: SketchRecipes | undefined): Plan {
   const secs = spec.sections.map((s) => ({ section: s, items: sectionItems(s, spec) }));
   for (const { section, items } of secs) {
     if (!items.length) throw new Error(`section "${section.id}" has nothing to show`);
@@ -173,7 +179,7 @@ function plan(spec: JobSpec, c: Choreography): Plan {
     outro: lastIsEnd ? halves(c.outroBeats) : 0,
     move: halves(c.moveBeats),
     weights: [...load, avg],
-    sketches: sketchPlans(spec),
+    sketches: sketchPlans(spec, recipes),
   };
 }
 
@@ -417,7 +423,7 @@ export function buildCueSheet(input: TimingInput): CueSheet {
   const { spec, choreography: c, fps } = input;
   const duration = spec.duration;
   const frames = Math.round(duration * fps);
-  const p = plan(spec, c);
+  const p = plan(spec, c, input.recipes);
 
   let at: (h: number) => number;
   let tails: number[];

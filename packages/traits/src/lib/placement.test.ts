@@ -101,6 +101,23 @@ test('placement auto: the review case (he kinetic-quote 1:1 arrow) finds free sp
   assert.ok(p.rect.w >= MIN_FREE * safe.w, `width ${p.rect.w}`);
 });
 
+test('placement auto: full size fits nowhere, a smaller usable spot does → placed shrunk (18 % ≤ size < cap), no fallback', () => {
+  // text covers the safe area except a 120 px band at the bottom and a 100 px column on the right (too narrow)
+  const box: [number, number] = [1000, 500];
+  const band = 120;
+  const text: Rect[] = [{ x: 70, y: 220, w: 790, h: 1320 - band }];
+  const p = autoPlacement(box, SAFE, text, 0, PRESET);
+  const full = fitInto(box, SAFE, PRESET);
+  assert.equal(p.fallback, false);
+  assert.ok(p.rect.w < full.w - 1e-9, `not shrunk: ${p.rect.w} vs full ${full.w}`);
+  assert.ok(near(p.rect.w, 2 * band) && near(p.rect.h, band), `shrunk into the band: ${JSON.stringify(p.rect)}`);
+  assert.ok(p.rect.w >= MIN_FREE * SAFE.w && p.rect.y >= 1540 - band - 1e-9);
+  // a band whose fitted drawing would fall below 18 % of the safe width → the fallback under the text
+  const thin = MIN_FREE * SAFE.w * 0.5 - 2;
+  const q = autoPlacement(box, SAFE, [{ x: 70, y: 220, w: 790, h: 1320 - thin }], 0, PRESET);
+  assert.equal(q.fallback, true);
+});
+
 test('placement frame: fits x, y, w of the safe area, clamped by the remaining height (16:9)', () => {
   const safe: Rect = { x: 160, y: 100, w: 1600, h: 880 };
   const r = framePlacement([963, 1000], { x: 0.56, y: 0.6, w: 0.42 }, safe);

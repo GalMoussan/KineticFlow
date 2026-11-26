@@ -1,7 +1,8 @@
 /**
  * Style stills (`POST /api/style-stills`): the user's own content in several styles, captured headless from the same
- * preview page at a section hold, as scaled JPEGs cached by fingerprint. One warm browser, at most `SLOTS` pages at
- * once. A style that cannot lay out the content (roles, timing, fonts) answers with `error` instead of a URL.
+ * preview page at a section hold, as scaled JPEGs cached by fingerprint. A project with sketches is shown at its first
+ * sketched section once the sketches are drawn, so each card shows how that style draws them. One warm browser, at most
+ * `SLOTS` pages at once. A style that cannot lay out the content (roles, timing, fonts) answers with `error` instead of a URL.
  */
 import { createHash } from 'node:crypto';
 import { access, mkdir, rename, writeFile } from 'node:fs/promises';
@@ -101,7 +102,7 @@ export class StillService {
     if (!RECIPES[style]) return Promise.resolve({ style, error: `unknown style "${style}"` });
     const spec = restyle(req.spec, style);
     const key = createHash('sha256')
-      .update(JSON.stringify({ v: 1, spec, format: req.format, section: req.section ?? null, width: req.width }))
+      .update(JSON.stringify({ v: 2, spec, format: req.format, section: req.section ?? null, width: req.width }))
       .digest('hex')
       .slice(0, 24);
     let job = this.#inflight.get(key);
@@ -130,8 +131,19 @@ export class StillService {
         return { style, error: e instanceof HttpError ? e.message : `cannot lay out this content: ${(e as Error).message}` };
       }
       const { session, response } = created;
-      const section = (req.section && response.sections.find((s) => s.id === req.section)) || response.sections.find((s) => s.role === 'title') || response.sections[0]!;
-      const t = section.holdEnd > section.holdStart ? (section.holdStart + section.holdEnd) / 2 : Math.max(0, section.holdEnd - 1 / response.fps);
+      // the project's first sketched section (so each card shows how its style draws the sketches), else the title
+      const cues = session.input.cues.cues;
+      const sketched = response.sections.find((s) => cues.some((c) => c.type === 'sketch-in' && c.section === s.id));
+      const section =
+        (req.section && response.sections.find((s) => s.id === req.section)) || sketched || response.sections.find((s) => s.role === 'title') || response.sections[0]!;
+      let t = section.holdEnd > section.holdStart ? (section.holdStart + section.holdEnd) / 2 : Math.max(0, section.holdEnd - 1 / response.fps);
+      // a sketched section: once its sketches are fully drawn, before any of them leaves
+      const own = cues.filter((c) => c.section === section.id && c.sketch !== undefined);
+      if (own.length) {
+        const drawn = Math.max(...own.filter((c) => c.type === 'sketch-in').map((c) => c.until!));
+        const leaves = Math.min(section.holdEnd, ...own.filter((c) => c.type === 'sketch-out').map((c) => c.t)) - 1 / response.fps;
+        t = Math.max(0, Math.min(Math.max(t, drawn), leaves));
+      }
       try {
         const browser = await this.#getBrowser();
         const tab = await ReelTab.open(browser, { origin: this.#origin(), entry: response.url.slice(1), input: session.input });

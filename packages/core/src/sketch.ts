@@ -4,7 +4,8 @@
  * browser-safe; everything the timing engine reads from here is bit-exact (+ − × ÷ only).
  */
 import { z } from 'zod';
-import { Slug } from './style.ts';
+import { Slug } from './slug.ts';
+import type { StyleRef } from './spec.ts';
 
 /** Hard limits of a stored drawing. */
 export const SKETCH_LIMITS = {
@@ -73,7 +74,7 @@ export const SKETCH_PRESETS = ['circle', 'underline', 'arrow', 'scribble', 'burs
 export const SketchPreset = z.enum(SKETCH_PRESETS);
 export type SketchPreset = z.infer<typeof SketchPreset>;
 
-/** How a sketch looks and moves. A style owns one (P2); the user's `sketch.look` overrides single fields. */
+/** How a sketch looks and moves. Each style owns one (its recipe's `sketch`); the user's `sketch.look` overrides fields. */
 export const SketchLook = z.object({
   /** How presets are drawn in this style; generated docs keep their own mode. */
   presetMode: SketchMode,
@@ -83,7 +84,7 @@ export const SketchLook = z.object({
   rough: z.number().min(0).max(1),
   /** The jitter pass moves every 4 frames (hand-animation wobble). */
   boil: z.boolean(),
-  /** Glow strength 0..1 (material carry-over, drawn from P2). */
+  /** Glow 0..1: the share of the section material's text glow the strokes carry (none where text has no glow). */
   glow: z.number().min(0).max(1),
   /** Draw-on length in beats. Feeds the section budget. */
   drawBeats: z.number().min(0.5).max(16),
@@ -135,6 +136,43 @@ export function resolveSketchLook(...layers: (SketchLookOverrides | undefined)[]
   return out as SketchLook;
 }
 
+/** What the look resolver needs of the style catalog: recipe id → its optional `sketch` block (`StyleRecipe` fits). */
+export type SketchRecipes = Readonly<Record<string, { readonly sketch?: SketchLookOverrides | undefined }>>;
+
+/** Look fields a blend interpolates; every other field is discrete and comes from the dominant style. */
+export const LERPED_SKETCH_FIELDS = ['width', 'rough', 'glow', 'drawBeats'] as const satisfies readonly (keyof SketchLook)[];
+
+/**
+ * A style reference's sketch look: each side's recipe block over the house default. With `blendWith`, the numeric
+ * fields lerp `a + (b − a) · mix` and the discrete ones come from the dominant side (`mix ≥ 0.5` → the partner), the
+ * trait rule of PLAN.md §5.3. Bit-exact (+ − × only). An unknown recipe adds nothing (`resolveStyles` reports it).
+ */
+export function styleSketchLook(ref: StyleRef, recipes: SketchRecipes): SketchLook {
+  const o = typeof ref === 'string' ? { base: ref } : ref;
+  const a = resolveSketchLook(recipes[o.base]?.sketch);
+  if (!o.blendWith) return a;
+  const mix = o.blendWith.mix;
+  const b = resolveSketchLook(recipes[o.blendWith.style]?.sketch);
+  const out: SketchLook = { ...(mix >= 0.5 ? b : a) };
+  for (const k of LERPED_SKETCH_FIELDS) out[k] = a[k] + (b[k] - a[k]) * mix;
+  return out;
+}
+
+/**
+ * The look a section sketch is drawn and timed with: house default → the section's resolved style (its own `style`,
+ * else the job's; blended) → the job's `sketchLook` (Mixer) → the sketch's own `look`. The only call path for both the
+ * timing engine (`drawBeats`, exit) and the page input (everything else), so they can never disagree. With no
+ * `sketch`, the look the section's sketches start from (the Mixer's per-section strip).
+ */
+export function sectionSketchLook(
+  spec: { style: StyleRef; sketchLook?: SketchLookOverrides | undefined },
+  section: { style?: StyleRef | undefined },
+  sketch: Pick<SectionSketch, 'look'> | undefined,
+  recipes: SketchRecipes,
+): SketchLook {
+  return resolveSketchLook(styleSketchLook(section.style ?? spec.style, recipes), spec.sketchLook, sketch?.look);
+}
+
 const Fraction = z.number().min(0).max(1);
 
 export const SketchPlace = z.discriminatedUnion('mode', [
@@ -183,15 +221,6 @@ export const SectionSketch = z.object({
 });
 export type SectionSketch = z.infer<typeof SectionSketch>;
 export type SectionSketchInput = z.input<typeof SectionSketch>;
-
-/**
- * The look a section sketch is drawn and timed with. The only call path for both the timing engine (`drawBeats`, exit)
- * and the page input (everything else), so they can never disagree. P1: house default + the sketch's own overrides.
- * P2 inserts the section's resolved style `sketch` block and the job's `sketchLook` here, between the two.
- */
-export function sectionSketchLook(sketch: Pick<SectionSketch, 'look'>): SketchLook {
-  return resolveSketchLook(sketch.look);
-}
 
 /** JSON with object keys sorted at every level: the form hashes are taken of. */
 export function canonicalJson(v: unknown): string {

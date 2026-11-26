@@ -114,7 +114,7 @@ export async function validateSpec(raw: unknown, env: ValidateEnv): Promise<Vali
     const fps = resolveQuality(spec.quality).fps;
     const bpm = previewBpm(spec, rec.defaults.music.bpm, store);
     try {
-      const sheet = buildCueSheet({ spec, choreography: rec.choreography, bpm, fps });
+      const sheet = buildCueSheet({ spec, choreography: rec.choreography, bpm, fps, recipes: RECIPES });
       timing = {
         ok: true,
         bpm,

@@ -54,5 +54,19 @@
     "endHold": 2.2,
     "introBeats": 0,
     "outroBeats": 0
+  },
+  "sketch": {
+    "presetMode": "line",
+    "width": 0.7,
+    "rough": 0,
+    "boil": false,
+    "glow": 1,
+    "drawBeats": 2.5,
+    "ease": "functional",
+    "exit": "fade",
+    "pen": false,
+    "color": "text",
+    "layer": "over",
+    "sfx": "scribble"
   }
 }

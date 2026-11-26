@@ -14,6 +14,7 @@ import type {
   ParamSpec,
   ResolvedPalette,
   SectionRole,
+  SketchLook,
   SoundCue,
   TraitAxis,
 } from '@reel/core';
@@ -33,6 +34,8 @@ export interface CatalogStyle {
   maxWordsPerSection: number;
   /** Every param of the style's traits (`<axis>.<param>`): trait defaults with the recipe's overrides applied. */
   params: Record<string, number>;
+  /** The style's sketch look: its recipe `sketch` block over the house default (what its sketches start from). */
+  sketch: SketchLook;
 }
 
 export interface CatalogTrait {
