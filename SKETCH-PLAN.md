@@ -133,7 +133,12 @@ As in the brief, with the gate from §3.1. Each phase has one worker and one rev
 ### Carried forward from P1 review
 - **P2:** before falling back under the text, shrink the sketch into the largest usable free spot (kinetic-quote 1:1 / 16:9 fall back today; every remaining fallback was checked as genuine at the current 18 % minimum).
 - **P4:** `convertSection` (web `spec.ts`) drops a section's sketches when its role changes between text and non-text roles; keep them when the new role allows sketches.
+- **P4 (from P5):** click-to-attach on the preview: with a sketch selected in *On a word* mode, a click hit-tests `boxes()` and sets `place: { mode: 'word', item, fit }` through `s.update`. It needs P4's sketch selection and handles; P5 ships word attachment through the `✎` menu only.
+- **P4 (from P5 review r2, R2-2):** the preview's scrub spans and the style stills' sampling must take word-sketch times from the page (`overlays()` / the fingerprint `times`), not from the cue sheet: outside a world chain a word sketch ends at its section's `out` (page-side `wordTimes`), while its `sketch-out` cue still says the next section's `in`.
 - **P6:** delete the P0 spike harnesses in `packages/render/dev/sketch/` (they no longer run since `perfect-freehand` moved to `@reel/traits`).
+- **P6 (from P5 review r2, R2-3):** measure every word anchor before the first placement seek (today each word sketch measures its unit inside `placeWord`, after earlier probing seeks; the layout boxes it reads are seek-independent, but measuring all anchors first removes the ordering question).
+- **P6 (from P5):** in editorial-magazine the circle on a drop-cap word sits a little high on the cap (`out/sketch/P5/tmp/view/r1b.jpg`): the cap span's ink band assumes the text is centred in its line box.
+- **P6 (from P5):** tile-mosaic: the thin star is hard to see (the visibility issue noted in the P5 review).
 
 ## 5. New dependencies
 

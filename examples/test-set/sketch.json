@@ -2,11 +2,31 @@
   "id": "ts-sketch",
   "language": "he",
   "contentType": "event",
-  "brief": "Test set: sketches. Presets on several sections, the generated cup, a star spanning two sections, a line-mode heart. They draw from each section's entry; the star and heart draw in 2 beats so every style fits 26 s at its default bpm.",
+  "brief": "Test set: sketches. Presets on several sections, the generated cup, a star spanning two sections, a line-mode heart, and a circle attached to the title's first word. They draw from each section's entry (the word circle once its word has landed); the star and heart draw in 2 beats and the word circle in 1 so every style fits 26 s at its default bpm.",
   "sections": [
     {
       "role": "title",
-      "text": "קפה דילמה וג׳אם"
+      "text": "קפה דילמה וג׳אם",
+      "sketches": [
+        {
+          "id": "circle-word",
+          "source": {
+            "kind": "preset",
+            "preset": "circle"
+          },
+          "start": {
+            "edge": "in"
+          },
+          "place": {
+            "mode": "word",
+            "item": 0,
+            "fit": "around"
+          },
+          "look": {
+            "drawBeats": 1
+          }
+        }
+      ]
     },
     {
       "role": "tagline",

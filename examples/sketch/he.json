@@ -2,7 +2,7 @@
   "id": "sketch-he",
   "language": "he",
   "contentType": "event",
-  "brief": "P1 sketch overlays example: a preset on several sections, a generated sketch, one sketch spanning two sections.",
+  "brief": "Sketch overlays example: a preset on several sections, a generated sketch, one sketch spanning two sections, and sketches attached to words (a circle and an underline on emphasised words, an underline and an arrow on words of the small line).",
   "sections": [
     {
       "role": "title",
@@ -17,6 +17,18 @@
           "source": {
             "kind": "preset",
             "preset": "circle"
+          }
+        },
+        {
+          "id": "underline-word",
+          "source": {
+            "kind": "preset",
+            "preset": "underline"
+          },
+          "place": {
+            "mode": "word",
+            "item": 3,
+            "fit": "under"
           }
         }
       ]
@@ -40,12 +52,25 @@
             "rough": 0.5,
             "boil": true
           }
+        },
+        {
+          "id": "circle-word",
+          "source": {
+            "kind": "preset",
+            "preset": "circle"
+          },
+          "place": {
+            "mode": "word",
+            "item": 4,
+            "fit": "around"
+          }
         }
       ]
     },
     {
       "role": "teaser",
       "text": "יהיו *הפתעות*",
+      "sub": "ופרסים *שווים*",
       "sketches": [
         {
           "id": "star-surprise",
@@ -54,6 +79,30 @@
             "preset": "star"
           },
           "until": "datetime-4"
+        },
+        {
+          "id": "underline-sub",
+          "source": {
+            "kind": "preset",
+            "preset": "underline"
+          },
+          "place": {
+            "mode": "word",
+            "item": 3,
+            "fit": "under"
+          }
+        },
+        {
+          "id": "arrow-sub",
+          "source": {
+            "kind": "preset",
+            "preset": "arrow"
+          },
+          "place": {
+            "mode": "word",
+            "item": 2,
+            "fit": "beside"
+          }
         }
       ]
     },

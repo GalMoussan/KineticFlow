@@ -4,7 +4,7 @@
  * all channels in one pass. Every frame is a pure function of t. Guide: `packages/traits/README.md`.
  */
 import type { ResolvedPalette, SoundCue, TextBox, TraitAxis } from '@reel/core';
-import { decodeImages, defineReelPage, loadFonts, splitMeasured } from '@reel/runtime';
+import { defineReelPage, loadFonts, loadImages, splitMeasured } from '@reel/runtime';
 import type {
   AnyTrait,
   Channels,
@@ -25,7 +25,7 @@ import type {
 } from '../contract.ts';
 import { commitLayer, commitStage, commitUnit, drawn, resetChannels, resetPart } from './commit.ts';
 import { finishCues } from '../lib/sound.ts';
-import { mountOverlays, type Overlays } from './overlays.ts';
+import { measureWords, mountOverlays, type Overlays, type WordBoxes } from './overlays.ts';
 
 /** Bump when host behaviour changes pixels for the same inputs (it is part of every fingerprint). */
 const HOST_VERSION = 'traits-host@1';
@@ -438,7 +438,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
   // ── setup (once): fonts → motion/rhythm → unit.prepare → layout → ordinals → prepares → setups → DOM → mounts ──
   async function setup(): Promise<void> {
     skeleton();
-    const [, imgs] = await Promise.all([loadFonts(REEL.fonts), decodeImages(REEL.logos.map((l) => l.url))]);
+    const [, imgs] = await Promise.all([loadFonts(REEL.fonts), loadImages(REEL.logos.map((l) => l.url))]);
     REEL.logos.forEach((l, i) => images.set(l.url, imgs[i]!));
 
     for (const s of sections) {
@@ -466,12 +466,15 @@ export function runHost(traits: readonly AnyTrait[]): void {
     for (const axis of AXES) await each(axis, (t, c) => t.mount?.(c as never));
     for (const L of layers) commitLayer(L, stageCh, IDENTITY, false);
     // sketches place themselves against the text's hold boxes, so they mount once the scene can be seeked
-    overlays = mountOverlays(host, { seek, boxes });
+    overlays = mountOverlays(host, { seek, boxes, words: (u) => wordBoxes.get(u) });
     sounds = collectSounds(overlays?.sounds() ?? []);
   }
 
   /** Section sketches (`REEL.sketches`); null for jobs without any (then nothing is created). */
   let overlays: Overlays | null = null;
+  /** Units a word sketch sits on (`section#item`), and their words as laid out before any split or transform. */
+  const anchors = new Set((REEL.sketches ?? []).flatMap((k) => (k.place.mode === 'word' ? [`${k.section}#${k.place.item}`] : [])));
+  const wordBoxes = new Map<Unit, WordBoxes>();
 
   // ── sound cues (once, after mount) ──
   let sounds: SoundCue[] | null = null;
@@ -535,13 +538,15 @@ export function runHost(traits: readonly AnyTrait[]): void {
       if (u.html !== null) inner.innerHTML = u.html;
       else if (u.mount) u.mount(inner);
       else inner.textContent = u.text;
+      // a word sketch's anchor: measured like `splitMeasured` measures, before the split and any transform
+      if (anchors.has(`${s.id}#${u.item}`) && u.html === null && !u.mount && u.text) wordBoxes.set(u, measureWords(inner));
       if (u.split !== 'none' && u.text) {
         u.parts = splitMeasured(inner, u.split)
           .filter((m) => m.wordLike)
           .map((m, index): Part => {
             const ch = {} as PartChannels;
             resetPart(ch);
-            return { index, text: m.text, span: m.span, x: m.x, y: m.y, w: m.w, h: m.h, ch };
+            return { index, text: m.text, start: m.start, end: m.end, span: m.span, x: m.x, y: m.y, w: m.w, h: m.h, ch };
           });
       }
       if (u.inkBox) {

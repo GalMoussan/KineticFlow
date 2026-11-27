@@ -180,12 +180,19 @@ export const SketchPlace = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('auto') }),
   /** A rect in fractions of `format.safe`: top-left `x, y`, width `w`; the height follows the drawing, clamped. */
   z.object({ mode: z.literal('frame'), x: Fraction, y: Fraction, w: z.number().gt(0).max(1), rot: z.number().min(-180).max(180).optional() }),
-  /** Attached to a content item (P5); `part` is a word inside the item. */
+  /**
+   * Drawn on a word of the section (P5) and moving with it (camera, placement and the word's own motion). It starts
+   * once the word has landed and leaves with the word (no `until`).
+   */
   z.object({
     mode: z.literal('word'),
+    /** Index into the section's items (`sectionItems`): its words, then the small line's (`sub`) words. */
     item: z.number().int().min(0),
+    /** The k-th whitespace-separated word inside a multi-word item (a list item, a city); default: the whole item. */
     part: z.number().int().min(0).optional(),
+    /** `around` = an enclosing ellipse, `under` = the word's width below its baseline, `beside` = its reading-start side. */
     fit: z.enum(['around', 'under', 'beside']),
+    /** Extra room around the word, in layout px (default: a share of the word's height). */
     pad: z.number().min(0).max(200).optional(),
   }),
 ]);

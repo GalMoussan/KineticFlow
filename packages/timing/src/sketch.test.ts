@@ -134,3 +134,58 @@ test('sketch timing: a job with sketches needs the recipes; one without never re
   const plain = withSketches(26, {});
   assert.deepEqual(buildCueSheet({ spec: plain, choreography, fps: 30, bpm: 100 }), buildCueSheet({ spec: plain, choreography, fps: 30, bpm: 100, recipes: RECIPES }));
 });
+
+// ───────────────────────────── word attachment (P5) ─────────────────────────────
+
+const ENTRY = choreography.entry;
+const r6 = (x: number) => Math.round(x * 1e6) / 1e6;
+const onWord = (id: string, item: number, extra: Partial<SectionSketchInput> = {}): SectionSketchInput =>
+  circle(id, { place: { mode: 'word', item, fit: 'around' }, ...extra });
+
+test('word sketch timing: drawing starts once its word has landed and settled (at + entry), then its own beats', () => {
+  // tagline: "הנושאים הכי *מעניינים* ו*חמים* היום!" — items land one after another
+  const spec = withSketches(40, {
+    1: [onWord('w0', 0, { start: { edge: 'in' } }), onWord('w2', 2, { start: { edge: 'in', beats: 0.5 } }), onWord('wh', 4)],
+  });
+  const sheet = sheetOf(spec);
+  const s = sheet.sections[1]!;
+  const sin = (id: string) => sheet.cues.find((c) => c.type === 'sketch-in' && c.sketch === id)!;
+  assert.ok(s.items[0]!.at < s.items[2]!.at && s.items[2]!.at < s.items[4]!.at);
+  // "in" edge: no earlier than the word's landing + entry, even though the section came in before
+  assert.equal(sin('w0').t, r6(s.items[0]!.at + ENTRY));
+  assert.ok(sin('w0').t > s.timing.in);
+  // the start beats count from the landing, not from `in`
+  assert.equal(sin('w2').t, r6(r6(s.items[2]!.at + ENTRY) + 0.5 * BEAT));
+  assert.equal(sin('w2').until, r6(sin('w2').t + 2 * BEAT));
+  // the default hold edge already comes after every landing: unchanged
+  assert.equal(sin('wh').t, s.timing.holdStart);
+  // the same sketch placed automatically starts at the section's `in`
+  const auto = sheetOf(withSketches(40, { 1: [circle('w0', { start: { edge: 'in' } })] }));
+  assert.equal(auto.cues.find((c) => c.type === 'sketch-in')!.t, auto.sections[1]!.timing.in);
+});
+
+test('word sketch timing: the budget rule counts from the landing (out ≥ landed + beats + drawBeats + 1 beat)', () => {
+  const base = sheetOf(withSketches(32, {}));
+  const tag = base.sections[1]!;
+  // the last word lands at lastLand; drawing 3 beats from there plus one beat needs more than the tagline's hold
+  assert.ok(tag.timing.out < r6(tag.items[4]!.at + ENTRY + 4 * BEAT), 'tagline must start out too short for the test');
+  const sheet = sheetOf(withSketches(32, { 1: [onWord('w', 4, { start: { edge: 'in' }, look: { drawBeats: 3 } })] }));
+  const s = sheet.sections[1]!;
+  const sin = sheet.cues.find((c) => c.type === 'sketch-in')!;
+  assert.equal(sin.t, r6(s.items[4]!.at + ENTRY));
+  assert.ok(s.timing.out >= sin.until! + BEAT - 1e-9, `out ${s.timing.out} < drawEnd ${sin.until} + beat`);
+  assert.equal(sheet.duration, 32);
+  // a word whose landing leaves enough room changes no time at all
+  const early = sheetOf(withSketches(40, { 1: [onWord('w', 0, { start: { edge: 'in' }, look: { drawBeats: 1 } })] }));
+  assert.deepEqual(early.sections, sheetOf(withSketches(40, {})).sections);
+});
+
+test('word sketch timing: it leaves with its word, at the next section\u2019s entry (riding the move), exit before that', () => {
+  const sheet = sheetOf(withSketches(40, { 1: [onWord('w', 2, { look: { exit: 'fade' } })], 2: [circle('a', { look: { exit: 'fade' } })] }));
+  const [tag, body] = [sheet.sections[1]!, sheet.sections[2]!];
+  const out = (id: string) => sheet.cues.find((c) => c.type === 'sketch-out' && c.sketch === id)!;
+  assert.ok(body.timing.in > tag.timing.out, 'kinetic-quote moves the camera between sections');
+  assert.deepEqual([out('w').t, out('w').until], [r6(body.timing.in - 0.3), body.timing.in]);
+  // an automatic sketch still leaves with its section's `out`
+  assert.deepEqual([out('a').t, out('a').until], [r6(body.timing.out - 0.3), body.timing.out]);
+});

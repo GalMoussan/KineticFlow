@@ -133,6 +133,8 @@ interface SketchPlan {
   drawBeats: number;
   /** Exit length in seconds (`SKETCH_EXIT_S`). */
   exit: number;
+  /** The content item a word-attached sketch sits on (null otherwise): it draws only once that word has landed. */
+  anchor: number | null;
 }
 
 function sketchPlans(spec: JobSpec, recipes: SketchRecipes | undefined): SketchPlan[] {
@@ -150,6 +152,7 @@ function sketchPlans(spec: JobSpec, recipes: SketchRecipes | undefined): SketchP
         beats: k.start?.beats ?? 0,
         drawBeats: look.drawBeats,
         exit: SKETCH_EXIT_S[look.exit],
+        anchor: k.place.mode === 'word' ? k.place.item : null,
       };
     });
   });
@@ -304,11 +307,16 @@ const beatAt = (at: (h: number) => number, h: number) => r6(at(h + 2) - at(h));
 
 /**
  * When a sketch draws and when it is done: from its section's edge (`in`, or the hold = last landing + entry) plus
- * `beats`, for `drawBeats`, in beats of the grid at the section's last landing.
+ * `beats`, for `drawBeats`, in beats of the grid at the section's last landing. A word-attached sketch starts no
+ * earlier than its word has landed and settled (`at + entry`); its `beats` count from there.
  */
-function sketchWindow(k: SketchPlan, s: Omit<SectionTimes, 'out'>, at: (h: number) => number, c: Choreography) {
+function sketchWindow(k: SketchPlan, s: Omit<SectionTimes, 'out'>, at: (h: number) => number, c: Choreography, p: Plan) {
   const beat = beatAt(at, s.lastH);
-  const edge = k.edge === 'in' ? s.inT : r6(s.lastLand + c.entry);
+  let edge = k.edge === 'in' ? s.inT : r6(s.lastLand + c.entry);
+  if (k.anchor !== null) {
+    const landed = r6(at(s.lastH - p.span[k.section]! + p.offs[k.section]![k.anchor]!) + c.entry);
+    if (landed > edge) edge = landed;
+  }
   const tIn = r6(edge + k.beats * beat);
   const drawEnd = r6(tIn + k.drawBeats * beat);
   return { tIn, drawEnd, beat };
@@ -337,7 +345,7 @@ function sketchBudget(
       let need = -Infinity;
       for (const k of p.sketches) {
         if (k.section !== i) continue;
-        const w = sketchWindow(k, s, at, c);
+        const w = sketchWindow(k, s, at, c, p);
         need = Math.max(need, r6(w.drawEnd + w.beat));
       }
       if (need === -Infinity) return { halves: 0, seconds: need };
@@ -380,12 +388,16 @@ function sketchBudget(
   throw new Error('sketch budget did not settle');
 }
 
-/** `sketch-in` / `sketch-out` cues of every sketch, from the laid-out sections. */
+/**
+ * `sketch-in` / `sketch-out` cues of every sketch, from the laid-out sections. A sketch leaves with its `until`
+ * section; a word-attached sketch leaves with its word: it rides the camera move or transition after its section and
+ * is gone when the next section comes in (the page hides it earlier when the word leaves the frame).
+ */
 function sketchCues(p: Plan, c: Choreography, sections: ReelSection[], lastHs: number[], at: (h: number) => number): Cue[] {
   return p.sketches.flatMap((k) => {
     const s = sections[k.section]!;
-    const { tIn, drawEnd } = sketchWindow(k, { lastH: lastHs[k.section]!, inT: s.timing.in, lastLand: s.timing.lastLand }, at, c);
-    const gone = sections[k.until]!.timing.out;
+    const { tIn, drawEnd } = sketchWindow(k, { lastH: lastHs[k.section]!, inT: s.timing.in, lastLand: s.timing.lastLand }, at, c, p);
+    const gone = k.anchor !== null ? (sections[k.section + 1]?.timing.in ?? s.timing.out) : sections[k.until]!.timing.out;
     const exitStart = r6(Math.max(drawEnd, gone - k.exit));
     return [
       { t: tIn, type: 'sketch-in', section: s.id, sketch: k.id, weight: 1, until: drawEnd },

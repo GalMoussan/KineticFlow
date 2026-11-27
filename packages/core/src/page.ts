@@ -94,16 +94,28 @@ export interface SketchRef {
 export interface OverlayBox {
   id: string;
   section: string;
-  /** Placement mode as requested; `word` renders as auto until word attachment lands (P5). */
+  /** Placement mode as requested. A `word` sketch is drawn on its word, inside the word's own transforms (P5). */
   place: SketchPlace['mode'];
   layer: 'under' | 'over';
   /** Auto placement found no free space wide enough and put the sketch under the text. */
   fallback: boolean;
   /** The content item a `word` placement points at. */
   item?: number;
+  /** How a `word` placement fits its word (an `around` ring covers only its band; QA measures that, not its box). */
+  fit?: Extract<SketchPlace, { mode: 'word' }>['fit'];
+  /** A `word` sketch's pen width in screen px (the ring's band is the ellipse inside its box, this thick). */
+  pen?: number;
+  /** The word inside the item a `word` placement names (`place.part`), and that word's screen box while drawn. */
+  part?: number;
+  word?: { x: number; y: number; w: number; h: number };
+  /**
+   * A `word` sketch inside its time window: whether its word is on screen now. When it is `hidden` (its unit or the
+   * word's letters are not drawn) or `offscreen`, the sketch hides with it.
+   */
+  anchor?: 'shown' | 'hidden' | 'offscreen';
   /** Drawn at the current `t`. */
   visible: boolean;
-  /** Screen pixels: axis-aligned box of the placed drawing (after rotation). */
+  /** Screen pixels: axis-aligned box of the placed drawing (after rotation, or after the word's transforms). */
   x: number;
   y: number;
   w: number;

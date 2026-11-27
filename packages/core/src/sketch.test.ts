@@ -207,7 +207,7 @@ test('spec: word placement must point at a content item; limits per section and 
   word.sections[0]!.sketches = [preset('a', { place: { mode: 'word', item: 1, fit: 'around' } })];
   assert.deepEqual(issues(word), []);
   word.sections[0]!.sketches = [preset('a', { place: { mode: 'word', item: 5, fit: 'around' } })];
-  assert.match(issues(word).join('\n'), /sections\.0\.sketches\.0\.place\.item: section "title-0" has no content item 5/);
+  assert.match(issues(word).join('\n'), /sections\.0\.sketches\.0\.place\.item: section "title-0" has no word at item 5 \(it has 2 text item\(s\)\)/);
 
   const four = base();
   four.sections[1]!.sketches = ['a', 'b', 'c', 'd'].map((id) => preset(id));
@@ -225,6 +225,40 @@ test('spec: word placement must point at a content item; limits per section and 
   dup.sections[1]!.sketches = [preset('a')];
   dup.sections[2]!.sketches = [preset('a')];
   assert.match(issues(dup).join('\n'), /duplicate sketch id "a"/);
+});
+
+test('spec (P5): word placement: sub-line words follow the big words; part must name a word of the item; no until', () => {
+  const sub = base();
+  // tagline: 2 big words, then the sub line's 3 words are items 2..4
+  sub.sections[1] = { role: 'tagline', text: 'בואו *לדבר*', sub: 'על הכל *היום*' };
+  sub.sections[1]!.sketches = [preset('a', { place: { mode: 'word', item: 4, fit: 'under' } })];
+  assert.deepEqual(issues(sub), []);
+  sub.sections[1]!.sketches = [preset('a', { place: { mode: 'word', item: 5, fit: 'under' } })];
+  assert.match(issues(sub).join('\n'), /sections\.1\.sketches\.0\.place\.item: section "tagline-1" has no word at item 5 \(it has 5 text item\(s\)\)/);
+
+  // `part`: a word inside a multi-word item (a list item, a city); one-word items take only part 0
+  const list = base();
+  list.sections[1] = { role: 'list', items: ['שוק הפשפשים ביפו', 'קפה'] };
+  list.sections[1]!.sketches = [preset('a', { place: { mode: 'word', item: 0, part: 2, fit: 'around' } })];
+  assert.deepEqual(issues(list), []);
+  list.sections[1]!.sketches = [preset('a', { place: { mode: 'word', item: 0, part: 3, fit: 'around' } })];
+  assert.match(issues(list).join('\n'), /sections\.1\.sketches\.0\.place\.part: item 0 \("שוק הפשפשים ביפו"\) has 3 word\(s\); "part" must be below 3/);
+  list.sections[1]!.sketches = [preset('a', { place: { mode: 'word', item: 1, part: 1, fit: 'around' } })];
+  assert.match(issues(list).join('\n'), /place\.part: item 1 \("קפה"\) has 1 word\(s\)/);
+
+  // any text item can carry a word sketch, e.g. a datetime's time (item 2)
+  const date = base();
+  date.sections[2] = { role: 'datetime', date: '2026-12-01', time: '19:30' };
+  date.sections[2]!.sketches = [preset('a', { place: { mode: 'word', item: 2, fit: 'under' } })];
+  assert.deepEqual(issues(date), []);
+
+  // a word sketch leaves with its word: `until` is rejected for it (and only for it)
+  const until = base();
+  until.sections[2]!.id = 'body-2';
+  until.sections[1]!.sketches = [preset('a', { until: 'body-2', place: { mode: 'word', item: 0, fit: 'around' } })];
+  assert.match(issues(until).join('\n'), /sections\.1\.sketches\.0\.until: a sketch on a word leaves with its word.s section; remove "until"/);
+  until.sections[1]!.sketches = [preset('a', { until: 'body-2' })];
+  assert.deepEqual(issues(until), []);
 });
 
 test('spec: end card takes drawLogo but no sketches; logo line sketches are not available yet', () => {

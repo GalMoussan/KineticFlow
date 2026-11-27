@@ -565,6 +565,71 @@ input[type='radio'] {
   border-radius: 6px;
   font-size: 14px;
 }
+/* an emphasised word chip with its ✎ sketch menu, joined on the chip's trailing side (logical: RTL-correct) */
+.word-chip {
+  display: inline-flex;
+  align-items: center;
+}
+.word-chip > .chip.word.on {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.word-pen {
+  position: relative;
+  display: inline-flex;
+}
+.word-pen > summary {
+  list-style: none;
+}
+.word-pen > summary::-webkit-details-marker {
+  display: none;
+}
+.word-pen-toggle {
+  height: 26px;
+  padding: 0 7px;
+  margin-inline-start: -1px;
+  border-radius: 0;
+  border-start-end-radius: 6px;
+  border-end-end-radius: 6px;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.word-pen[open] > .word-pen-toggle {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.word-pen-count {
+  font-size: 11px;
+  font-weight: 600;
+}
+.word-pen-menu {
+  position: absolute;
+  z-index: 20;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-end: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 150px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+}
+.word-pen-menu .chip {
+  justify-content: flex-start;
+}
+.word-pen-menu .chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.word-pen-menu .field-warn {
+  font-size: 12px;
+  white-space: normal;
+}
 .chip-select {
   width: auto !important;
   height: 28px;

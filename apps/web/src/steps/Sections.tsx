@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { daysBetween, retargetSketchUntil, weekday, type SectionRole } from '@reel/core';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { daysBetween, retargetSketchUntil, retargetWordSketches, SKETCH_LIMITS, weekday, type SectionRole, type SectionSketchInput } from '@reel/core';
 import { api, errorMessage } from '../api.ts';
 import { convertSection, emphasisWords, humanMessage, isTextRole, newSection, plain, ROLE_LABELS, sectionId, styleBase, toggleEmphasis, type SectionInput } from '../spec.ts';
 import { useStudio } from '../studio.tsx';
@@ -247,8 +247,83 @@ function F({ label, children, path, issues, grow }: { label: string; children: R
 
 const optional = (v: string) => (v.trim() ? v : undefined);
 
+/** What the ✎ menu of an emphasised word adds: a preset attached to that word (`place.mode: 'word'`, SKETCH-PLAN SK8). */
+const DOODLES = [
+  { preset: 'circle', label: 'Circle', fit: 'around' },
+  { preset: 'underline', label: 'Underline', fit: 'under' },
+  { preset: 'arrow', label: 'Arrow to it', fit: 'beside' },
+] as const;
+type Doodle = (typeof DOODLES)[number];
+
+/** A text field's word sketches, for its chips; `i` is the word's index in the field. */
+interface WordDoodles {
+  count(i: number): number;
+  /** Why nothing more can be added (the section's or the video's sketch limit), else null. */
+  full: string | null;
+  add(i: number, d: Doodle): void;
+  remove(i: number): void;
+  /** Toggles the word's emphasis; a word that loses it loses its sketches in the same step. */
+  toggle(i: number): void;
+}
+
+/** The section with its sketch list replaced (the key dropped when the list is empty). */
+function withSketches(x: SectionInput, f: (list: SectionSketchInput[]) => SectionSketchInput[]): SectionInput {
+  if (x.role === 'endcard') return x;
+  const next = { ...x } as Record<string, unknown>;
+  const list = f(x.sketches ?? []);
+  if (list.length) next.sketches = list;
+  else delete next.sketches;
+  return next as SectionInput;
+}
+
+/** The ✎ menu of an emphasised word chip: Circle / Underline / Arrow to it, disabled with the reason at the limit. */
+function WordPen({ word, count, full, onAdd, onRemove }: { word: string; count: number; full: string | null; onAdd: (d: Doodle) => void; onRemove: () => void }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  const pick = (fn: () => void) => () => {
+    fn();
+    if (ref.current) ref.current.open = false;
+  };
+  const label = `Sketch on “${word}”`;
+  return (
+    <details className="word-pen" ref={ref}>
+      <summary className={`chip sm word-pen-toggle ${count ? 'on' : ''}`} aria-label={label} title={label}>
+        ✎{count ? <span className="word-pen-count">{count}</span> : null}
+      </summary>
+      <div className="word-pen-menu" role="menu" aria-label={label}>
+        {DOODLES.map((d) => (
+          <button key={d.preset} type="button" role="menuitem" className="chip sm" disabled={full !== null} title={full ?? undefined} onClick={pick(() => onAdd(d))}>
+            {d.label}
+          </button>
+        ))}
+        {full ? <span className="field-warn">{full}</span> : null}
+        {count ? (
+          <button type="button" role="menuitem" className="chip sm" onClick={pick(onRemove)}>
+            Remove from this word
+          </button>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+/** Word chips: a click toggles emphasis; an emphasised word also gets its ✎ menu. */
+function WordChips({ words, sm, doodles }: { words: { word: string; emphasis: boolean }[]; sm?: boolean; doodles: WordDoodles }) {
+  return (
+    <div className="chips" dir="auto" aria-label="Click words to emphasise">
+      {words.map((w, i) => (
+        <span key={i} className="word-chip">
+          <button type="button" className={`chip word ${sm ? 'sm' : ''} ${w.emphasis ? 'on' : ''}`} aria-pressed={w.emphasis} onClick={() => doodles.toggle(i)}>
+            {w.word}
+          </button>
+          {w.emphasis ? <WordPen word={w.word} count={doodles.count(i)} full={doodles.full} onAdd={(d) => doodles.add(i, d)} onRemove={() => doodles.remove(i)} /> : null}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function SectionFields({ section, p, issues, patch }: { section: SectionInput; p: string; issues: Map<string, string[]>; patch: (fn: Patch, key?: string) => void }) {
-  const { spec, assets } = useStudio();
+  const { spec, assets, toast, undo } = useStudio();
   const lang = spec.language;
   const set = (field: string, value: unknown, key = field) =>
     patch((x) => {
@@ -260,10 +335,63 @@ function SectionFields({ section, p, issues, patch }: { section: SectionInput; p
 
   if (isTextRole(section.role) && 'text' in section && section.role !== 'endcard') {
     const sub = 'sub' in section ? (section.sub as string | undefined) : undefined;
+    const sketches = section.sketches ?? [];
+    // the ✎ menu on emphasised word chips (SKETCH-PLAN SK8, P5): sketches attached to a word, by its item index (the
+    // small line's words follow the big ones). Each add or remove is its own `s.update`, so one undo takes it back.
+    const onItem = (k: SectionSketchInput, item: number) => k.place?.mode === 'word' && k.place.item === item;
+    const total = spec.sections.reduce((n, x) => n + (x.role === 'endcard' ? 0 : (x.sketches?.length ?? 0)), 0);
+    const full =
+      sketches.length >= SKETCH_LIMITS.perSection
+        ? `This section already has ${SKETCH_LIMITS.perSection} sketches, the most it can hold`
+        : total >= SKETCH_LIMITS.perJob
+          ? `This video already has ${SKETCH_LIMITS.perJob} sketches, the most it can hold`
+          : null;
+    const ids = new Set(spec.sections.flatMap((x) => (x.role === 'endcard' ? [] : (x.sketches ?? []).map((k) => k.id))));
+    // every change of the text or the small line (typing, a chip click, Suggest, ✕) keeps word sketches on their word
+    // in the same `s.update`; a sketch whose word went away or lost its emphasis is dropped, with an Undo toast
+    const edit = (field: 'text' | 'sub', value: string | undefined, key: string) => {
+      const apply = (x: SectionInput): SectionInput => {
+        const next = { ...x } as Record<string, unknown>;
+        if (value === undefined) delete next[field];
+        else next[field] = value;
+        return next as SectionInput;
+      };
+      const r = retargetWordSketches(section, apply(section));
+      patch((x) => retargetWordSketches(x, apply(x)).section, r.dropped.length ? '' : `${p}.${key}`);
+      if (r.dropped.length) {
+        const n = r.dropped.length;
+        toast(`Removed ${n} sketch${n === 1 ? '' : 'es'} from ${r.words.map((w) => `“${w}”`).join(', ')}`, { action: { label: 'Undo', run: undo } });
+      }
+    };
+    const doodles = (field: 'text' | 'sub', source: string, offset: number, key: string): WordDoodles => ({
+      count: (i) => sketches.filter((k) => onItem(k, offset + i)).length,
+      full,
+      add: (i, d) => {
+        let id = `${d.preset}-word-${offset + i}`;
+        for (let n = 2; ids.has(id); n++) id = `${d.preset}-word-${offset + i}-${n}`;
+        const k: SectionSketchInput = { id, source: { kind: 'preset', preset: d.preset }, place: { mode: 'word', item: offset + i, fit: d.fit } };
+        patch((x) => withSketches(x, (list) => [...list, k]), '');
+      },
+      remove: (i) => patch((x) => withSketches(x, (list) => list.filter((k) => !onItem(k, offset + i))), ''),
+      toggle: (i) => edit(field, toggleEmphasis(source, i), key),
+    });
     return (
       <div className="stack-sm">
-        <TextField text={section.text} path={`${p}.text`} issues={issues} onChange={(t, key) => set('text', t, key)} big={section.role === 'title'} />
-        <SubLine sub={sub} path={`${p}.sub`} issues={issues} onChange={(t, key) => set('sub', t, key)} />
+        <TextField
+          text={section.text}
+          path={`${p}.text`}
+          issues={issues}
+          onChange={(t, key) => edit('text', t, key ?? 'text')}
+          big={section.role === 'title'}
+          doodles={doodles('text', section.text, 0, 'emph')}
+        />
+        <SubLine
+          sub={sub}
+          path={`${p}.sub`}
+          issues={issues}
+          onChange={(t, key) => edit('sub', t, key ?? 'sub')}
+          doodles={doodles('sub', sub ?? '', emphasisWords(section.text).length, 'sub-emph')}
+        />
       </div>
     );
   }
@@ -455,7 +583,19 @@ function SectionFields({ section, p, issues, patch }: { section: SectionInput; p
  * The small line under the big words, in the same frame (`section.sub`): "There's a prize" → what the prize is. An
  * empty field stays open while typing; the spec only gets the key once there is text.
  */
-function SubLine({ sub, path, issues, onChange }: { sub: string | undefined; path: string; issues: Map<string, string[]>; onChange: (t: string | undefined, key?: string) => void }) {
+function SubLine({
+  sub,
+  path,
+  issues,
+  onChange,
+  doodles,
+}: {
+  sub: string | undefined;
+  path: string;
+  issues: Map<string, string[]>;
+  onChange: (t: string | undefined, key?: string) => void;
+  doodles: WordDoodles;
+}) {
   const [open, setOpen] = useState(sub !== undefined);
   if (!open && sub === undefined) {
     return (
@@ -494,15 +634,7 @@ function SubLine({ sub, path, issues, onChange }: { sub: string | undefined; pat
         </div>
         <Issue path={path} issues={issues} />
       </label>
-      {words.length ? (
-        <div className="chips" dir="auto" aria-label="Click words to emphasise">
-          {words.map((w, i) => (
-            <button key={i} type="button" className={`chip word sm ${w.emphasis ? 'on' : ''}`} aria-pressed={w.emphasis} onClick={() => onChange(toggleEmphasis(sub ?? '', i), 'sub-emph')}>
-              {w.word}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {words.length ? <WordChips words={words} sm doodles={doodles} /> : null}
     </div>
   );
 }
@@ -513,12 +645,14 @@ function TextField({
   issues,
   onChange,
   big,
+  doodles,
 }: {
   text: string;
   path: string;
   issues: Map<string, string[]>;
   onChange: (t: string, key?: string) => void;
   big: boolean;
+  doodles: WordDoodles;
 }) {
   const s = useStudio();
   const [busy, setBusy] = useState(false);
@@ -548,13 +682,7 @@ function TextField({
       </label>
       {words.length ? (
         <div className="chips-row">
-          <div className="chips" dir="auto" aria-label="Click words to emphasise">
-            {words.map((w, i) => (
-              <button key={i} type="button" className={`chip word ${w.emphasis ? 'on' : ''}`} aria-pressed={w.emphasis} onClick={() => onChange(toggleEmphasis(text, i), 'emph')}>
-                {w.word}
-              </button>
-            ))}
-          </div>
+          <WordChips words={words} doodles={doodles} />
           <button type="button" className="btn ghost sm" onClick={() => void suggest()} disabled={busy} title="Suggest emphasis words">
             {busy ? <span className="spinner sm" aria-hidden="true" /> : <Icon name="spark" size={14} />} Suggest
           </button>

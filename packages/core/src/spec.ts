@@ -225,8 +225,10 @@ export const JobSpec = z
 
 /**
  * Cross-section sketch rules: ≤ 12 per job, unique ids, `until` names a later section by its explicit `id` (a positional
- * default id would silently retarget when sections move), a `word` placement points at a content item of its section,
- * and logo line versions (P3) are not available yet. Returns false on any issue.
+ * default id would silently retarget when sections move), a `word` placement points at a text item of its section (a
+ * word of the big text or of the small line under it: `item` indexes `sectionItems`, so `sub` words follow the big
+ * words), `part` names a word inside that item, a word sketch has no `until` (it leaves with its word), and logo line
+ * versions (P3) are not available yet. Returns false on any issue.
  */
 function sketchIssues(
   sections: (Section & { id: string })[],
@@ -249,15 +251,23 @@ function sketchIssues(
       total++;
       if (seen.has(k.id)) fail([...at, 'id'], `duplicate sketch id "${k.id}"`);
       seen.add(k.id);
-      if (k.until !== undefined) {
+      if (k.until !== undefined && k.place.mode === 'word') {
+        fail([...at, 'until'], 'a sketch on a word leaves with its word\u2019s section; remove "until" (or place it automatically)');
+      } else if (k.until !== undefined) {
         const u = index.get(k.until);
         if (u === undefined) fail([...at, 'until'], `"until" names no section ("${k.until}")`);
         else if (u <= i) fail([...at, 'until'], `"until" must name a later section than "${s.id}"`);
         else if (!explicit.has(k.until)) fail([...at, 'until'], `"until" needs section "${k.until}" to have an explicit "id"`);
       }
       if (k.place.mode === 'word') {
-        const it = sectionItems(s, { language, sections })[k.place.item];
-        if (!it || it.kind === 'logos') fail([...at, 'place', 'item'], `section "${s.id}" has no content item ${k.place.item}`);
+        const items = sectionItems(s, { language, sections });
+        const it = items[k.place.item];
+        if (!it || it.kind === 'logos' || !it.text) {
+          fail([...at, 'place', 'item'], `section "${s.id}" has no word at item ${k.place.item} (it has ${items.filter((x) => x.text).length} text item(s))`);
+        } else if (k.place.part !== undefined) {
+          const n = it.text.split(/\s+/u).filter(Boolean).length;
+          if (k.place.part >= n) fail([...at, 'place', 'part'], `item ${k.place.item} ("${it.text}") has ${n} word(s); "part" must be below ${n}`);
+        }
       }
       if (k.source.kind === 'logo') {
         fail([...at, 'source'], 'drawing a logo\u2019s line version is not available yet (it comes with the sketch generators)');

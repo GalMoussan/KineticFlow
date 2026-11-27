@@ -69,34 +69,69 @@ export async function sampleHolds(tab: ReelTab, sheet: CueSheet): Promise<HoldSa
 export const SKETCH_COVER = 0.08;
 
 /**
- * Sketch placement (SKETCH-PLAN.md P1): a `frame` sketch outside the safe area fails; a sketch covering more than 8 %
- * of a text box at a hold warns (a `word` sketch is exempt for its own item); an auto sketch that found no free space
- * and went under the text warns. `null` for jobs without sketches.
+ * The box inscribed in the inner edge of an `around` word sketch's ring: the preset's ellipse spans 94 % × 90.6 % of
+ * the drawing's box (`lib/anchor.ts`), and its inner edge is a pen inside it. Text in there is inside the ring, not
+ * under its line. Null for other sketches (they cover their whole box).
  */
-export function gateSketches(samples: HoldSample[], input: ReelInput): GateResult | null {
+function ringHole(o: OverlayBox): OverlayBox | null {
+  if (o.place !== 'word' || o.fit !== 'around') return null;
+  const a = 0.47 * o.w - (o.pen ?? 0);
+  const b = 0.453 * o.h - (o.pen ?? 0);
+  if (a <= 0 || b <= 0) return null;
+  const w = a * Math.SQRT2;
+  const h = b * Math.SQRT2;
+  return { ...o, x: o.x + (o.w - w) / 2, y: o.y + (o.h - h) / 2, w, h };
+}
+
+/**
+ * Sketch placement (SKETCH-PLAN.md P1, P5): a `frame` sketch outside the safe area fails; a sketch covering more than
+ * 8 % of a text box at a hold warns; an auto sketch that found no free space and went under the text warns. A `word`
+ * sketch may cover its own item (that is its point) but warns like any other when it covers other words or leaves
+ * the safe area at a hold; an `around` ring covers only its band (text inside the ring is not under its line); when
+ * its word is hidden or off screen at a hold, the sketch hides with it and the gate notes it. `null` for jobs without
+ * sketches.
+ */
+export function gateSketches(samples: readonly Pick<HoldSample, 't' | 'boxes' | 'overlays'>[], input: Pick<ReelInput, 'format'>): GateResult | null {
   const all = samples[0]?.overlays ?? [];
   if (!all.length) return null;
   const { w: W, h: H, safe } = input.format;
   const e = EDGE_TOLERANCE;
   const box = (o: OverlayBox) => `[${r2(o.x)},${r2(o.y)} → ${r2(o.x + o.w)},${r2(o.y + o.h)}]`;
-  const outside = all
-    .filter((o) => o.place === 'frame')
-    .filter((o) => o.x < safe.left - e || o.y < safe.top - e || o.x + o.w > W - safe.right + e || o.y + o.h > H - safe.bottom + e)
-    .map((o) => `${o.id} (frame) ${box(o)} leaves the safe area`);
+  const leaves = (o: OverlayBox) => o.x < safe.left - e || o.y < safe.top - e || o.x + o.w > W - safe.right + e || o.y + o.h > H - safe.bottom + e;
+  const outside = all.filter((o) => o.place === 'frame' && leaves(o)).map((o) => `${o.id} (frame) ${box(o)} leaves the safe area`);
   const under = all.filter((o) => o.fallback).map((o) => `${o.id}: no free space beside the text, drawn under it`);
-  const notes = all.filter((o) => o.place === 'word').map((o) => `${o.id}: word attachment comes later; placed automatically for now`);
+  const wordOutside: string[] = [];
+  const notes: string[] = [];
   const covers: string[] = [];
   for (const s of samples) {
-    for (const o of s.overlays.filter((x) => x.visible)) {
+    const at = `@${s.t.toFixed(2)}s`;
+    for (const o of s.overlays) {
+      if (o.place === 'word' && o.anchor && o.anchor !== 'shown') {
+        notes.push(`${o.id}: its word is ${o.anchor === 'hidden' ? 'hidden' : 'off screen'} ${at}, the sketch hides with it`);
+      }
+      if (!o.visible) continue;
+      if (o.place === 'word' && leaves(o)) wordOutside.push(`${o.id} (word) ${box(o)} leaves the safe area ${at}`);
+      // an `around` ring covers its band only: its box less the box inside its inner edge
+      const hole = ringHole(o);
+      const cover = (r: { x: number; y: number; w: number; h: number }) => overlapArea(o, r) - (hole ? overlapArea(hole, r) : 0);
       for (const b of s.boxes) {
-        if (o.place === 'word' && b.section === o.section && b.unit === o.item) continue;
-        const share = overlapArea(o, b) / Math.max(1e-9, b.w * b.h);
-        if (share > SKETCH_COVER) covers.push(`${o.id} covers ${Math.round(share * 100)} % of "${b.text || `${b.section}#${b.unit}`}" @${s.t.toFixed(2)}s`);
+        // a word sketch is drawn on its own word: only the other words count. With `part`, the item's box holds other
+        // words too: there the share is of the item without that word's own box.
+        const own = o.place === 'word' && b.section === o.section && b.unit === o.item;
+        if (own && (o.part === undefined || !o.word)) continue;
+        let share = cover(b) / Math.max(1e-9, b.w * b.h);
+        if (own && o.word) {
+          const x0 = Math.max(b.x, o.word.x);
+          const y0 = Math.max(b.y, o.word.y);
+          const cut = { x: x0, y: y0, w: Math.max(0, Math.min(b.x + b.w, o.word.x + o.word.w) - x0), h: Math.max(0, Math.min(b.y + b.h, o.word.y + o.word.h) - y0) };
+          share = (cover(b) - cover(cut)) / Math.max(1e-9, b.w * b.h - cut.w * cut.h);
+        }
+        if (share > SKETCH_COVER) covers.push(`${o.id} covers ${Math.round(share * 100)} % of "${b.text || `${b.section}#${b.unit}`}" ${at}`);
       }
     }
   }
-  const level: Level = outside.length ? 'fail' : under.length || covers.length ? 'warn' : 'pass';
-  const problems = [...outside, ...under, ...covers];
+  const level: Level = outside.length ? 'fail' : under.length || covers.length || wordOutside.length ? 'warn' : 'pass';
+  const problems = [...outside, ...wordOutside, ...under, ...covers];
   return {
     gate: 'sketch',
     level,
@@ -104,7 +139,7 @@ export function gateSketches(samples: HoldSample[], input: ReelInput): GateResul
     detail: problems.length
       ? `${problems.slice(0, 4).join('; ')}${problems.length > 4 ? ` (+${problems.length - 4})` : ''}`
       : `${all.length} sketch(es) inside the safe area, clear of text at every hold${notes.length ? `; ${notes.join('; ')}` : ''}`,
-    data: { outside, under, covers, notes, placements: all.map(({ visible: _v, ...o }) => o) },
+    data: { outside, wordOutside, under, covers, notes, placements: all.map(({ visible: _v, anchor: _a, ...o }) => o) },
   };
 }
 

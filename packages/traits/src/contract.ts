@@ -149,6 +149,9 @@ export interface Part {
   /** Logical order inside the unit (sequential reveals); spatial sweeps sort by `x`. */
   index: number;
   text: string;
+  /** UTF-16 offsets of the part in the unit's inner text (`[start, end)`). */
+  start: number;
+  end: number;
   span: HTMLSpanElement;
   /** Measured rect relative to the unit's inner element, untransformed px. */
   x: number;
@@ -359,7 +362,7 @@ export interface Host {
   readonly sections: readonly Section[];
   readonly layers: readonly Layer[];
   readonly stageCh: StageChannels;
-  /** Decoded logo images by URL (clone them; never move the originals). */
+  /** Loaded logo images by URL, `decoding = 'sync'` (clone them; never move the originals or `decode()` them). */
   readonly images: ReadonlyMap<string, HTMLImageElement>;
   /** Canvas2D metrics per 1 px of font size (font kerning on; cached). */
   metrics(text: string, weight: number, ltr: boolean, family?: 'display' | 'text'): Metrics;

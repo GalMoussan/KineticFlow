@@ -70,6 +70,10 @@ dev/sounds.ts       every style's `soundCues()` for a spec: counts per kind, den
   The probe browser of the renderer and of `dev/stills.ts` runs CPU raster (`launchBrowser({ raster: 'cpu' })`), so
   their determinism checks report the page's own purity (a real bug), not atlas history; the render stays
   consistent because every chunk seeks its frames in one fixed order in a fresh context.
+- **Image rasters remember their decodes (GPU raster).** A downscaled `<img>` samples whatever decode of it the
+  compositor still caches: a full-size `img.decode()` if that entry survived until the first draw, else a decode at
+  the draw's own mip level (up to 60/255 apart on orbit-ring's hub logos, decided by timing). Never `img.decode()` an
+  image a page draws scaled: the host loads logos without it (`loadImages`) and the clones keep `decoding = 'sync'`.
 - **Text stays inside `format.safe`** at every section hold, in all four formats and in RTL and LTR. Layouts fit
   against `host.safe` and `host.zoomRange(section)` (see §5).
 
@@ -172,7 +176,7 @@ scene layer, taken from the layer's first section). All other axes are **section
 
 Setup (once, inside `reelPage.ready()`):
 
-1. Host: palette/font custom properties, scene layers and section groups, content units; fonts loaded, logos decoded.
+1. Host: palette/font custom properties, scene layers and section groups, content units; fonts and logos loaded.
 2. Per section: `motion.curves(c)` → `section.motion`; `rhythm.setup(c)`.
 3. Per content unit: `unit.prepare(c, u)` (default `split`).
 4. Per layer: `layout.layout(c)`: typeset and place every unit (`font`, `box`, `textAt`, `inkBox`, `baseline`,
@@ -243,7 +247,7 @@ Per-axis extras:
   gets is decided by `resolveStyles` (`style.palette`): the section's own `palette` if set, else `spec.palette` when
   the section resolves to the job's dominant recipe, else the default palette of the section's own dominant recipe
   (so a neon section in a kinetic-quote reel is dark). It is part of `style` and hence of every fingerprint.
-- `host.el(tag, cls, parent, style)` for trait-owned DOM; `host.images` holds decoded logos (clone them).
+- `host.el(tag, cls, parent, style)` for trait-owned DOM; `host.images` holds the loaded logos (clone them).
 
 ## 6. Scene layers, world chains and transitions
 
