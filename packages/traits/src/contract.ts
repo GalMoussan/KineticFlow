@@ -359,7 +359,7 @@ export interface Host {
   readonly sections: readonly Section[];
   readonly layers: readonly Layer[];
   readonly stageCh: StageChannels;
-  /** Decoded logo images by URL (clone them; never move the originals). */
+  /** Loaded logo images by URL, `decoding = 'sync'` (clone them; never move the originals or `decode()` them). */
   readonly images: ReadonlyMap<string, HTMLImageElement>;
   /** Canvas2D metrics per 1 px of font size (font kerning on; cached). */
   metrics(text: string, weight: number, ltr: boolean, family?: 'display' | 'text'): Metrics;

@@ -4,7 +4,7 @@
  * all channels in one pass. Every frame is a pure function of t. Guide: `packages/traits/README.md`.
  */
 import type { ResolvedPalette, SoundCue, TextBox, TraitAxis } from '@reel/core';
-import { decodeImages, defineReelPage, loadFonts, splitMeasured } from '@reel/runtime';
+import { defineReelPage, loadFonts, loadImages, splitMeasured } from '@reel/runtime';
 import type {
   AnyTrait,
   Channels,
@@ -437,7 +437,7 @@ export function runHost(traits: readonly AnyTrait[]): void {
   // ── setup (once): fonts → motion/rhythm → unit.prepare → layout → ordinals → prepares → setups → DOM → mounts ──
   async function setup(): Promise<void> {
     skeleton();
-    const [, imgs] = await Promise.all([loadFonts(REEL.fonts), decodeImages(REEL.logos.map((l) => l.url))]);
+    const [, imgs] = await Promise.all([loadFonts(REEL.fonts), loadImages(REEL.logos.map((l) => l.url))]);
     REEL.logos.forEach((l, i) => images.set(l.url, imgs[i]!));
 
     for (const s of sections) {

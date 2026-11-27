@@ -20,19 +20,24 @@ export async function loadFonts(fonts: ReelInput['fonts']): Promise<void> {
   await document.fonts.ready;
 }
 
-/** Loads and decodes images up front so no frame waits on (or skips) a decode. */
-export async function decodeImages(urls: string[]): Promise<HTMLImageElement[]> {
+/**
+ * Loads images up front. Pages draw clones of them with `decoding = 'sync'` (the attribute is cloned), so raster
+ * decodes each image at the scale it is drawn and never skips it on the frame it first appears. Not `img.decode()`:
+ * that decodes at full size into the compositor's image cache, and whether the entry is still cached when the image is
+ * first drawn depends on timing. If it is, a downscaled draw samples the full-size decode; if not, the draw decodes at
+ * its own mip level, and the pixels differ (orbit-ring's hub logos, frames 0–2, two fresh browsers under load: up to
+ * 60/255).
+ */
+export function loadImages(urls: string[]): Promise<HTMLImageElement[]> {
   return Promise.all(
-    urls.map(async (url) => {
+    urls.map((url) => {
+      const { promise, resolve, reject } = Promise.withResolvers<HTMLImageElement>();
       const img = new Image();
       img.decoding = 'sync';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`image failed to load: ${url}`));
       img.src = url;
-      try {
-        await img.decode();
-      } catch {
-        throw new Error(`image failed to decode: ${url}`);
-      }
-      return img;
+      return promise;
     }),
   );
 }

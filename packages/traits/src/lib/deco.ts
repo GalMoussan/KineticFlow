@@ -45,7 +45,7 @@ export interface BadgeOptions {
 export interface Badge {
   w: number;
   h: number;
-  /** Appends the badge (filling its parent) with clones of the decoded logos. Use as a unit's `mount`. */
+  /** Appends the badge (filling its parent) with clones of the loaded logos. Use as a unit's `mount`. */
   mount(parent: HTMLElement): void;
   /** Fingerprint stand-in for `mount`. */
   key: string;
